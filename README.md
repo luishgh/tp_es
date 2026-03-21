@@ -1,4 +1,6 @@
-# Trabalho Prático de Engenharia de Software: "Plataforma Virtual de Aprendizagem"
+# Ágora
+
+Trabalho pŕatico da Disciplina DCC094 @ UFMG no semestre de 2026/1
 
 ## Membros do Projeto
 | Nome | Papel |
@@ -21,10 +23,8 @@ Nosso sistema visa fornecer uma plataforma virtual de aprendizagem completa e in
 0. Como estudante, quero fazer login para acessar meus cursos e todos os recursos disponíveis de cada um deles.
 1. Como estudante, quero realizar tarefas e atividades para que meu progresso seja registrado automaticamente.
 2. Como estudante, quero monitorar minhas notas em tempo real para acompanhar meu desempenho.
-3. Como estudante, quero participar de fóruns e chats para interagir com professores e colegas.
-4. Como estudante, quero acessar um painel com cursos disponíveis e me matricular neles.
-5. Como professor, quero criar cursos digitais para disponibilizar conteúdos, materiais de apoio e atividades.
-6. Como professor, quero criar atividades online para que os alunos possam entregar e ser avaliados.
-7. Como professor, quero configurar datas de entrega e prazos para tarefas e atividades.
-8. Como professor, quero consultar e atualizar o desempenho dos alunos, visualizando um relatório com suas atividades entregues e notas.
-9. Como professor, quero enviar mensagens individuais ou em grupo para alunos de uma turma.
+3. Como estudante, quero acessar um painel com cursos disponíveis e me matricular neles.
+4. Como professor, quero criar cursos digitais para disponibilizar conteúdos, materiais de apoio e atividades.
+5. Como professor, quero criar atividades online para que os alunos possam entregar e ser avaliados.
+6. Como professor, quero configurar datas de entrega e prazos para tarefas e atividades.
+7. Como professor, quero consultar e atualizar o desempenho dos alunos, visualizando um relatório com suas atividades entregues e notas.
