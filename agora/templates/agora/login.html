@@ -12,8 +12,11 @@
     <link rel="stylesheet" href="{% static 'agora/css/login.css' %}">
 </head>
 <body>
+    {{ active_form|json_script:"login-active-form" }}
     {{ error_message|json_script:"login-error-message" }}
     {{ initial_username|json_script:"login-initial-username" }}
+    {{ initial_register_username|json_script:"login-initial-register-username" }}
+    {{ initial_register_email|json_script:"login-initial-register-email" }}
     {{ csrf_token_value|json_script:"csrf-token" }}
 
     <div id="login-root"></div>

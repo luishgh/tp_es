@@ -1,12 +1,15 @@
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 
 
 def login_view(request):
     context = {
+        'active_form': 'login',
         'error_message': '',
         'initial_username': '',
+        'initial_register_username': '',
+        'initial_register_email': '',
         'csrf_token_value': get_token(request),
     }
 
@@ -14,20 +17,55 @@ def login_view(request):
         return redirect('agora:index')
 
     if request.method == 'POST':
-        username = request.POST.get('username', '').strip()
-        password = request.POST.get('password', '')
-        user = authenticate(request, username=username, password=password)
+        action = request.POST.get('action', 'login')
 
-        context['initial_username'] = username
+        if action == 'register':
+            user_model = get_user_model()
+            username = request.POST.get('register_username', '').strip()
+            email = request.POST.get('register_email', '').strip()
+            password = request.POST.get('register_password', '')
+            password_confirm = request.POST.get('register_password_confirm', '')
 
-        if user is not None:
-            login(request, user)
-            return redirect('agora:index')
+            context['active_form'] = 'register'
+            context['initial_register_username'] = username
+            context['initial_register_email'] = email
 
-        context['error_message'] = 'Usuário ou senha inválidos.'
+            if not username or not password:
+                context['error_message'] = 'Preencha usuário e senha para criar a conta.'
+            elif password != password_confirm:
+                context['error_message'] = 'As senhas informadas não coincidem.'
+            elif user_model.objects.filter(username=username).exists():
+                context['error_message'] = 'Esse nome de usuário já está em uso.'
+            else:
+                user = user_model.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                )
+                login(request, user)
+                return redirect('agora:index')
+        else:
+            username = request.POST.get('username', '').strip()
+            password = request.POST.get('password', '')
+            user = authenticate(request, username=username, password=password)
+
+            context['initial_username'] = username
+
+            if user is not None:
+                login(request, user)
+                return redirect('agora:index')
+
+            context['error_message'] = 'Usuario ou senha invalidos.'
 
     return render(request, 'agora/login.html', context)
 
 
 def index(request):
     return render(request, 'agora/index.html')
+
+
+def logout_view(request):
+    if request.method == 'POST':
+        logout(request)
+
+    return redirect('agora:index')
