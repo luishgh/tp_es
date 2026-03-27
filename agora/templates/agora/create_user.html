@@ -1,49 +1,88 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Criar usuario | Agora</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'agora/css/login.css' %}">
+    <link rel="stylesheet" href="{% static 'agora/css/create_user.css' %}">
 </head>
 <body>
-    <main>
-        <h1>Criar usuario regular</h1>
-        <p><a href="{% url 'agora:index' %}">Voltar para a pagina inicial</a></p>
+    <div class="login-shell create-user-shell">
+        <section class="login-hero">
+            <div class="brand">
+                <span class="brand-mark"></span>
+                <span>Ágora Learning Hub</span>
+            </div>
 
-        {% if created_user %}
-            <p>Usuario <strong>{{ created_user.username }}</strong> criado com sucesso.</p>
-        {% endif %}
+            <div class="hero-copy">
+                <h1>Gerencie o acesso inicial da plataforma.</h1>
+                <p>
+                    Superusers podem cadastrar contas regulares com os dados base do Django e os campos adicionais do perfil academico.
+                </p>
+            </div>
 
-        {% if form.non_field_errors %}
-            <ul>
-                {% for error in form.non_field_errors %}
-                    <li>{{ error }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
+            <div class="hero-note">
+                <span>Criacao controlada de estudantes e professores</span>
+            </div>
+        </section>
 
-        <form method="post">
-            {% csrf_token %}
-
-            {% for field in form %}
-                <div>
-                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}
-                        <small>{{ field.help_text }}</small>
-                    {% endif %}
-                    {% if field.errors %}
-                        <ul>
-                            {% for error in field.errors %}
-                                <li>{{ error }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% endif %}
+        <section class="login-panel-wrap">
+            <div class="login-panel create-user-panel">
+                <div class="create-user-header">
+                    <div>
+                        <h2>Criar usuario regular</h2>
+                        <p>Preencha os dados abaixo para provisionar uma nova conta sem permissao administrativa.</p>
+                    </div>
+                    <a class="back-link" href="{% url 'agora:index' %}">Voltar ao inicio</a>
                 </div>
-            {% endfor %}
 
-            <button type="submit">Criar usuario</button>
-        </form>
-    </main>
+                {% if created_user %}
+                    <div class="create-user-success">
+                        Usuario <strong>{{ created_user.username }}</strong> criado com sucesso.
+                    </div>
+                {% endif %}
+
+                {% if form.non_field_errors %}
+                    <div class="login-error">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <form method="post" class="create-user-form">
+                    {% csrf_token %}
+
+                    {% for field in form %}
+                        <div class="field{% if field.name == 'bio' %} field-full{% endif %}">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}
+                                <small>{{ field.help_text }}</small>
+                            {% endif %}
+                            {% if field.errors %}
+                                <ul class="field-errors">
+                                    {% for error in field.errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+
+                    <div class="login-actions create-user-actions">
+                        <button class="login-button" type="submit">Criar usuario</button>
+                        <div class="login-hint">O novo usuario sera criado como conta regular e o perfil sera preenchido automaticamente.</div>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
 </body>
 </html>

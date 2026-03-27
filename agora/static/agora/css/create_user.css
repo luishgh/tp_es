@@ -1,0 +1,139 @@
+.create-user-shell {
+    min-height: 100vh;
+    align-items: start;
+}
+
+.create-user-panel {
+    width: min(100%, 680px);
+}
+
+.create-user-shell .login-hero,
+.create-user-shell .login-panel-wrap {
+    min-height: 100vh;
+}
+
+.create-user-shell .login-panel-wrap {
+    align-items: flex-start;
+    padding-top: 56px;
+    padding-bottom: 56px;
+}
+
+.create-user-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.create-user-header p {
+    margin-bottom: 0;
+}
+
+.back-link {
+    color: var(--primary);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.back-link:hover {
+    color: var(--primary-strong);
+}
+
+.create-user-success {
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(24, 92, 55, 0.1);
+    color: var(--primary-strong);
+    border: 1px solid rgba(24, 92, 55, 0.18);
+}
+
+.create-user-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 18px;
+}
+
+.create-user-form .field {
+    margin-bottom: 18px;
+    min-width: 0;
+}
+
+.create-user-form .field-full,
+.create-user-actions {
+    grid-column: 1 / -1;
+}
+
+.create-user-form textarea,
+.create-user-form select,
+.create-user-form input {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: var(--surface-strong);
+    border-radius: 16px;
+    padding: 16px 18px;
+    font: inherit;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.create-user-form textarea {
+    min-height: 140px;
+    resize: vertical;
+}
+
+.create-user-form textarea:focus,
+.create-user-form select:focus,
+.create-user-form input:focus {
+    border-color: rgba(24, 92, 55, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 4px rgba(24, 92, 55, 0.08);
+}
+
+.field-errors {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--danger);
+}
+
+@media (max-width: 920px) {
+    .create-user-shell .login-hero,
+    .create-user-shell .login-panel-wrap {
+        min-height: auto;
+    }
+
+    .create-user-shell .login-panel-wrap {
+        align-items: stretch;
+        padding-top: 12px;
+        padding-bottom: 32px;
+    }
+
+    .create-user-form {
+        grid-template-columns: 1fr;
+    }
+
+    .create-user-header {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 640px) {
+    .create-user-shell .login-hero {
+        padding: 32px 20px 0;
+        gap: 28px;
+    }
+
+    .create-user-shell .login-panel-wrap {
+        padding: 16px 20px 28px;
+    }
+
+    .create-user-panel {
+        width: 100%;
+    }
+
+    .create-user-header {
+        margin-bottom: 20px;
+    }
+}
