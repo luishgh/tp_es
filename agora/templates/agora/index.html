@@ -13,6 +13,9 @@
         <h1>Bem-vindo à Ágora</h1>
         {% if request.user.is_authenticated %}
             <p>Login ativo como <strong>{{ request.user.username }}</strong>.</p>
+            {% if request.user.is_superuser %}
+                <p><a href="{% url 'agora:create_user' %}">Criar usuario regular</a></p>
+            {% endif %}
             <form action="{% url 'agora:logout' %}" method="post">
                 {% csrf_token %}
                 <button type="submit">Logout</button>
