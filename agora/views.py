@@ -1,6 +1,9 @@
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth.decorators import user_passes_test
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
+
+from .forms import SuperuserCreateUserForm
 
 
 def login_view(request):
@@ -62,6 +65,25 @@ def login_view(request):
 
 def index(request):
     return render(request, 'agora/index.html')
+
+
+@user_passes_test(lambda user: user.is_authenticated and user.is_superuser)
+def create_user_view(request):
+    form = SuperuserCreateUserForm(request.POST or None)
+    created_user = None
+
+    if request.method == 'POST' and form.is_valid():
+        created_user = form.save()
+        form = SuperuserCreateUserForm()
+
+    return render(
+        request,
+        'agora/create_user.html',
+        {
+            'form': form,
+            'created_user': created_user,
+        },
+    )
 
 
 def logout_view(request):
