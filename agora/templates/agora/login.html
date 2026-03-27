@@ -1,0 +1,26 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Ágora</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'agora/css/login.css' %}">
+</head>
+<body>
+    {{ error_message|json_script:"login-error-message" }}
+    {{ initial_username|json_script:"login-initial-username" }}
+    {{ csrf_token_value|json_script:"csrf-token" }}
+
+    <div id="login-root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel" src="{% static 'agora/js/login.js' %}"></script>
+</body>
+</html>
