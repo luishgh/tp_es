@@ -1,4 +1,9 @@
 from collections import defaultdict
+
+import locale
+locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
+import calendar as month_calendar
+from datetime import date
 from datetime import timedelta
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
@@ -145,8 +150,7 @@ def _build_teacher_dashboard_context(user):
 
         pending_count_by_course[course.id] += 1
 
-        pending_cards.append(
-            {
+        pending_cards.append({
                 'id': activity.id,
                 'title': activity.title,
                 'course_title': course.title,
@@ -165,8 +169,7 @@ def _build_teacher_dashboard_context(user):
         pending = pending_count_by_course.get(course.id, 0)
         progress = int((1 - pending / total_activities) * 100) if total_activities else 0
 
-        course_cards.append(
-            {
+        course_cards.append({
                 'id': course.id,
                 'title': course.title,
                 'code': course.code,
@@ -183,8 +186,6 @@ def _build_teacher_dashboard_context(user):
         'page_title': 'Cursos sob sua responsabilidade e atividades para corrigir',
         'page_lead': 'Gerencie seus cursos e mantenha o controle das correções pendentes.',
         'sidebar_title': 'Painel do professor',
-        'sidebar_summary': f'{len(pending_cards)} atividade{"s" if len(pending_cards) != 1 else ""} aguardando correção',
-        'sidebar_helper': 'Acompanhe suas turmas ativas e mantenha o retorno aos estudantes em dia.',
         'courses_heading': 'Cursos lecionados',
         'courses_eyebrow': 'Turmas sob sua condução',
         'courses_empty_title': 'Você ainda não possui cursos atribuídos para lecionar.',
@@ -214,11 +215,11 @@ def _build_student_dashboard_context(user):
         .annotate(total=Count('id'))
     }
 
-    activities_pending_submission = sorted(
+    activities_pending_submission = list(
         Activity.objects.select_related('course')
         .filter(
             course_id__in=course_ids,
-            is_published=True,
+            is_published=True
         )
         .exclude(
             submissions__student=user,
@@ -228,12 +229,8 @@ def _build_student_dashboard_context(user):
                 Submission.Status.LATE,
             ],
         )
-        .distinct(),
-        key=lambda activity: (
-            activity.due_date is None,
-            activity.due_date or now,
-            activity.title.lower(),
-        ),
+        .distinct()
+        .order_by('due_date', 'title')
     )
 
     pending_count_by_course = defaultdict(int)
@@ -281,8 +278,7 @@ def _build_student_dashboard_context(user):
         pending = pending_count_by_course.get(course.id, 0)
         progress = int((1 - pending / total_activities) * 100) if total_activities else 0
 
-        course_cards.append(
-            {
+        course_cards.append({
                 'id': course.id,
                 'title': course.title,
                 'code': course.code,
@@ -298,8 +294,6 @@ def _build_student_dashboard_context(user):
         'page_title': 'Meus cursos e atividades a entregar.',
         'page_lead': 'Acesse seus cursos e acompanhe suas atividades e prazos.',
         'sidebar_title': 'Painel do aluno',
-        'sidebar_summary': f'{len(pending_cards)} atividade{"s" if len(pending_cards) != 1 else ""} pendente{"s" if len(pending_cards) != 1 else ""}',
-        'sidebar_helper': 'Priorize primeiro as entregas com prazo mais próximo e acompanhe seu progresso por disciplina.',
         'courses_heading': 'Meus cursos',
         'courses_eyebrow': 'Turmas matriculadas',
         'courses_empty_title': 'Você ainda não possui cursos matriculados.',
@@ -311,6 +305,135 @@ def _build_student_dashboard_context(user):
         'work_empty_title': 'Nenhuma atividade pendente agora.',
         'work_empty_text': 'Todas as atividades publicadas para seus cursos ativos já foram entregues ou ainda não existem pendências cadastradas.',
     }
+
+
+@never_cache
+@login_required(login_url='agora:login')
+def calendar_view(request):
+    now = timezone.localtime()
+
+    profile = getattr(request.user, 'profile', None)
+    role = getattr(profile, 'role', UserProfile.Role.STUDENT)
+
+    if role == UserProfile.Role.TEACHER:
+        return redirect('agora:index')
+    
+    current_year = now.year
+    current_month = now.month
+    month_matrix = month_calendar.monthcalendar(current_year, current_month)
+    weekday_labels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
+    month_label = date(current_year, current_month, 1).strftime('%B de %Y').capitalize()
+
+    enrollments = list(request.user.enrollments.filter(
+        status=Enrollment.Status.ACTIVE
+    ).select_related('course').order_by('course__title'))
+    course_ids = [enrollment.course_id for enrollment in enrollments]
+
+    activities = list(
+        Activity.objects.select_related('course')
+        .filter(
+            course_id__in=course_ids,
+            is_published=True,
+            due_date__year=current_year,
+            due_date__month=current_month,
+        )
+        .exclude(
+            submissions__student=request.user,
+            submissions__status__in=[
+                Submission.Status.SUBMITTED,
+                Submission.Status.REVIEWED,
+                Submission.Status.LATE,
+            ],
+        )
+        .distinct()
+        .order_by('due_date', 'title')
+    )
+
+    activities_by_day = defaultdict(list)
+    upcoming_items = []
+    today = now.date()
+
+    for activity in activities:
+        due_dt = timezone.localtime(activity.due_date) if activity.due_date else None
+        if not due_dt:
+            continue
+
+        status = 'Planejada'
+        tone = 'neutral'
+        if due_dt.date() < today:
+            status = 'Atrasada'
+            tone = 'danger'
+        elif due_dt.date() == today:
+            status = 'Hoje'
+            tone = 'warning'
+        elif due_dt.date() <= today + timedelta(days=3):
+            status = 'Próxima'
+            tone = 'accent'
+
+        item = {
+            'title': activity.title,
+            'course_code': activity.course.code,
+            'course_title': activity.course.title,
+            'time_label': due_dt.strftime('%H:%M'),
+            'date_label': due_dt.strftime('%d/%m, %H:%M'),
+            'status_label': status,
+            'status_tone': tone,
+        }
+        activities_by_day[due_dt.day].append(item)
+        upcoming_items.append(item)
+
+    calendar_weeks = []
+    for week in month_matrix:
+        cells = []
+        for day_number in week:
+            in_month = day_number != 0
+            day_items = activities_by_day.get(day_number, []) if in_month else []
+            cells.append({
+                    'day': day_number,
+                    'in_month': in_month,
+                    'is_today': in_month and day_number == today.day,
+                    'items': day_items[:2],
+                    'extra_count': max(len(day_items) - 2, 0),
+            })
+
+        calendar_weeks.append(cells)
+
+    reviewed_submissions = list(
+        Submission.objects.select_related('activity', 'activity__course', 'activity__course__teacher')
+        .filter(
+            student=request.user,
+            activity__course_id__in=course_ids,
+            status=Submission.Status.REVIEWED,
+            score__isnull=False,
+        )
+        .order_by('-graded_at', '-updated_at', '-id')
+    )
+
+    grade_cards = [{
+            'course_code': submission.activity.course.code,
+            'course_title': submission.activity.course.title,
+            'teacher_name': submission.activity.course.teacher.get_full_name() or submission.activity.course.teacher.username,
+            'activity_title': submission.activity.title,
+            'score': submission.score,
+            'graded_at': submission.graded_at or submission.updated_at,
+            'feedback': submission.feedback,
+        } for submission in reviewed_submissions[:3]
+    ]
+
+    context = {
+        'month_label': month_label,
+        'weekday_labels': weekday_labels,
+        'calendar_weeks': calendar_weeks,
+        'upcoming_items': upcoming_items[:5],
+        'grade_cards': grade_cards,
+        'sidebar_title': 'Painel do aluno',
+        'courses_heading': 'Meus cursos',
+        'work_heading': 'Atividades a entregar',
+        'user_role': UserProfile.Role(role),
+        'user_label': UserProfile.Role(role).label,
+    }
+
+    return render(request, 'agora/calendar.html', context)
 
 
 @user_passes_test(lambda user: user.is_authenticated and user.is_superuser)

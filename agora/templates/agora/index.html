@@ -27,17 +27,13 @@
                 <a class="nav-item active" href="#">{{ sidebar_title }}</a>
                 <a class="nav-item" href="#courses">{{ courses_heading }}</a>
                 <a class="nav-item" href="#work">{{ work_heading }}</a>
-                <a class="nav-item" href="#">Calendário</a>
+                {% if user_role == 'student'%}
+                    <a class="nav-item" href="{% url 'agora:calendar' %}">Calendário</a>
+                {% endif %}
                 {% if request.user.is_superuser %}
                     <a class="nav-item" href="{% url 'agora:create_user' %}">Criar usuarios</a>
                 {% endif %}
             </nav>
-
-            <div class="sidebar-card">
-                <p class="eyebrow">Organização semanal</p>
-                <strong>{{ sidebar_summary }}</strong>
-                <span>{{ sidebar_helper }}</span>
-            </div>
         </aside>
 
         <main class="dashboard-main">
