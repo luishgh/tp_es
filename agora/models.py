@@ -9,7 +9,7 @@ from django.dispatch import receiver
 class UserProfile(models.Model):
     class Role(models.TextChoices):
         STUDENT = 'student', 'Estudante'
-        TEACHER = 'teacher', 'Professor'
+        TEACHER = 'teacher', 'Professor(a)'
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -30,6 +30,7 @@ class UserProfile(models.Model):
     )
     bio = models.TextField(
         blank=True,
+        default='',
         verbose_name='biografia',
     )
 
@@ -149,38 +150,6 @@ class Enrollment(models.Model):
             raise ValidationError({'student': 'A matricula deve estar vinculada a um estudante.'})
 
 
-class Module(models.Model):
-    course = models.ForeignKey(
-        Course,
-        on_delete=models.CASCADE,
-        related_name='modules',
-        verbose_name='curso',
-    )
-    title = models.CharField(
-        max_length=150,
-        verbose_name='titulo',
-    )
-    description = models.TextField(
-        blank=True,
-        verbose_name='descricao',
-    )
-    order = models.PositiveIntegerField(
-        default=1,
-        verbose_name='ordem',
-    )
-
-    class Meta:
-        verbose_name = 'modulo'
-        verbose_name_plural = 'modulos'
-        ordering = ['course', 'order', 'id']
-        constraints = [
-            models.UniqueConstraint(fields=['course', 'order'], name='unique_module_order_per_course'),
-        ]
-
-    def __str__(self):
-        return f'{self.course.code} - {self.title}'
-
-
 class Activity(models.Model):
     class Type(models.TextChoices):
         ASSIGNMENT = 'assignment', 'Tarefa'
@@ -193,14 +162,6 @@ class Activity(models.Model):
         on_delete=models.CASCADE,
         related_name='activities',
         verbose_name='curso',
-    )
-    module = models.ForeignKey(
-        Module,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='activities',
-        verbose_name='modulo',
     )
     title = models.CharField(
         max_length=150,
@@ -260,9 +221,6 @@ class Activity(models.Model):
 
         if _user_role(self.created_by) != UserProfile.Role.TEACHER:
             errors['created_by'] = 'A atividade deve ser criada por um professor.'
-
-        if self.module and self.module.course_id != self.course_id:
-            errors['module'] = 'O modulo precisa pertencer ao mesmo curso da atividade.'
 
         if errors:
             raise ValidationError(errors)

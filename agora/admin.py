@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Activity, Course, Enrollment, Module, Submission, UserProfile
+from .models import Activity, Course, Enrollment, Submission, UserProfile
 
 
 @admin.register(UserProfile)
@@ -22,13 +22,6 @@ class EnrollmentAdmin(admin.ModelAdmin):
     list_display = ('student', 'course', 'status', 'enrolled_at', 'final_grade')
     list_filter = ('status',)
     search_fields = ('student__username', 'course__code', 'course__title')
-
-
-@admin.register(Module)
-class ModuleAdmin(admin.ModelAdmin):
-    list_display = ('title', 'course', 'order')
-    list_filter = ('course',)
-    search_fields = ('title', 'course__code', 'course__title')
 
 
 @admin.register(Activity)

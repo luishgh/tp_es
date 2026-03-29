@@ -6,23 +6,157 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ágora</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="icon" href="{% static 'agora/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'agora/css/index.css' %}">
 </head>
 <body>
-    <main>
-        <h1>Bem-vindo à Ágora</h1>
-        {% if request.user.is_authenticated %}
-            <p>Login ativo como <strong>{{ request.user.username }}</strong>.</p>
-            {% if request.user.is_superuser %}
-                <p><a href="{% url 'agora:create_user' %}">Criar usuario regular</a></p>
-            {% endif %}
-            <form action="{% url 'agora:logout' %}" method="post">
-                {% csrf_token %}
-                <button type="submit">Logout</button>
-            </form>
-        {% else %}
-            <p>A aplicação Django está no ar. <a href="{% url 'agora:login' %}">Faça login ou crie uma conta</a>.</p>
-        {% endif %}
-    </main>
+    <div class="dashboard-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <span class="brand-mark"></span>
+                <div>
+                    <strong>Ágora</strong>
+                    <span>Ambiente de aprendizagem</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a class="nav-item active" href="#">{{ sidebar_title }}</a>
+                <a class="nav-item" href="#courses">{{ courses_heading }}</a>
+                <a class="nav-item" href="#work">{{ work_heading }}</a>
+                <a class="nav-item" href="#">Calendário</a>
+                {% if request.user.is_superuser %}
+                    <a class="nav-item" href="{% url 'agora:create_user' %}">Criar usuarios</a>
+                {% endif %}
+            </nav>
+
+            <div class="sidebar-card">
+                <p class="eyebrow">Organização semanal</p>
+                <strong>{{ sidebar_summary }}</strong>
+                <span>{{ sidebar_helper }}</span>
+            </div>
+        </aside>
+
+        <main class="dashboard-main">
+            <header class="topbar">
+                <div>
+                    <p class="eyebrow">Painel principal</p>
+                    <h1>{{ page_title }}</h1>
+                    <p class="lead">{{ page_lead }}</p>
+                </div>
+
+                <div class="topbar-actions">
+                    <div class="user-chip">
+                        <span class="user-avatar">
+                            <span class="user-avatar-letter">{{ request.user.username|first|upper }}</span>
+                        </span>
+                        <div>
+                            <strong>{{ request.user.username }}</strong>
+                            <span>{{ user_role }}</span>
+                        </div>
+                    </div>
+                    <form action="{% url 'agora:logout' %}" method="post">
+                        {% csrf_token %}
+                        <button class="ghost-button" type="submit">Logout</button>
+                    </form>
+                </div>
+            </header>
+
+            <section class="content-grid">
+                <section id="courses" class="panel">
+                    <div class="section-head">
+                        <div>
+                            <p class="eyebrow">{{ courses_eyebrow }}</p>
+                            <h2>{{ courses_heading }}</h2>
+                        </div>
+                        <span>{{ courses_summary }}</span>
+                    </div>
+
+                    {% if course_cards %}
+                        <div class="course-grid">
+                            {% for course in course_cards %}
+                                <article class="course-card {{ course.accent }}">
+                                    <span class="course-code">{{ course.code }}</span>
+                                    <h3>{{ course.title }}</h3>
+                                    <p>{{ course.description|truncatechars:140 }}</p>
+
+                                    <div class="course-meta">
+                                        <span>
+                                            {% if dashboard_kind == 'teacher' %}
+                                                {{ course.meta_label }}
+                                            {% else %}
+                                                {{ course.teacher_name }}
+                                            {% endif %}
+                                        </span>
+                                        <strong>
+                                            {% if dashboard_kind == 'teacher' %}
+                                                {{ course.pending_count }} para avaliar
+                                            {% else %}
+                                                {{ course.pending_count }} pendente{{ course.pending_count|pluralize }}
+                                            {% endif %}
+                                        </strong>
+                                    </div>
+
+                                    <div class="progress-track">
+                                        <span style="width: {{ course.progress }}%"></span>
+                                    </div>
+                                    {% if dashboard_kind == 'teacher' %}
+                                        <div class="course-progress-label">{{ course.progress_label }}</div>
+                                    {% endif %}
+                                </article>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <h3>{{ courses_empty_title }}</h3>
+                            <p>{{ courses_empty_text }}</p>
+                        </div>
+                    {% endif %}
+                </section>
+
+                <section id="work" class="panel">
+                    <div class="section-head">
+                        <div>
+                            <p class="eyebrow">{{ work_eyebrow }}</p>
+                            <h2>{{ work_heading }}</h2>
+                        </div>
+                        <span>{{ work_summary }}</span>
+                    </div>
+
+                    {% if pending_cards %}
+                        <div class="pending-grid">
+                            {% for activity in pending_cards %}
+                                <article class="pending-card">
+                                    <div class="pending-head">
+                                        <div>
+                                            <h3>{{ activity.title }}</h3>
+                                            <span>{{ activity.course_code }} · {{ activity.course_title }}</span>
+                                        </div>
+                                        <span class="status-pill {{ activity.status_tone }}">{{ activity.status_label }}</span>
+                                    </div>
+
+                                    <div class="pending-meta">
+                                        <span>{{ activity.activity_type }}</span>
+                                        {% if dashboard_kind == 'teacher' %}
+                                            <span>{{ activity.review_volume }}</span>
+                                        {% endif %}
+                                        <span>Prazo: {{ activity.due_label }}</span>
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <h3>{{ work_empty_title }}</h3>
+                            <p>{{ work_empty_text }}</p>
+                        </div>
+                    {% endif %}
+                </section>
+            </section>
+        </main>
+    </div>
 </body>
 </html>
