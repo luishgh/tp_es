@@ -66,7 +66,7 @@ def login_view(request):
                 login(request, user)
                 return redirect('agora:index')
 
-            context['error_message'] = 'Usuario ou senha invalidos.'
+            context['error_message'] = 'Usuário ou senha inválidos.'
 
     return render(request, 'agora/login.html', context)
 
@@ -74,177 +74,28 @@ def login_view(request):
 @never_cache
 @login_required(login_url='agora:login')
 def index(request):
-    is_teacher = _is_teacher_user(request.user)
-    user_role = UserProfile.Role.TEACHER if is_teacher else _get_user_role(request.user)
+    profile = getattr(request.user, 'profile', None)
+    role = getattr(profile, 'role', UserProfile.Role.STUDENT)
+    label = UserProfile.Role(role).label
 
-    if is_teacher:
+    if role == UserProfile.Role.TEACHER:
         context = _build_teacher_dashboard_context(request.user)
     else:
         context = _build_student_dashboard_context(request.user)
 
-    context['dashboard_kind'] = 'teacher' if is_teacher else 'student'
-    context['user_role'] = 'Professor(a)' if is_teacher else 'Estudante'
+    context['user_role'] = role
+    context['user_label'] = label
 
     return render(request, 'agora/index.html', context)
-
-
-def _build_student_dashboard_context(user):
-    now = timezone.localtime()
-
-    enrollments = list(
-        Enrollment.objects.select_related('course', 'course__teacher')
-        .filter(
-            student=user,
-            status=Enrollment.Status.ACTIVE,
-        )
-        .order_by('course__title')
-    )
-
-    course_ids = [enrollment.course_id for enrollment in enrollments]
-
-    pending_activities_queryset = (
-        Activity.objects.select_related('course')
-        .filter(
-            course_id__in=course_ids,
-            is_published=True,
-        )
-        .exclude(
-            submissions__student=user,
-            submissions__status__in=[
-                Submission.Status.SUBMITTED,
-                Submission.Status.REVIEWED,
-                Submission.Status.LATE,
-            ],
-        )
-        .distinct()
-    )
-
-    pending_activities = sorted(
-        pending_activities_queryset,
-        key=lambda activity: (
-            activity.due_date is None,
-            activity.due_date or now,
-            activity.title.lower(),
-        ),
-    )
-
-    published_activity_totals = {
-        item['course_id']: item['total']
-        for item in Activity.objects.filter(course_id__in=course_ids, is_published=True)
-        .values('course_id')
-        .annotate(total=Count('id'))
-    }
-
-    completed_activity_totals = {
-        item['activity__course_id']: item['total']
-        for item in Submission.objects.filter(
-            student=user,
-            activity__course_id__in=course_ids,
-            status__in=[
-                Submission.Status.SUBMITTED,
-                Submission.Status.REVIEWED,
-                Submission.Status.LATE,
-            ],
-        )
-        .values('activity__course_id')
-        .annotate(total=Count('id'))
-    }
-
-    pending_by_course = defaultdict(list)
-    overdue_activities = 0
-    pending_cards = []
-
-    for activity in pending_activities:
-        due_date = timezone.localtime(activity.due_date) if activity.due_date else None
-        is_overdue = bool(due_date and due_date < now)
-        is_due_today = bool(due_date and due_date.date() == now.date())
-        is_due_soon = bool(due_date and now.date() < due_date.date() <= (now + timedelta(days=3)).date())
-
-        if is_overdue:
-            status_label = 'Atrasada'
-            status_tone = 'danger'
-            overdue_activities += 1
-        elif is_due_today:
-            status_label = 'Vence hoje'
-            status_tone = 'warning'
-        elif is_due_soon:
-            status_label = 'Próxima'
-            status_tone = 'accent'
-        else:
-            status_label = 'Planejada' if due_date else 'Sem prazo'
-            status_tone = 'neutral'
-
-        item = {
-            'id': activity.id,
-            'title': activity.title,
-            'course_title': activity.course.title,
-            'course_code': activity.course.code,
-            'activity_type': activity.get_activity_type_display(),
-            'due_date': due_date,
-            'due_label': due_date.strftime('%d/%m, %H:%M') if due_date else 'Sem data definida',
-            'status_label': status_label,
-            'status_tone': status_tone,
-        }
-        pending_cards.append(item)
-        pending_by_course[activity.course_id].append(item)
-
-    course_cards = []
-    for index_number, enrollment in enumerate(enrollments):
-        course = enrollment.course
-        total_activities = published_activity_totals.get(course.id, 0)
-        completed_activities = completed_activity_totals.get(course.id, 0)
-        pending_count = len(pending_by_course[course.id])
-        progress = int((completed_activities / total_activities) * 100) if total_activities else 0
-
-        course_cards.append(
-            {
-                'id': course.id,
-                'title': course.title,
-                'code': course.code,
-                'description': course.description,
-                'teacher_name': course.teacher.get_full_name() or course.teacher.username,
-                'pending_count': pending_count,
-                'progress': progress,
-                'accent': ['forest', 'sand', 'sage'][index_number % 3],
-                'meta_label': f'{pending_count} pendente{"" if pending_count == 1 else "s"}',
-            }
-        )
-
-    return {
-        'course_cards': course_cards,
-        'pending_cards': pending_cards[:5],
-        'metrics': {
-            'course_count': len(course_cards),
-            'pending_count': len(pending_cards),
-            'overdue_count': overdue_activities,
-        },
-        'page_title': 'Meus cursos e atividades a entregar.',
-        'page_lead': 'Um painel simples, focado no que o aluno precisa acompanhar no dia a dia acadêmico.',
-        'sidebar_title': 'Painel do aluno',
-        'sidebar_summary': f'{len(pending_cards)} atividade{"s" if len(pending_cards) != 1 else ""} pendente{"s" if len(pending_cards) != 1 else ""}',
-        'sidebar_helper': 'Priorize primeiro as entregas com prazo mais próximo e acompanhe seu progresso por disciplina.',
-        'courses_heading': 'Meus cursos',
-        'courses_eyebrow': 'Cursos matriculados',
-        'courses_empty_title': 'Você ainda não possui cursos matriculados.',
-        'courses_empty_text': 'Quando suas matriculas forem registradas, seus cursos aparecerão aqui com progresso e resumo das pendências.',
-        'courses_summary': f'{len(course_cards)} em andamento · {overdue_activities} atrasada{"s" if overdue_activities != 1 else ""}',
-        'work_heading': 'Atividades a entregar',
-        'work_eyebrow': 'Pendências acadêmicas',
-        'work_summary': f'{len(pending_cards)} abertas',
-        'work_empty_title': 'Nenhuma atividade pendente agora.',
-        'work_empty_text': 'Bom sinal: todas as atividades publicadas para seus cursos ativos já foram entregues ou ainda não existem pendências cadastradas.',
-    }
 
 
 def _build_teacher_dashboard_context(user):
     now = timezone.localtime()
 
-    courses = list(
-        user.courses_taught.all().order_by('title')
-    )
+    courses = list(user.courses_taught.all().order_by('title'))
     course_ids = [course.id for course in courses]
 
-    student_counts = {
+    course_student_counts = {
         item['course_id']: item['total']
         for item in Enrollment.objects.filter(
             course_id__in=course_ids,
@@ -254,14 +105,14 @@ def _build_teacher_dashboard_context(user):
         .annotate(total=Count('id'))
     }
 
-    published_activity_totals = {
+    course_published_activities = {
         item['course_id']: item['total']
         for item in Activity.objects.filter(course_id__in=course_ids, is_published=True)
         .values('course_id')
         .annotate(total=Count('id'))
     }
 
-    activities_needing_review = list(
+    activities_pending_review = list(
         Activity.objects.select_related('course')
         .filter(
             course__teacher=user,
@@ -277,6 +128,7 @@ def _build_teacher_dashboard_context(user):
         item['activity_id']: item['total']
         for item in Submission.objects.filter(
             activity__course__teacher=user,
+            activity__is_published=True,
             activity__due_date__lt=now,
             status__in=[Submission.Status.SUBMITTED, Submission.Status.LATE],
         )
@@ -284,109 +136,181 @@ def _build_teacher_dashboard_context(user):
         .annotate(total=Count('id'))
     }
 
-    reviewed_activity_totals = defaultdict(int)
-    reviewed_activity_rows = (
-        Submission.objects.filter(
-            activity__course__teacher=user,
-            activity__is_published=True,
-        )
-        .values('activity__course_id', 'activity_id')
-        .annotate(
-            total_submissions=Count('id'),
-            pending_reviews=Count(
-                'id',
-                filter=Q(status__in=[Submission.Status.SUBMITTED, Submission.Status.LATE]),
-            ),
-        )
-    )
+    pending_count_by_course = defaultdict(int)
+    pending_cards = []
 
-    for row in reviewed_activity_rows:
-        if row['total_submissions'] > 0 and row['pending_reviews'] == 0:
-            reviewed_activity_totals[row['activity__course_id']] += 1
-
-    review_count_by_course = defaultdict(int)
-    review_cards = []
-    review_count = 0
-
-    for activity in activities_needing_review:
+    for activity in activities_pending_review:
         course = activity.course
-        due_date = timezone.localtime(activity.due_date) if activity.due_date else None
         pending_reviews = pending_review_counts.get(activity.id, 0)
-        review_count_by_course[course.id] += 1
-        review_count += 1
 
-        review_cards.append(
+        pending_count_by_course[course.id] += 1
+
+        pending_cards.append(
             {
                 'id': activity.id,
                 'title': activity.title,
                 'course_title': course.title,
                 'course_code': course.code,
                 'activity_type': activity.get_activity_type_display(),
-                'due_label': due_date.strftime('%d/%m, %H:%M') if due_date else 'Sem data definida',
                 'status_label': 'Correção pendente',
                 'status_tone': 'danger',
-                'review_volume': f'{pending_reviews} envio{"s" if pending_reviews != 1 else ""} aguardando avaliação',
+                'meta_label': f'{pending_reviews} envio{"s" if pending_reviews != 1 else ""} aguardando avaliação',
             }
         )
 
     course_cards = []
     for index_number, course in enumerate(courses):
-        total_activities = published_activity_totals.get(course.id, 0)
-        student_total = student_counts.get(course.id, 0)
-        review_total = review_count_by_course.get(course.id, 0)
-        reviewed_total = reviewed_activity_totals.get(course.id, 0)
-        progress = int((reviewed_total / total_activities) * 100) if total_activities else 0
+        total_activities = course_published_activities.get(course.id, 0)
+        total_students = course_student_counts.get(course.id, 0)
+        pending = pending_count_by_course.get(course.id, 0)
+        progress = int((1 - pending / total_activities) * 100) if total_activities else 0
 
         course_cards.append(
             {
                 'id': course.id,
                 'title': course.title,
                 'code': course.code,
-                'description': course.description,
-                'teacher_name': course.teacher.get_full_name() or course.teacher.username,
-                'pending_count': review_total,
                 'progress': progress,
                 'accent': ['forest', 'sand', 'sage'][index_number % 3],
-                'meta_label': f'{student_total} aluno{"s" if student_total != 1 else ""} ativo{"s" if student_total != 1 else ""}',
-                'progress_label': f'{reviewed_total}/{total_activities} atividades avaliadas',
+                'meta_label': f'{total_students} aluno{"s" if total_students != 1 else ""} ativo{"s" if total_students != 1 else ""}',
+                'progress_label': f'{total_activities - pending}/{total_activities} atividades avaliadas',
             }
         )
 
     return {
         'course_cards': course_cards,
-        'pending_cards': review_cards[:5],
-        'metrics': {
-            'course_count': len(course_cards),
-            'pending_count': len(review_cards),
-            'overdue_count': review_count,
-        },
-        'page_title': 'Cursos sob sua responsabilidade e atividades para corrigir.',
-        'page_lead': 'Um painel para acompanhar suas turmas e identificar correções pendentes.',
+        'pending_cards': pending_cards[:5],
+        'page_title': 'Cursos sob sua responsabilidade e atividades para corrigir',
+        'page_lead': 'Gerencie seus cursos e mantenha o controle das correções pendentes.',
         'sidebar_title': 'Painel do professor',
-        'sidebar_summary': f'{len(review_cards)} atividade{"s" if len(review_cards) != 1 else ""} aguardando correção',
-        'sidebar_helper': 'Acompanhe suas turmas ativas e priorize as atividades com prazo encerrado para manter o retorno aos estudantes em dia.',
-        'courses_heading': 'Cursos que voce leciona',
+        'sidebar_summary': f'{len(pending_cards)} atividade{"s" if len(pending_cards) != 1 else ""} aguardando correção',
+        'sidebar_helper': 'Acompanhe suas turmas ativas e mantenha o retorno aos estudantes em dia.',
+        'courses_heading': 'Cursos lecionados',
         'courses_eyebrow': 'Turmas sob sua condução',
-        'courses_empty_title': 'Você ainda nao possui cursos atribuidos para lecionar.',
+        'courses_empty_title': 'Você ainda não possui cursos atribuídos para lecionar.',
         'courses_empty_text': 'Assim que um curso tiver você como professor responsável, ele aparecerá aqui com a fila de correções relacionada.',
         'courses_summary': f'{len(course_cards)} turma{"s" if len(course_cards) != 1 else ""} ativa{"s" if len(course_cards) != 1 else ""}',
         'work_heading': 'Atividades para corrigir',
         'work_eyebrow': 'Fila de correção',
-        'work_summary': f'{len(review_cards)} atividade{"s" if len(review_cards) != 1 else ""} aguardando retorno',
+        'work_summary': f'{len(pending_cards)} atividade{"s" if len(pending_cards) != 1 else ""} aguardando retorno',
         'work_empty_title': 'Nenhuma atividade vencida aguardando correção.',
         'work_empty_text': 'No momento, não há atividades com prazo encerrado esperando sua avaliação.',
     }
 
 
-def _get_user_role(user):
-    profile = getattr(user, 'profile', None)
-    return getattr(profile, 'role', UserProfile.Role.STUDENT)
+def _build_student_dashboard_context(user):
+    now = timezone.localtime()
 
+    enrollments = list(user.enrollments.filter(
+        status=Enrollment.Status.ACTIVE
+    ).select_related('course').order_by('course__title'))
 
-def _is_teacher_user(user):
-    if _get_user_role(user) == UserProfile.Role.TEACHER:
-        return True
-    return user.courses_taught.exists()
+    course_ids = [enrollment.course_id for enrollment in enrollments]
+
+    course_published_activities = {
+        item['course_id']: item['total']
+        for item in Activity.objects.filter(course_id__in=course_ids, is_published=True)
+        .values('course_id')
+        .annotate(total=Count('id'))
+    }
+
+    activities_pending_submission = sorted(
+        Activity.objects.select_related('course')
+        .filter(
+            course_id__in=course_ids,
+            is_published=True,
+        )
+        .exclude(
+            submissions__student=user,
+            submissions__status__in=[
+                Submission.Status.SUBMITTED,
+                Submission.Status.REVIEWED,
+                Submission.Status.LATE,
+            ],
+        )
+        .distinct(),
+        key=lambda activity: (
+            activity.due_date is None,
+            activity.due_date or now,
+            activity.title.lower(),
+        ),
+    )
+
+    pending_count_by_course = defaultdict(int)
+    pending_cards = []
+
+    overdue_activities = 0
+
+    for activity in activities_pending_submission:
+        due_date = timezone.localtime(activity.due_date) if activity.due_date else None
+        is_overdue = bool(due_date and due_date < now)
+        is_due_today = bool(due_date and due_date.date() == now.date())
+        is_due_soon = bool(due_date and now.date() < due_date.date() <= (now + timedelta(days=3)).date())
+    
+        pending_count_by_course[activity.course_id] += 1
+
+        if is_overdue:
+            status_label = 'Atrasada'
+            status_tone = 'danger'
+            overdue_activities += 1
+        elif is_due_today:
+            status_label = 'Vence hoje'
+            status_tone = 'warning'
+        elif is_due_soon:
+            status_label = 'Próxima'
+            status_tone = 'accent'
+        else:
+            status_label = 'Planejada' if due_date else 'Sem prazo'
+            status_tone = 'neutral'
+
+        pending_cards.append({
+            'id': activity.id,
+            'title': activity.title,
+            'course_title': activity.course.title,
+            'course_code': activity.course.code,
+            'activity_type': activity.get_activity_type_display(),
+            'status_label': status_label,
+            'status_tone': status_tone,
+            'meta_label': f'Prazo de entrega: {due_date.strftime('%d/%m, %H:%M') if due_date else "Sem data definida" }'
+        })
+
+    course_cards = []
+    for index_number, enrollment in enumerate(enrollments):
+        course = enrollment.course
+        total_activities = course_published_activities.get(course.id, 0)
+        pending = pending_count_by_course.get(course.id, 0)
+        progress = int((1 - pending / total_activities) * 100) if total_activities else 0
+
+        course_cards.append(
+            {
+                'id': course.id,
+                'title': course.title,
+                'code': course.code,
+                'progress': progress,
+                'accent': ['forest', 'sand', 'sage'][index_number % 3],
+                'meta_label': f'Professor(a): {course.teacher.get_full_name() or course.teacher.username}',
+                'progress_label': f'{pending} atividade{"" if pending == 1 else "s"} pendente{"" if pending == 1 else "s"}'
+        })
+
+    return {
+        'course_cards': course_cards,
+        'pending_cards': pending_cards[:5],
+        'page_title': 'Meus cursos e atividades a entregar.',
+        'page_lead': 'Acesse seus cursos e acompanhe suas atividades e prazos.',
+        'sidebar_title': 'Painel do aluno',
+        'sidebar_summary': f'{len(pending_cards)} atividade{"s" if len(pending_cards) != 1 else ""} pendente{"s" if len(pending_cards) != 1 else ""}',
+        'sidebar_helper': 'Priorize primeiro as entregas com prazo mais próximo e acompanhe seu progresso por disciplina.',
+        'courses_heading': 'Meus cursos',
+        'courses_eyebrow': 'Turmas matriculadas',
+        'courses_empty_title': 'Você ainda não possui cursos matriculados.',
+        'courses_empty_text': 'Quando suas matrículas forem registradas, seus cursos aparecerão aqui com progresso e resumo de pendências.',
+        'courses_summary': f'{len(course_cards)} disciplinas em andamento · {overdue_activities} atividades atrasada{"s" if overdue_activities != 1 else ""}',
+        'work_heading': 'Atividades a entregar',
+        'work_eyebrow': 'Pendências acadêmicas',
+        'work_summary': f'{len(pending_cards)} abertas',
+        'work_empty_title': 'Nenhuma atividade pendente agora.',
+        'work_empty_text': 'Todas as atividades publicadas para seus cursos ativos já foram entregues ou ainda não existem pendências cadastradas.',
+    }
 
 
 @user_passes_test(lambda user: user.is_authenticated and user.is_superuser)

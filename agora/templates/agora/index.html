@@ -55,7 +55,7 @@
                         </span>
                         <div>
                             <strong>{{ request.user.username }}</strong>
-                            <span>{{ user_role }}</span>
+                            <span>{{ user_label }}</span>
                         </div>
                     </div>
                     <form action="{% url 'agora:logout' %}" method="post">
@@ -81,31 +81,17 @@
                                 <article class="course-card {{ course.accent }}">
                                     <span class="course-code">{{ course.code }}</span>
                                     <h3>{{ course.title }}</h3>
-                                    <p>{{ course.description|truncatechars:140 }}</p>
 
                                     <div class="course-meta">
-                                        <span>
-                                            {% if dashboard_kind == 'teacher' %}
-                                                {{ course.meta_label }}
-                                            {% else %}
-                                                {{ course.teacher_name }}
-                                            {% endif %}
-                                        </span>
-                                        <strong>
-                                            {% if dashboard_kind == 'teacher' %}
-                                                {{ course.pending_count }} para avaliar
-                                            {% else %}
-                                                {{ course.pending_count }} pendente{{ course.pending_count|pluralize }}
-                                            {% endif %}
-                                        </strong>
+                                        <span>{{ course.meta_label }}</span>
                                     </div>
 
                                     <div class="progress-track">
                                         <span style="width: {{ course.progress }}%"></span>
                                     </div>
-                                    {% if dashboard_kind == 'teacher' %}
+                                    <strong>
                                         <div class="course-progress-label">{{ course.progress_label }}</div>
-                                    {% endif %}
+                                    </strong>
                                 </article>
                             {% endfor %}
                         </div>
@@ -140,10 +126,7 @@
 
                                     <div class="pending-meta">
                                         <span>{{ activity.activity_type }}</span>
-                                        {% if dashboard_kind == 'teacher' %}
-                                            <span>{{ activity.review_volume }}</span>
-                                        {% endif %}
-                                        <span>Prazo: {{ activity.due_label }}</span>
+                                        <span>{{ activity.meta_label }}</span>
                                     </div>
                                 </article>
                             {% endfor %}

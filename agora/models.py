@@ -99,7 +99,7 @@ class Course(models.Model):
 class Enrollment(models.Model):
     class Status(models.TextChoices):
         ACTIVE = 'active', 'Ativa'
-        COMPLETED = 'completed', 'Concluida'
+        COMPLETED = 'completed', 'Concluída'
         CANCELLED = 'cancelled', 'Cancelada'
 
     student = models.ForeignKey(
@@ -154,7 +154,7 @@ class Activity(models.Model):
     class Type(models.TextChoices):
         ASSIGNMENT = 'assignment', 'Tarefa'
         QUIZ = 'quiz', 'Quiz'
-        FORUM = 'forum', 'Forum'
+        FORUM = 'forum', 'Fórum'
         POLL = 'poll', 'Enquete'
 
     course = models.ForeignKey(
