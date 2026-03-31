@@ -1,146 +1,147 @@
+{% extends 'agora/layout.html' %}
 {% load static %}
 
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ágora</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="icon" href="{% static 'agora/favicon.ico' %}">
-    <link rel="stylesheet" href="{% static 'agora/css/index.css' %}">
-</head>
-<body>
-    <div class="dashboard-shell">
-        <aside class="sidebar">
-            <div class="brand">
-                <span class="brand-mark"></span>
+{% block title %}Ágora{% endblock %}
+{% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/index.css' %}">{% endblock %}
+{% block shell_class %}dashboard-shell{% endblock %}
+{% block sidebar_class %}sidebar{% endblock %}
+{% block main_class %}dashboard-main{% endblock %}
+
+{% block page_eyebrow %}Painel principal{% endblock %}
+{% block page_title %}
+    {% if request.user.profile.role == 'teacher' %}
+        Cursos sob sua responsabilidade e atividades para corrigir
+    {% else %}
+        Meus cursos e atividades a entregar.
+    {% endif %}
+{% endblock %}
+{% block page_lead %}
+    {% if request.user.profile.role == 'teacher' %}
+        Gerencie seus cursos e mantenha o controle das correções pendentes.
+    {% else %}
+        Acesse seus cursos e acompanhe suas atividades e prazos.
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <section class="content-grid">
+        <section id="courses" class="panel">
+            <div class="section-head">
                 <div>
-                    <strong>Ágora</strong>
-                    <span>Ambiente de aprendizagem</span>
+                    <p class="eyebrow">
+                        {% if request.user.profile.role == 'teacher' %}
+                            Turmas sob sua condução
+                        {% else %}
+                            Turmas matriculadas
+                        {% endif %}
+                    </p>
+                    <h2>
+                        {% if request.user.profile.role == 'teacher' %}
+                            Cursos lecionados
+                        {% else %}
+                            Meus cursos
+                        {% endif %}
+                    </h2>
                 </div>
+                <span>
+                    {% if request.user.profile.role == 'teacher' %}
+                        {{ courses_count }} turma{{ courses_count|pluralize }} ativa{{ courses_count|pluralize }}
+                    {% else %}
+                        {{ courses_count }} disciplina{{ courses_count|pluralize:"s" }} em andamento · {{ overdue_activities }} atividade{{ overdue_activities|pluralize }} atrasada{{ overdue_activities|pluralize }}
+                    {% endif %}
+                </span>
             </div>
 
-            <nav class="sidebar-nav">
-                <a class="nav-item active" href="#">{{ sidebar_title }}</a>
-                <a class="nav-item" href="#courses">{{ courses_heading }}</a>
-                <a class="nav-item" href="#work">{{ work_heading }}</a>
-                {% if user_role == 'teacher' %}
-                    <a class="nav-item" href="{% url 'agora:courses_hub' %}">Criar curso</a>
-                {% else %}
-                    <a class="nav-item" href="{% url 'agora:courses_hub' %}">Matricular em cursos</a>
-                {% endif %}
-                {% if user_role == 'student'%}
-                    <a class="nav-item" href="{% url 'agora:calendar' %}">Calendário</a>
-                {% endif %}
-                {% if request.user.is_superuser %}
-                    <a class="nav-item" href="{% url 'agora:create_user' %}">Criar usuarios</a>
-                {% endif %}
-            </nav>
-        </aside>
+            {% if course_cards %}
+                <div class="course-grid">
+                    {% for course in course_cards %}
+                        <article class="course-card {{ course.accent }}">
+                            <span class="course-code">{{ course.code }}</span>
+                            <h3>{{ course.title }}</h3>
 
-        <main class="dashboard-main">
-            <header class="topbar">
+                            <div class="course-meta">
+                                <span>{{ course.meta_label }}</span>
+                            </div>
+
+                            <div class="progress-track">
+                                <span style="width: {{ course.progress }}%"></span>
+                            </div>
+                            <strong>
+                                <div class="course-progress-label">{{ course.progress_label }}</div>
+                            </strong>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    {% if request.user.profile.role == 'teacher' %}
+                        <h3>Você ainda não possui cursos atribuídos para lecionar.</h3>
+                        <p>Assim que um curso tiver você como professor responsável, ele aparecerá aqui com a fila de correções relacionada.</p>
+                    {% else %}
+                        <h3>Você ainda não possui cursos matriculados.</h3>
+                        <p>Quando suas matrículas forem registradas, seus cursos aparecerão aqui com progresso e resumo de pendências.</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </section>
+
+        <section id="work" class="panel">
+            <div class="section-head">
                 <div>
-                    <p class="eyebrow">Painel principal</p>
-                    <h1>{{ page_title }}</h1>
-                    <p class="lead">{{ page_lead }}</p>
+                    <p class="eyebrow">
+                        {% if request.user.profile.role == 'teacher' %}
+                            Fila de correção
+                        {% else %}
+                            Pendências acadêmicas
+                        {% endif %}
+                    </p>
+                    <h2>
+                        {% if request.user.profile.role == 'teacher' %}
+                            Atividades para corrigir
+                        {% else %}
+                            Atividades a entregar
+                        {% endif %}
+                    </h2>
                 </div>
+                <span>
+                    {% if request.user.profile.role == 'teacher' %}
+                        {{ pending_count }} atividade{{ pending_count|pluralize }} aguardando retorno
+                    {% else %}
+                        {{ pending_count }} aberta{{ pending_count|pluralize:"s" }}
+                    {% endif %}
+                </span>
+            </div>
 
-                <div class="topbar-actions">
-                    <div class="user-chip">
-                        <span class="user-avatar">
-                            <span class="user-avatar-letter">{{ request.user.username|first|upper }}</span>
-                        </span>
-                        <div>
-                            <strong>{{ request.user.username }}</strong>
-                            <span>{{ user_label }}</span>
-                        </div>
-                    </div>
-                    <form action="{% url 'agora:logout' %}" method="post">
-                        {% csrf_token %}
-                        <button class="ghost-button" type="submit">Logout</button>
-                    </form>
+            {% if pending_cards %}
+                <div class="pending-grid">
+                    {% for activity in pending_cards %}
+                        <article class="pending-card">
+                            <div class="pending-head">
+                                <div>
+                                    <h3>{{ activity.title }}</h3>
+                                    <span>{{ activity.course_code }} · {{ activity.course_title }}</span>
+                                </div>
+                                <span class="status-pill {{ activity.status_tone }}">{{ activity.status_label }}</span>
+                            </div>
+
+                            <div class="pending-meta">
+                                <span>{{ activity.activity_type }}</span>
+                                <span>{{ activity.meta_label }}</span>
+                            </div>
+                        </article>
+                    {% endfor %}
                 </div>
-            </header>
-
-            <section class="content-grid">
-                <section id="courses" class="panel">
-                    <div class="section-head">
-                        <div>
-                            <p class="eyebrow">{{ courses_eyebrow }}</p>
-                            <h2>{{ courses_heading }}</h2>
-                        </div>
-                        <span>{{ courses_summary }}</span>
-                    </div>
-
-                    {% if course_cards %}
-                        <div class="course-grid">
-                            {% for course in course_cards %}
-                                <article class="course-card {{ course.accent }}">
-                                    <span class="course-code">{{ course.code }}</span>
-                                    <h3>{{ course.title }}</h3>
-
-                                    <div class="course-meta">
-                                        <span>{{ course.meta_label }}</span>
-                                    </div>
-
-                                    <div class="progress-track">
-                                        <span style="width: {{ course.progress }}%"></span>
-                                    </div>
-                                    <strong>
-                                        <div class="course-progress-label">{{ course.progress_label }}</div>
-                                    </strong>
-                                </article>
-                            {% endfor %}
-                        </div>
+            {% else %}
+                <div class="empty-state">
+                    {% if request.user.profile.role == 'teacher' %}
+                        <h3>Nenhuma atividade vencida aguardando correção.</h3>
+                        <p>No momento, não há atividades com prazo encerrado esperando sua avaliação.</p>
                     {% else %}
-                        <div class="empty-state">
-                            <h3>{{ courses_empty_title }}</h3>
-                            <p>{{ courses_empty_text }}</p>
-                        </div>
+                        <h3>Nenhuma atividade pendente agora.</h3>
+                        <p>Todas as atividades publicadas para seus cursos ativos já foram entregues ou ainda não existem pendências cadastradas.</p>
                     {% endif %}
-                </section>
-
-                <section id="work" class="panel">
-                    <div class="section-head">
-                        <div>
-                            <p class="eyebrow">{{ work_eyebrow }}</p>
-                            <h2>{{ work_heading }}</h2>
-                        </div>
-                        <span>{{ work_summary }}</span>
-                    </div>
-
-                    {% if pending_cards %}
-                        <div class="pending-grid">
-                            {% for activity in pending_cards %}
-                                <article class="pending-card">
-                                    <div class="pending-head">
-                                        <div>
-                                            <h3>{{ activity.title }}</h3>
-                                            <span>{{ activity.course_code }} · {{ activity.course_title }}</span>
-                                        </div>
-                                        <span class="status-pill {{ activity.status_tone }}">{{ activity.status_label }}</span>
-                                    </div>
-
-                                    <div class="pending-meta">
-                                        <span>{{ activity.activity_type }}</span>
-                                        <span>{{ activity.meta_label }}</span>
-                                    </div>
-                                </article>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="empty-state">
-                            <h3>{{ work_empty_title }}</h3>
-                            <p>{{ work_empty_text }}</p>
-                        </div>
-                    {% endif %}
-                </section>
-            </section>
-        </main>
-    </div>
-</body>
-</html>
+                </div>
+            {% endif %}
+        </section>
+    </section>
+{% endblock %}

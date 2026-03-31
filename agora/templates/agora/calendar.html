@@ -1,177 +1,120 @@
+{% extends 'agora/layout.html' %}
 {% load static %}
 
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendário | Ágora</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="icon" href="{% static 'agora/favicon.ico' %}">
-    <link rel="stylesheet" href="{% static 'agora/css/calendar.css' %}">
-</head>
-<body>
-    <div class="calendar-shell">
-        <aside class="calendar-sidebar">
-            <div class="brand">
-                <span class="brand-mark"></span>
-                <div>
-                    <strong>Ágora</strong>
-                    <span>Ambiente de aprendizagem</span>
-                </div>
+{% block title %}Calendário | Ágora{% endblock %}
+{% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/calendar.css' %}">{% endblock %}
+{% block shell_class %}calendar-shell{% endblock %}
+{% block sidebar_class %}calendar-sidebar{% endblock %}
+{% block main_class %}calendar-main{% endblock %}
+
+{% block page_eyebrow %}Calendário acadêmico{% endblock %}
+{% block page_title %}{{ month_label }}{% endblock %}
+{% block page_lead %}As atividades são marcadas diretamente nos dias do mês para facilitar a visualização dos prazos.{% endblock %}
+
+{% block content %}
+    <section class="calendar-layout">
+        <section class="calendar-panel">
+            <div class="weekday-row">
+                {% for label in weekday_labels %}
+                    <div class="weekday-cell">{{ label }}</div>
+                {% endfor %}
             </div>
 
-            <nav class="sidebar-nav">
-                <a class="nav-item" href="{% url 'agora:index' %}">{{ sidebar_title }}</a>
-                <a class="nav-item" href="{% url 'agora:index' %}#courses">{{ courses_heading }}</a>
-                <a class="nav-item" href="{% url 'agora:index' %}#work">{{ work_heading }}</a>
-                {% if user_role == 'teacher' %}
-                    <a class="nav-item" href="{% url 'agora:courses_hub' %}">Criar curso</a>
-                {% else %}
-                    <a class="nav-item" href="{% url 'agora:courses_hub' %}">Matricular em cursos</a>
-                {% endif %}
-                {% if user_role == 'student'%}
-                    <a class="nav-item" href="{% url 'agora:calendar' %}">Calendário</a>
-                {% endif %}
-                {% if request.user.is_superuser %}
-                    <a class="nav-item" href="{% url 'agora:create_user' %}">Criar usuarios</a>
-                {% endif %}
-            </nav>
-        </aside>
+            <div class="calendar-grid">
+                {% for week in calendar_weeks %}
+                    {% for day in week %}
+                        <article class="day-card {% if not day.in_month %}is-empty{% endif %} {% if day.is_today %}is-today{% endif %}">
+                            {% if day.in_month %}
+                                <div class="day-number">{{ day.day }}</div>
 
-        <main class="calendar-main">
-            <header class="topbar">
-                <div>
-                    <p class="eyebrow">Calendário acadêmico</p>
-                    <h1>{{ month_label }}</h1>
-                    <p class="lead">As atividades são marcadas diretamente nos dias do mês para facilitar a visualização dos prazos.</p>
-                </div>
-
-                <div class="topbar-actions">
-                    <div class="user-chip">
-                        <span class="user-avatar">
-                            <span class="user-avatar-letter">{{ request.user.username|first|upper }}</span>
-                        </span>
-                        <div>
-                            <strong>{{ request.user.username }}</strong>
-                            <span>{{ user_label }}</span>
-                        </div>
-                    </div>
-                    <form action="{% url 'agora:logout' %}" method="post">
-                        {% csrf_token %}
-                        <button class="ghost-button" type="submit">Logout</button>
-                    </form>
-                </div>
-            </header>
-
-            <section class="calendar-layout">
-                <section class="calendar-panel">
-                    <div class="weekday-row">
-                        {% for label in weekday_labels %}
-                            <div class="weekday-cell">{{ label }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="calendar-grid">
-                        {% for week in calendar_weeks %}
-                            {% for day in week %}
-                                <article class="day-card {% if not day.in_month %}is-empty{% endif %} {% if day.is_today %}is-today{% endif %}">
-                                    {% if day.in_month %}
-                                        <div class="day-number">{{ day.day }}</div>
-
-                                        {% if day.items %}
-                                            <div class="day-items">
-                                                {% for item in day.items %}
-                                                    <div class="calendar-badge {{ item.status_tone }}">
-                                                        <strong>{{ item.course_code }}</strong>
-                                                        <span>{{ item.title }}</span>
-                                                    </div>
-                                                {% endfor %}
+                                {% if day.items %}
+                                    <div class="day-items">
+                                        {% for item in day.items %}
+                                            <div class="calendar-badge {{ item.status_tone }}">
+                                                <strong>{{ item.course_code }}</strong>
+                                                <span>{{ item.title }}</span>
                                             </div>
-                                            {% if day.extra_count %}
-                                                <div class="extra-label">+{{ day.extra_count }} tarefa{{ day.extra_count|pluralize }}</div>
-                                            {% endif %}
-                                        {% else %}
-                                            <div class="day-empty">Sem tarefas</div>
-                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    {% if day.extra_count %}
+                                        <div class="extra-label">+{{ day.extra_count }} tarefa{{ day.extra_count|pluralize }}</div>
                                     {% endif %}
-                                </article>
-                            {% endfor %}
+                                {% else %}
+                                    <div class="day-empty">Sem tarefas</div>
+                                {% endif %}
+                            {% endif %}
+                        </article>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </section>
+
+        <aside class="info-column">
+            <section class="panel">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Agenda do mês</p>
+                        <h2>Tarefas pendentes</h2>
+                    </div>
+                </div>
+
+                {% if upcoming_items %}
+                    <div class="agenda-list">
+                        {% for item in upcoming_items %}
+                            <article class="agenda-item">
+                                <div class="agenda-head">
+                                    <strong>{{ item.title }}</strong>
+                                    <span class="status-pill {{ item.status_tone }}">{{ item.status_label }}</span>
+                                </div>
+                                <div class="agenda-meta">
+                                    <span>{{ item.course_code }} · {{ item.course_title }}</span>
+                                    <span>{{ item.date_label }}</span>
+                                </div>
+                            </article>
                         {% endfor %}
                     </div>
-                </section>
-
-                <aside class="info-column">
-                    <section class="panel">
-                        <div class="section-head">
-                            <div>
-                                <p class="eyebrow">Agenda do mês</p>
-                                <h2>Tarefas pendentes</h2>
-                            </div>
-                        </div>
-
-                        {% if upcoming_items %}
-                            <div class="agenda-list">
-                                {% for item in upcoming_items %}
-                                    <article class="agenda-item">
-                                        <div class="agenda-head">
-                                            <strong>{{ item.title }}</strong>
-                                            <span class="status-pill {{ item.status_tone }}">{{ item.status_label }}</span>
-                                        </div>
-                                        <div class="agenda-meta">
-                                            <span>{{ item.course_code }} · {{ item.course_title }}</span>
-                                            <span>{{ item.date_label }}</span>
-                                        </div>
-                                    </article>
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            <div class="empty-state">
-                                <h3>Nenhuma atividade neste mês.</h3>
-                                <p>Quando houver tarefas com prazo definido para este mês, elas aparecerão aqui e no calendário.</p>
-                            </div>
-                        {% endif %}
-                    </section>
-
-                    <section class="panel">
-                        <div class="section-head">
-                            <div>
-                                <p class="eyebrow">Desempenho Acadêmico</p>
-                                <h2>Correções recentes</h2>
-                            </div>
-                        </div>
-
-                        {% if grade_cards %}
-                            <div class="grade-list">
-                                {% for grade in grade_cards %}
-                                    <article class="grade-card">
-                                        <div class="grade-head">
-                                            <strong>{{ grade.course_code }}</strong>
-                                            <span>{{ grade.activity_title }}</span>
-                                        </div>
-                                        <div class="grade-meta">
-                                            <span>{{ grade.course_title }}</span>
-                                            <span>Professor(a): {{ grade.teacher_name }}</span>
-                                        </div>
-                                        <div class="grade-foot">
-                                            <span>Nota: {{ grade.score }}</span>
-                                            <span>Corrigida em {{ grade.graded_at|date:"d/m, H:i" }}</span>
-                                        </div>
-                                    </article>
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            <div class="empty-state">
-                                <h3>Nenhuma atividade corrigida ainda.</h3>
-                                <p>Quando seus professores corrigirem novas entregas, as atualizações mais recentes aparecerão aqui.</p>
-                            </div>
-                        {% endif %}
-                    </section>
-                </aside>
+                {% else %}
+                    <div class="empty-state">
+                        <h3>Nenhuma atividade neste mês.</h3>
+                        <p>Quando houver tarefas com prazo definido para este mês, elas aparecerão aqui e no calendário.</p>
+                    </div>
+                {% endif %}
             </section>
-        </main>
-    </div>
-</body>
-</html>
+
+            <section class="panel">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Desempenho acadêmico</p>
+                        <h2>Correções recebidas</h2>
+                    </div>
+                </div>
+
+                {% if grade_cards %}
+                    <div class="grade-list">
+                        {% for grade in grade_cards %}
+                            <article class="grade-card">
+                                <div class="grade-head">
+                                    <strong>{{ grade.course_code }}</strong>
+                                    <span>{{ grade.activity_title }}</span>
+                                </div>
+                                <div class="grade-meta">
+                                    <span>{{ grade.course_title }}</span>
+                                    <span>Professor(a): {{ grade.teacher_name }}</span>
+                                </div>
+                                <div class="grade-foot">
+                                    <span>Nota: {{ grade.score }}</span>
+                                    <span>Corrigida em {{ grade.graded_at|date:"d/m, H:i" }}</span>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <h3>Nenhuma atividade corrigida ainda.</h3>
+                        <p>Quando seus professores corrigirem novas entregas, as atualizações mais recentes aparecerão aqui.</p>
+                    </div>
+                {% endif %}
+            </section>
+        </aside>
+    </section>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Ágora{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="{% static 'agora/favicon.ico' %}">
+    {% block stylesheet %}{% endblock %}
+</head>
+<body>
+    {% with role=request.user.profile.role current=request.resolver_match.url_name %}
+        <div class="{% block shell_class %}dashboard-shell{% endblock %}">
+            <aside class="{% block sidebar_class %}sidebar{% endblock %}">
+                <div class="brand">
+                    <span class="brand-mark"></span>
+                    <div>
+                        <strong>Ágora</strong>
+                        <span>Ambiente de aprendizagem</span>
+                    </div>
+                </div>
+
+                <nav class="sidebar-nav">
+                    <a class="nav-item {% if current == 'index' %}active{% endif %}" href="{% url 'agora:index' %}">
+                        {% if role == 'teacher' %}Painel do professor{% else %}Painel do aluno{% endif %}
+                    </a>
+                    <a class="nav-item {% if current == 'courses_hub' %}active{% endif %}" href="{% url 'agora:courses_hub' %}">
+                        {% if role == 'teacher' %}Criar curso{% else %}Matricular em cursos{% endif %}
+                    </a>
+                    {% if role == 'student' %}
+                        <a class="nav-item {% if current == 'calendar' %}active{% endif %}" href="{% url 'agora:calendar' %}">Calendário</a>
+                    {% endif %}
+                    {% if request.user.is_superuser %}
+                        <a class="nav-item {% if current == 'create_user' %}active{% endif %}" href="{% url 'agora:create_user' %}">Criar usuarios</a>
+                    {% endif %}
+                </nav>
+            </aside>
+
+            <main class="{% block main_class %}dashboard-main{% endblock %}">
+                <header class="topbar">
+                    <div>
+                        <p class="eyebrow">{% block page_eyebrow %}{% endblock %}</p>
+                        <h1>{% block page_title %}{% endblock %}</h1>
+                        <p class="lead">{% block page_lead %}{% endblock %}</p>
+                    </div>
+
+                    <div class="topbar-actions">
+                        <div class="user-chip">
+                            <span class="user-avatar">
+                                <span class="user-avatar-letter">{{ request.user.username|first|upper }}</span>
+                            </span>
+                            <div>
+                                <strong>{{ request.user.username }}</strong>
+                                <span>{{ request.user.profile.get_role_display }}</span>
+                            </div>
+                        </div>
+                        <form action="{% url 'agora:logout' %}" method="post">
+                            {% csrf_token %}
+                            <button class="ghost-button" type="submit">Logout</button>
+                        </form>
+                    </div>
+                </header>
+
+                {% if messages %}
+                    <section class="flash-stack">
+                        {% for message in messages %}
+                            <article class="flash flash-{{ message.tags|default:'info' }}">{{ message }}</article>
+                        {% endfor %}
+                    </section>
+                {% endif %}
+
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    {% endwith %}
+</body>
+</html>

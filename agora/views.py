@@ -81,15 +81,11 @@ def login_view(request):
 @login_required(login_url='agora:login')
 def index(request):
     role = _user_role(request.user)
-    label = UserProfile.Role(role).label
 
     if role == UserProfile.Role.TEACHER:
         context = _build_teacher_dashboard_context(request.user)
     else:
         context = _build_student_dashboard_context(request.user)
-
-    context['user_role'] = role
-    context['user_label'] = label
 
     return render(request, 'agora/index.html', context)
 
@@ -188,19 +184,8 @@ def _build_teacher_dashboard_context(user):
     return {
         'course_cards': course_cards,
         'pending_cards': pending_cards[:5],
-        'page_title': 'Cursos sob sua responsabilidade e atividades para corrigir',
-        'page_lead': 'Gerencie seus cursos e mantenha o controle das correções pendentes.',
-        'sidebar_title': 'Painel do professor',
-        'courses_heading': 'Cursos lecionados',
-        'courses_eyebrow': 'Turmas sob sua condução',
-        'courses_empty_title': 'Você ainda não possui cursos atribuídos para lecionar.',
-        'courses_empty_text': 'Assim que um curso tiver você como professor responsável, ele aparecerá aqui com a fila de correções relacionada.',
-        'courses_summary': f'{len(course_cards)} turma{"s" if len(course_cards) != 1 else ""} ativa{"s" if len(course_cards) != 1 else ""}',
-        'work_heading': 'Atividades para corrigir',
-        'work_eyebrow': 'Fila de correção',
-        'work_summary': f'{len(pending_cards)} atividade{"s" if len(pending_cards) != 1 else ""} aguardando retorno',
-        'work_empty_title': 'Nenhuma atividade vencida aguardando correção.',
-        'work_empty_text': 'No momento, não há atividades com prazo encerrado esperando sua avaliação.',
+        'courses_count': len(course_cards),
+        'pending_count': len(pending_cards),
     }
 
 
@@ -296,19 +281,9 @@ def _build_student_dashboard_context(user):
     return {
         'course_cards': course_cards,
         'pending_cards': pending_cards[:5],
-        'page_title': 'Meus cursos e atividades a entregar.',
-        'page_lead': 'Acesse seus cursos e acompanhe suas atividades e prazos.',
-        'sidebar_title': 'Painel do aluno',
-        'courses_heading': 'Meus cursos',
-        'courses_eyebrow': 'Turmas matriculadas',
-        'courses_empty_title': 'Você ainda não possui cursos matriculados.',
-        'courses_empty_text': 'Quando suas matrículas forem registradas, seus cursos aparecerão aqui com progresso e resumo de pendências.',
-        'courses_summary': f'{len(course_cards)} disciplinas em andamento · {overdue_activities} atividades atrasada{"s" if overdue_activities != 1 else ""}',
-        'work_heading': 'Atividades a entregar',
-        'work_eyebrow': 'Pendências acadêmicas',
-        'work_summary': f'{len(pending_cards)} abertas',
-        'work_empty_title': 'Nenhuma atividade pendente agora.',
-        'work_empty_text': 'Todas as atividades publicadas para seus cursos ativos já foram entregues ou ainda não existem pendências cadastradas.',
+        'courses_count': len(course_cards),
+        'pending_count': len(pending_cards),
+        'overdue_activities': overdue_activities,
     }
 
 
@@ -316,7 +291,6 @@ def _build_student_dashboard_context(user):
 @login_required(login_url='agora:login')
 def courses_hub_view(request):
     role = _user_role(request.user)
-    user_label = UserProfile.Role(role).label
 
     if role == UserProfile.Role.TEACHER:
         form = CourseCreateForm(request.POST or None)
@@ -362,13 +336,6 @@ def courses_hub_view(request):
         ]
 
         context = {
-            'user_role': role,
-            'user_label': user_label,
-            'page_title': 'Criação de cursos e gestão de matrículas',
-            'page_lead': 'Organize novas turmas e acompanhe as solicitações de matrícula dos estudantes.',
-            'sidebar_title': 'Painel do professor',
-            'courses_heading': 'Cursos lecionados',
-            'work_heading': 'Atividades para corrigir',
             'form': form,
             'taught_course_cards': taught_course_cards,
             'pending_requests': pending_requests,
@@ -430,13 +397,6 @@ def courses_hub_view(request):
         )
 
     context = {
-        'user_role': role,
-        'user_label': user_label,
-        'page_title': 'Encontre novos cursos e solicite sua matrícula.',
-        'page_lead': 'Veja as disciplinas abertas no Ágora e envie pedidos de entrada diretamente para os professores.',
-        'sidebar_title': 'Painel do aluno',
-        'courses_heading': 'Meus cursos',
-        'work_heading': 'Atividades a entregar',
         'available_courses': available_courses,
     }
     return render(request, 'agora/courses_hub.html', context)
@@ -631,11 +591,6 @@ def calendar_view(request):
         'calendar_weeks': calendar_weeks,
         'upcoming_items': upcoming_items[:5],
         'grade_cards': grade_cards,
-        'sidebar_title': 'Painel do aluno',
-        'courses_heading': 'Meus cursos',
-        'work_heading': 'Atividades a entregar',
-        'user_role': UserProfile.Role(role),
-        'user_label': UserProfile.Role(role).label,
     }
 
     return render(request, 'agora/calendar.html', context)
