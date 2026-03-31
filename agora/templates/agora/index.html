@@ -27,6 +27,11 @@
                 <a class="nav-item active" href="#">{{ sidebar_title }}</a>
                 <a class="nav-item" href="#courses">{{ courses_heading }}</a>
                 <a class="nav-item" href="#work">{{ work_heading }}</a>
+                {% if user_role == 'teacher' %}
+                    <a class="nav-item" href="{% url 'agora:courses_hub' %}">Criar curso</a>
+                {% else %}
+                    <a class="nav-item" href="{% url 'agora:courses_hub' %}">Matricular em cursos</a>
+                {% endif %}
                 {% if user_role == 'student'%}
                     <a class="nav-item" href="{% url 'agora:calendar' %}">Calendário</a>
                 {% endif %}

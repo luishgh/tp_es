@@ -1,0 +1,269 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursos | Ágora</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="{% static 'agora/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'agora/css/courses_hub.css' %}">
+</head>
+<body>
+    <div class="hub-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <span class="brand-mark"></span>
+                <div>
+                    <strong>Ágora</strong>
+                    <span>Ambiente de aprendizagem</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a class="nav-item" href="{% url 'agora:index' %}">{{ sidebar_title }}</a>
+                <a class="nav-item" href="{% url 'agora:index' %}#courses">{{ courses_heading }}</a>
+                <a class="nav-item" href="{% url 'agora:index' %}#work">{{ work_heading }}</a>
+                {% if user_role == 'teacher' %}
+                    <a class="nav-item active" href="{% url 'agora:courses_hub' %}">Criar curso</a>
+                {% else %}
+                    <a class="nav-item active" href="{% url 'agora:courses_hub' %}">Matricular em cursos</a>
+                    <a class="nav-item" href="{% url 'agora:calendar' %}">Calendário</a>
+                {% endif %}
+                {% if request.user.is_superuser %}
+                    <a class="nav-item" href="{% url 'agora:create_user' %}">Criar usuarios</a>
+                {% endif %}
+            </nav>
+        </aside>
+
+        <main class="hub-main">
+            <header class="topbar">
+                <div>
+                    <p class="eyebrow">Gestão de cursos</p>
+                    <h1>{{ page_title }}</h1>
+                    <p class="lead">{{ page_lead }}</p>
+                </div>
+
+                <div class="topbar-actions">
+                    <div class="user-chip">
+                        <span class="user-avatar">
+                            <span class="user-avatar-letter">{{ request.user.username|first|upper }}</span>
+                        </span>
+                        <div>
+                            <strong>{{ request.user.username }}</strong>
+                            <span>{{ user_label }}</span>
+                        </div>
+                    </div>
+                    <form action="{% url 'agora:logout' %}" method="post">
+                        {% csrf_token %}
+                        <button class="ghost-button" type="submit">Logout</button>
+                    </form>
+                </div>
+            </header>
+
+            {% if messages %}
+                <section class="flash-stack">
+                    {% for message in messages %}
+                        <article class="flash flash-{{ message.tags|default:'info' }}">{{ message }}</article>
+                    {% endfor %}
+                </section>
+            {% endif %}
+
+            {% if user_role == 'teacher' %}
+                <section class="content-grid teacher-grid">
+                    <section class="panel">
+                        <div class="section-head">
+                            <div>
+                                <p class="eyebrow">Novo curso</p>
+                                <h2>Abra uma nova turma</h2>
+                            </div>
+                        </div>
+
+                        <form class="course-form" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="create_course">
+
+                            <div class="form-row two-columns">
+                                <div class="form-field">
+                                    <label for="{{ form.code.id_for_label }}">{{ form.code.label }}</label>
+                                    {{ form.code }}
+                                    {% for error in form.code.errors %}
+                                        <span class="field-error">{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                                <div class="form-field">
+                                    <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+                                    {{ form.title }}
+                                    {% for error in form.title.errors %}
+                                        <span class="field-error">{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="form-field">
+                                <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+                                {{ form.description }}
+                                {% for error in form.description.errors %}
+                                    <span class="field-error">{{ error }}</span>
+                                {% endfor %}
+                            </div>
+
+                            <div class="form-field">
+                                <label for="{{ form.syllabus.id_for_label }}">{{ form.syllabus.label }}</label>
+                                {{ form.syllabus }}
+                                {% for error in form.syllabus.errors %}
+                                    <span class="field-error">{{ error }}</span>
+                                {% endfor %}
+                            </div>
+
+                            <div class="form-row two-columns">
+                                <div class="form-field">
+                                    <label for="{{ form.workload_hours.id_for_label }}">{{ form.workload_hours.label }}</label>
+                                    {{ form.workload_hours }}
+                                    {% for error in form.workload_hours.errors %}
+                                        <span class="field-error">{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                                <label class="checkbox-field" for="{{ form.is_published.id_for_label }}">
+                                    {{ form.is_published }}
+                                    <span>{{ form.is_published.label }}</span>
+                                </label>
+                            </div>
+
+                            {% for error in form.non_field_errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+
+                            <button class="primary-button" type="submit">Criar curso</button>
+                        </form>
+                    </section>
+
+                    <section class="panel">
+                        <div class="section-head">
+                            <div>
+                                <p class="eyebrow">Solicitações</p>
+                                <h2>Matrículas aguardando decisão</h2>
+                            </div>
+                            <span>{{ pending_requests|length }} pedido{{ pending_requests|length|pluralize }}</span>
+                        </div>
+
+                        {% if pending_requests %}
+                            <div class="request-list">
+                                {% for enrollment in pending_requests %}
+                                    <article class="request-card">
+                                        <div class="request-copy">
+                                            <strong>{{ enrollment.student.get_full_name|default:enrollment.student.username }}</strong>
+                                            <span>{{ enrollment.course.code }} · {{ enrollment.course.title }}</span>
+                                        </div>
+                                        <div class="request-actions">
+                                            <form action="{% url 'agora:enrollment_decision' enrollment.id 'accept' %}" method="post">
+                                                {% csrf_token %}
+                                                <button class="primary-button compact" type="submit">Aceitar</button>
+                                            </form>
+                                            <form action="{% url 'agora:enrollment_decision' enrollment.id 'reject' %}" method="post">
+                                                {% csrf_token %}
+                                                <button class="ghost-button compact" type="submit">Recusar</button>
+                                            </form>
+                                        </div>
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-state">
+                                <h3>Nenhuma solicitação pendente.</h3>
+                                <p>Quando estudantes pedirem entrada nos seus cursos, elas aparecerão aqui para aprovação.</p>
+                            </div>
+                        {% endif %}
+                    </section>
+                </section>
+
+                <section class="panel">
+                    <div class="section-head">
+                        <div>
+                            <p class="eyebrow">Cursos ativos</p>
+                            <h2>Turmas que você já abriu</h2>
+                        </div>
+                        <span>{{ taught_course_cards|length }} curso{{ taught_course_cards|length|pluralize }}</span>
+                    </div>
+
+                    {% if taught_course_cards %}
+                        <div class="course-grid">
+                            {% for course in taught_course_cards %}
+                                <article class="course-card">
+                                    <div class="course-head">
+                                        <strong>{{ course.code }}</strong>
+                                        {% if course.is_published %}
+                                            <span class="status-pill accent">Publicado</span>
+                                        {% else %}
+                                            <span class="status-pill neutral">Rascunho</span>
+                                        {% endif %}
+                                    </div>
+                                    <h3>{{ course.title }}</h3>
+                                    <p>{{ course.description|truncatechars:160 }}</p>
+                                    <div class="course-meta">
+                                        <span>{{ course.active_students }} aluno{{ course.active_students|pluralize }} ativo{{ course.active_students|pluralize }}</span>
+                                        <span>{{ course.workload_hours }}h</span>
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <h3>Você ainda não criou cursos.</h3>
+                            <p>Use o formulário acima para abrir sua primeira turma no Ágora.</p>
+                        </div>
+                    {% endif %}
+                </section>
+            {% else %}
+                <section class="panel">
+                    <div class="section-head">
+                        <div>
+                            <p class="eyebrow">Cursos abertos</p>
+                            <h2>Disciplinas disponíveis para matrícula</h2>
+                        </div>
+                        <span>{{ available_courses|length }} opção{{ available_courses|length|pluralize }}</span>
+                    </div>
+
+                    {% if available_courses %}
+                        <div class="course-grid">
+                            {% for course in available_courses %}
+                                <article class="course-card">
+                                    <div class="course-head">
+                                        <strong>{{ course.code }}</strong>
+                                        {% if course.status_badge %}
+                                            <span class="status-pill accent">{{ course.status_badge }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <h3>{{ course.title }}</h3>
+                                    <p>{{ course.description|truncatechars:180 }}</p>
+                                    <div class="course-meta">
+                                        <span>Professor(a): {{ course.teacher_name }}</span>
+                                        <span>{{ course.workload_hours }}h</span>
+                                    </div>
+                                    <div class="course-footer">
+                                        <span>{{ course.helper_text }}</span>
+                                        <form action="{% url 'agora:request_enrollment' course.id %}" method="post">
+                                            {% csrf_token %}
+                                            <button class="primary-button compact" type="submit" {% if course.request_disabled %}disabled{% endif %}>
+                                                {{ course.request_label }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <h3>Sem cursos disponíveis agora.</h3>
+                            <p>Quando novos cursos forem publicados e você ainda não estiver matriculado neles, eles aparecerão aqui.</p>
+                        </div>
+                    {% endif %}
+                </section>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>
