@@ -50,7 +50,7 @@
         </section>
 
         <aside class="info-column">
-            <section class="panel">
+            <section id="agenda-panel" class="panel async-panel">
                 <div class="section-head">
                     <div>
                         <p class="eyebrow">Agenda do mês</p>
@@ -58,9 +58,9 @@
                     </div>
                 </div>
 
-                {% if upcoming_items %}
+                {% if agenda_page.paginator.count %}
                     <div class="agenda-list">
-                        {% for item in upcoming_items %}
+                        {% for item in agenda_page %}
                             <article class="agenda-item">
                                 <div class="agenda-head">
                                     <strong>{{ item.title }}</strong>
@@ -73,6 +73,19 @@
                             </article>
                         {% endfor %}
                     </div>
+                    {% if agenda_page.has_other_pages %}
+                        <div class="pagination-row">
+                            <span class="pagination-label">Página {{ agenda_page.number }} de {{ agenda_page.paginator.num_pages }}</span>
+                            <div class="pagination-actions">
+                                {% if agenda_page.has_previous %}
+                                    <a class="page-button" data-async-panel="agenda-panel" href="?agenda_page={{ agenda_page.previous_page_number }}&grade_page={{ grade_page.number }}">← Anterior</a>
+                                {% endif %}
+                                {% if agenda_page.has_next %}
+                                    <a class="page-button" data-async-panel="agenda-panel" href="?agenda_page={{ agenda_page.next_page_number }}&grade_page={{ grade_page.number }}">Próxima →</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
                 {% else %}
                     <div class="empty-state">
                         <h3>Nenhuma atividade neste mês.</h3>
@@ -81,7 +94,7 @@
                 {% endif %}
             </section>
 
-            <section class="panel">
+            <section id="grade-panel" class="panel async-panel">
                 <div class="section-head">
                     <div>
                         <p class="eyebrow">Desempenho acadêmico</p>
@@ -89,9 +102,9 @@
                     </div>
                 </div>
 
-                {% if grade_cards %}
+                {% if grade_page.paginator.count %}
                     <div class="grade-list">
-                        {% for grade in grade_cards %}
+                        {% for grade in grade_page %}
                             <article class="grade-card">
                                 <div class="grade-head">
                                     <strong>{{ grade.course_code }}</strong>
@@ -108,6 +121,19 @@
                             </article>
                         {% endfor %}
                     </div>
+                    {% if grade_page.has_other_pages %}
+                        <div class="pagination-row">
+                            <span class="pagination-label">Página {{ grade_page.number }} de {{ grade_page.paginator.num_pages }}</span>
+                            <div class="pagination-actions">
+                                {% if grade_page.has_previous %}
+                                    <a class="page-button" data-async-panel="grade-panel" href="?agenda_page={{ agenda_page.number }}&grade_page={{ grade_page.previous_page_number }}">← Anterior</a>
+                                {% endif %}
+                                {% if grade_page.has_next %}
+                                    <a class="page-button" data-async-panel="grade-panel" href="?agenda_page={{ agenda_page.number }}&grade_page={{ grade_page.next_page_number }}">Próxima →</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
                 {% else %}
                     <div class="empty-state">
                         <h3>Nenhuma atividade corrigida ainda.</h3>
@@ -117,4 +143,8 @@
             </section>
         </aside>
     </section>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static 'agora/js/calendar.js' %}"></script>
 {% endblock %}

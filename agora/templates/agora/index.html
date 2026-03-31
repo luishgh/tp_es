@@ -25,7 +25,7 @@
 
 {% block content %}
     <section class="content-grid">
-        <section id="courses" class="panel">
+        <section id="courses-panel" class="panel async-panel">
             <div class="section-head">
                 <div>
                     <p class="eyebrow">
@@ -52,9 +52,9 @@
                 </span>
             </div>
 
-            {% if course_cards %}
+            {% if courses_page.paginator.count %}
                 <div class="course-grid">
-                    {% for course in course_cards %}
+                    {% for course in courses_page %}
                         <article class="course-card {{ course.accent }}">
                             <span class="course-code">{{ course.code }}</span>
                             <h3>{{ course.title }}</h3>
@@ -72,6 +72,19 @@
                         </article>
                     {% endfor %}
                 </div>
+                {% if courses_page.has_other_pages %}
+                    <div class="pagination-row">
+                        <span class="pagination-label">Página {{ courses_page.number }} de {{ courses_page.paginator.num_pages }}</span>
+                        <div class="pagination-actions">
+                            {% if courses_page.has_previous %}
+                                <a class="page-button" data-async-panel="courses-panel" href="?courses_page={{ courses_page.previous_page_number }}&work_page={{ work_page.number }}">← Anterior</a>
+                            {% endif %}
+                            {% if courses_page.has_next %}
+                                <a class="page-button" data-async-panel="courses-panel" href="?courses_page={{ courses_page.next_page_number }}&work_page={{ work_page.number }}">Próxima →</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
             {% else %}
                 <div class="empty-state">
                     {% if request.user.profile.role == 'teacher' %}
@@ -85,7 +98,7 @@
             {% endif %}
         </section>
 
-        <section id="work" class="panel">
+        <section id="work-panel" class="panel async-panel">
             <div class="section-head">
                 <div>
                     <p class="eyebrow">
@@ -112,9 +125,9 @@
                 </span>
             </div>
 
-            {% if pending_cards %}
+            {% if work_page.paginator.count %}
                 <div class="pending-grid">
-                    {% for activity in pending_cards %}
+                    {% for activity in work_page %}
                         <article class="pending-card">
                             <div class="pending-head">
                                 <div>
@@ -131,6 +144,19 @@
                         </article>
                     {% endfor %}
                 </div>
+                {% if work_page.has_other_pages %}
+                    <div class="pagination-row">
+                        <span class="pagination-label">Página {{ work_page.number }} de {{ work_page.paginator.num_pages }}</span>
+                        <div class="pagination-actions">
+                            {% if work_page.has_previous %}
+                                <a class="page-button" data-async-panel="work-panel" href="?courses_page={{ courses_page.number }}&work_page={{ work_page.previous_page_number }}">← Anterior</a>
+                            {% endif %}
+                            {% if work_page.has_next %}
+                                <a class="page-button" data-async-panel="work-panel" href="?courses_page={{ courses_page.number }}&work_page={{ work_page.next_page_number }}">Próxima →</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
             {% else %}
                 <div class="empty-state">
                     {% if request.user.profile.role == 'teacher' %}
@@ -144,4 +170,8 @@
             {% endif %}
         </section>
     </section>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static 'agora/js/index.js' %}"></script>
 {% endblock %}

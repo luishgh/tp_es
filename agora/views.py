@@ -9,6 +9,7 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
@@ -86,6 +87,12 @@ def index(request):
         context = _build_teacher_dashboard_context(request.user)
     else:
         context = _build_student_dashboard_context(request.user)
+
+    course_cards = context.pop('course_cards')
+    pending_cards = context.pop('pending_cards')
+
+    context['courses_page'] = Paginator(course_cards, 6).get_page(request.GET.get('courses_page'))
+    context['work_page'] = Paginator(pending_cards, 5).get_page(request.GET.get('work_page'))
 
     return render(request, 'agora/index.html', context)
 
@@ -183,7 +190,7 @@ def _build_teacher_dashboard_context(user):
 
     return {
         'course_cards': course_cards,
-        'pending_cards': pending_cards[:5],
+        'pending_cards': pending_cards,
         'courses_count': len(course_cards),
         'pending_count': len(pending_cards),
     }
@@ -280,7 +287,7 @@ def _build_student_dashboard_context(user):
 
     return {
         'course_cards': course_cards,
-        'pending_cards': pending_cards[:5],
+        'pending_cards': pending_cards,
         'courses_count': len(course_cards),
         'pending_count': len(pending_cards),
         'overdue_activities': overdue_activities,
@@ -582,15 +589,18 @@ def calendar_view(request):
             'score': submission.score,
             'graded_at': submission.graded_at or submission.updated_at,
             'feedback': submission.feedback,
-        } for submission in reviewed_submissions[:3]
+        } for submission in reviewed_submissions
     ]
+
+    agenda_page = Paginator(upcoming_items, 3).get_page(request.GET.get('agenda_page'))
+    grade_page = Paginator(grade_cards, 3).get_page(request.GET.get('grade_page'))
 
     context = {
         'month_label': month_label,
         'weekday_labels': weekday_labels,
         'calendar_weeks': calendar_weeks,
-        'upcoming_items': upcoming_items[:5],
-        'grade_cards': grade_cards,
+        'agenda_page': agenda_page,
+        'grade_page': grade_page,
     }
 
     return render(request, 'agora/calendar.html', context)
