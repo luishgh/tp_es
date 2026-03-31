@@ -92,6 +92,8 @@ class Course(models.Model):
 
     def clean(self):
         super().clean()
+        if not self.teacher_id:
+            return
         if _user_role(self.teacher) != UserProfile.Role.TEACHER:
             raise ValidationError({'teacher': 'O responsavel pelo curso deve ser um professor.'})
 
