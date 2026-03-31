@@ -6,16 +6,17 @@ import calendar as month_calendar
 from datetime import date
 from datetime import timedelta
 
+from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Count, Q
 from django.middleware.csrf import get_token
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 
-from .forms import SuperuserCreateUserForm
-from .models import Activity, Enrollment, Submission, UserProfile
+from .forms import CourseCreateForm, SuperuserCreateUserForm
+from .models import Activity, Course, Enrollment, Submission, UserProfile
 
 
 @never_cache
@@ -79,8 +80,7 @@ def login_view(request):
 @never_cache
 @login_required(login_url='agora:login')
 def index(request):
-    profile = getattr(request.user, 'profile', None)
-    role = getattr(profile, 'role', UserProfile.Role.STUDENT)
+    role = _user_role(request.user)
     label = UserProfile.Role(role).label
 
     if role == UserProfile.Role.TEACHER:
@@ -92,6 +92,11 @@ def index(request):
     context['user_label'] = label
 
     return render(request, 'agora/index.html', context)
+
+
+def _user_role(user):
+    profile = getattr(user, 'profile', None)
+    return getattr(profile, 'role', UserProfile.Role.STUDENT)
 
 
 def _build_teacher_dashboard_context(user):
@@ -309,11 +314,211 @@ def _build_student_dashboard_context(user):
 
 @never_cache
 @login_required(login_url='agora:login')
+def courses_hub_view(request):
+    role = _user_role(request.user)
+    user_label = UserProfile.Role(role).label
+
+    if role == UserProfile.Role.TEACHER:
+        form = CourseCreateForm(request.POST or None)
+        if request.method == 'POST' and request.POST.get('action') == 'create_course' and form.is_valid():
+            course = form.save(commit=False)
+            course.teacher = request.user
+            course.full_clean()
+            course.save()
+            messages.success(request, f'O curso {course.code} foi criado com sucesso.')
+            return redirect('agora:courses_hub')
+
+        taught_courses = list(
+            request.user.courses_taught.all().order_by('title')
+        )
+        active_student_counts = {
+            item['course_id']: item['total']
+            for item in Enrollment.objects.filter(
+                course__teacher=request.user,
+                status=Enrollment.Status.ACTIVE,
+            )
+            .values('course_id')
+            .annotate(total=Count('id'))
+        }
+        pending_requests = list(
+            Enrollment.objects.select_related('student', 'course')
+            .filter(
+                course__teacher=request.user,
+                status=Enrollment.Status.PENDING,
+            )
+            .order_by('course__title', 'student__username')
+        )
+
+        taught_course_cards = [
+            {
+                'code': course.code,
+                'title': course.title,
+                'description': course.description,
+                'is_published': course.is_published,
+                'active_students': active_student_counts.get(course.id, 0),
+                'workload_hours': course.workload_hours,
+            }
+            for course in taught_courses
+        ]
+
+        context = {
+            'user_role': role,
+            'user_label': user_label,
+            'page_title': 'Criação de cursos e gestão de matrículas',
+            'page_lead': 'Organize novas turmas e acompanhe as solicitações de matrícula dos estudantes.',
+            'sidebar_title': 'Painel do professor',
+            'courses_heading': 'Cursos lecionados',
+            'work_heading': 'Atividades para corrigir',
+            'form': form,
+            'taught_course_cards': taught_course_cards,
+            'pending_requests': pending_requests,
+        }
+        return render(request, 'agora/courses_hub.html', context)
+
+    published_courses = list(
+        Course.objects.select_related('teacher')
+        .filter(is_published=True)
+        .order_by('title')
+    )
+    existing_enrollments = {
+        enrollment.course_id: enrollment
+        for enrollment in Enrollment.objects.select_related('course', 'course__teacher').filter(
+            student=request.user,
+            course__is_published=True,
+        )
+    }
+
+    available_courses = []
+    for course in published_courses:
+        enrollment = existing_enrollments.get(course.id)
+
+        if enrollment and enrollment.status == Enrollment.Status.ACTIVE:
+            continue
+
+        request_label = 'Solicitar matrícula'
+        request_disabled = False
+        status_badge = None
+        helper_text = f'Professor(a): {course.teacher.get_full_name() or course.teacher.username}'
+
+        if enrollment and enrollment.status == Enrollment.Status.PENDING:
+            request_label = 'Solicitação enviada'
+            request_disabled = True
+            status_badge = 'Aguardando aprovação'
+            helper_text = 'Seu pedido já foi enviado e está aguardando resposta do professor.'
+        elif enrollment and enrollment.status == Enrollment.Status.COMPLETED:
+            request_label = 'Curso concluído'
+            request_disabled = True
+            status_badge = 'Concluído'
+            helper_text = 'Esse curso já aparece no seu histórico e não precisa de uma nova solicitação.'
+        elif enrollment and enrollment.status == Enrollment.Status.CANCELLED:
+            status_badge = 'Solicitação anterior recusada'
+            helper_text = 'Você pode enviar uma nova solicitação de matrícula para este curso.'
+
+        available_courses.append(
+            {
+                'id': course.id,
+                'code': course.code,
+                'title': course.title,
+                'description': course.description,
+                'teacher_name': course.teacher.get_full_name() or course.teacher.username,
+                'workload_hours': course.workload_hours,
+                'request_label': request_label,
+                'request_disabled': request_disabled,
+                'status_badge': status_badge,
+                'helper_text': helper_text,
+            }
+        )
+
+    context = {
+        'user_role': role,
+        'user_label': user_label,
+        'page_title': 'Encontre novos cursos e solicite sua matrícula.',
+        'page_lead': 'Veja as disciplinas abertas no Ágora e envie pedidos de entrada diretamente para os professores.',
+        'sidebar_title': 'Painel do aluno',
+        'courses_heading': 'Meus cursos',
+        'work_heading': 'Atividades a entregar',
+        'available_courses': available_courses,
+    }
+    return render(request, 'agora/courses_hub.html', context)
+
+
+@never_cache
+@login_required(login_url='agora:login')
+def request_enrollment_view(request, course_id):
+    if request.method != 'POST' or _user_role(request.user) != UserProfile.Role.STUDENT:
+        return redirect('agora:courses_hub')
+
+    course = get_object_or_404(Course, pk=course_id, is_published=True)
+    enrollment = Enrollment.objects.filter(student=request.user, course=course).first()
+
+    if enrollment:
+        if enrollment.status == Enrollment.Status.ACTIVE:
+            messages.info(request, 'Você já está matriculado nesse curso.')
+            return redirect('agora:courses_hub')
+        if enrollment.status == Enrollment.Status.PENDING:
+            messages.info(request, 'Sua solicitação já foi enviada e ainda está pendente.')
+            return redirect('agora:courses_hub')
+        if enrollment.status == Enrollment.Status.COMPLETED:
+            messages.info(request, 'Esse curso já consta como concluído no seu histórico.')
+            return redirect('agora:courses_hub')
+
+        enrollment.status = Enrollment.Status.PENDING
+        enrollment.final_grade = None
+        enrollment.full_clean()
+        enrollment.save(update_fields=['status', 'final_grade'])
+    else:
+        enrollment = Enrollment(
+            student=request.user,
+            course=course,
+            status=Enrollment.Status.PENDING,
+        )
+        enrollment.full_clean()
+        enrollment.save()
+
+    messages.success(request, f'Solicitação de matrícula enviada para {course.code}.')
+    return redirect('agora:courses_hub')
+
+
+@never_cache
+@login_required(login_url='agora:login')
+def enrollment_decision_view(request, enrollment_id, decision):
+    if request.method != 'POST' or _user_role(request.user) != UserProfile.Role.TEACHER:
+        return redirect('agora:courses_hub')
+
+    enrollment = get_object_or_404(
+        Enrollment.objects.select_related('course', 'student'),
+        pk=enrollment_id,
+        course__teacher=request.user,
+    )
+
+    if enrollment.status != Enrollment.Status.PENDING:
+        messages.info(request, 'Essa solicitação já foi processada.')
+        return redirect('agora:courses_hub')
+
+    if decision == 'accept':
+        enrollment.status = Enrollment.Status.ACTIVE
+        enrollment.save(update_fields=['status'])
+        messages.success(
+            request,
+            f'{enrollment.student.username} agora está matriculado em {enrollment.course.code}.',
+        )
+    elif decision == 'reject':
+        enrollment.status = Enrollment.Status.CANCELLED
+        enrollment.save(update_fields=['status'])
+        messages.success(
+            request,
+            f'A solicitação de {enrollment.student.username} para {enrollment.course.code} foi recusada.',
+        )
+
+    return redirect('agora:courses_hub')
+
+
+@never_cache
+@login_required(login_url='agora:login')
 def calendar_view(request):
     now = timezone.localtime()
 
-    profile = getattr(request.user, 'profile', None)
-    role = getattr(profile, 'role', UserProfile.Role.STUDENT)
+    role = _user_role(request.user)
 
     if role == UserProfile.Role.TEACHER:
         return redirect('agora:index')

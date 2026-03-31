@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import UserProfile
+from .models import Course, UserProfile
 
 
 class SuperuserCreateUserForm(forms.Form):
@@ -49,3 +49,27 @@ class SuperuserCreateUserForm(forms.Form):
         profile.bio = self.cleaned_data['bio']
         profile.save()
         return user
+
+
+class CourseCreateForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = ['code', 'title', 'description', 'syllabus', 'workload_hours', 'is_published']
+        labels = {
+            'code': 'Código do curso',
+            'title': 'Título',
+            'description': 'Descrição',
+            'syllabus': 'Ementa',
+            'workload_hours': 'Carga horária',
+            'is_published': 'Disponível para matrículas',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'syllabus': forms.Textarea(attrs={'rows': 4}),
+        }
+
+    def clean_code(self):
+        return self.cleaned_data['code'].strip().upper()
+
+    def clean_title(self):
+        return self.cleaned_data['title'].strip()

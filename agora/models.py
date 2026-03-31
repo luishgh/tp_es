@@ -98,6 +98,7 @@ class Course(models.Model):
 
 class Enrollment(models.Model):
     class Status(models.TextChoices):
+        PENDING = 'pending', 'Pendente'
         ACTIVE = 'active', 'Ativa'
         COMPLETED = 'completed', 'Concluída'
         CANCELLED = 'cancelled', 'Cancelada'
