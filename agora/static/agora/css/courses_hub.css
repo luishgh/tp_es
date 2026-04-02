@@ -267,6 +267,18 @@ button {
     padding: 24px;
 }
 
+.async-panel {
+    display: flex;
+    flex-direction: column;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.async-panel.is-loading {
+    opacity: 0.62;
+    transform: translateY(2px);
+    pointer-events: none;
+}
+
 .section-head {
     display: flex;
     justify-content: space-between;
@@ -342,8 +354,10 @@ button {
 
 .request-list,
 .course-grid {
+    flex: 1;
     display: grid;
     gap: 16px;
+    align-content: start;
 }
 
 .request-card,
@@ -434,6 +448,10 @@ button {
 }
 
 .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     border-radius: 22px;
     padding: 20px;
     background: rgba(255, 255, 255, 0.58);
@@ -448,6 +466,59 @@ button {
     margin: 0;
     color: var(--muted);
     line-height: 1.7;
+}
+
+.pagination-row {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(24, 92, 55, 0.1);
+}
+
+.pagination-label {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 999px;
+    color: var(--primary);
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    background: rgba(24, 92, 55, 0.08);
+}
+
+.pagination-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.page-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    color: var(--primary-strong);
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    background: linear-gradient(180deg, rgba(216, 233, 222, 0.9), rgba(255, 252, 247, 0.96));
+    border: 1px solid rgba(24, 92, 55, 0.14);
+    box-shadow: 0 12px 24px rgba(24, 56, 36, 0.08);
+    transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.page-button:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(180deg, rgba(228, 239, 232, 0.98), rgba(255, 252, 247, 1));
+    box-shadow: 0 16px 30px rgba(24, 56, 36, 0.12);
 }
 
 @media (max-width: 1080px) {
@@ -486,5 +557,19 @@ button {
     .course-footer form,
     .course-footer button {
         width: 100%;
+    }
+
+    .pagination-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .pagination-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .page-button {
+        flex: 1 1 auto;
     }
 }

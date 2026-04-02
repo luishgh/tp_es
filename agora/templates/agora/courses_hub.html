@@ -93,18 +93,18 @@
                 </form>
             </section>
 
-            <section class="panel">
+            <section id="pending-requests-panel" class="panel async-panel">
                 <div class="section-head">
                     <div>
                         <p class="eyebrow">Solicitações</p>
                         <h2>Matrículas aguardando decisão</h2>
                     </div>
-                    <span>{{ pending_requests|length }} pedido{{ pending_requests|length|pluralize }}</span>
+                    <span>{{ pending_requests_count }} pedido{{ pending_requests_count|pluralize }}</span>
                 </div>
 
-                {% if pending_requests %}
+                {% if pending_requests_page.paginator.count %}
                     <div class="request-list">
-                        {% for enrollment in pending_requests %}
+                        {% for enrollment in pending_requests_page %}
                             <article class="request-card">
                                 <div class="request-copy">
                                     <strong>{{ enrollment.student.get_full_name|default:enrollment.student.username }}</strong>
@@ -123,6 +123,19 @@
                             </article>
                         {% endfor %}
                     </div>
+                    {% if pending_requests_page.has_other_pages %}
+                        <div class="pagination-row">
+                            <span class="pagination-label">Página {{ pending_requests_page.number }} de {{ pending_requests_page.paginator.num_pages }}</span>
+                            <div class="pagination-actions">
+                                {% if pending_requests_page.has_previous %}
+                                    <a class="page-button" data-async-panel="pending-requests-panel" href="?pending_requests_page={{ pending_requests_page.previous_page_number }}&taught_courses_page={{ taught_courses_page.number }}">← Anterior</a>
+                                {% endif %}
+                                {% if pending_requests_page.has_next %}
+                                    <a class="page-button" data-async-panel="pending-requests-panel" href="?pending_requests_page={{ pending_requests_page.next_page_number }}&taught_courses_page={{ taught_courses_page.number }}">Próxima →</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
                 {% else %}
                     <div class="empty-state">
                         <h3>Nenhuma solicitação pendente.</h3>
@@ -132,18 +145,18 @@
             </section>
         </section>
 
-        <section class="panel">
+        <section id="taught-courses-panel" class="panel async-panel">
             <div class="section-head">
                 <div>
                     <p class="eyebrow">Cursos ativos</p>
                     <h2>Turmas que você já abriu</h2>
                 </div>
-                <span>{{ taught_course_cards|length }} curso{{ taught_course_cards|length|pluralize }}</span>
+                <span>{{ taught_courses_count }} curso{{ taught_courses_count|pluralize }}</span>
             </div>
 
-            {% if taught_course_cards %}
+            {% if taught_courses_page.paginator.count %}
                 <div class="course-grid">
-                    {% for course in taught_course_cards %}
+                    {% for course in taught_courses_page %}
                         <article class="course-card">
                             <div class="course-head">
                                 <strong>{{ course.code }}</strong>
@@ -162,6 +175,19 @@
                         </article>
                     {% endfor %}
                 </div>
+                {% if taught_courses_page.has_other_pages %}
+                    <div class="pagination-row">
+                        <span class="pagination-label">Página {{ taught_courses_page.number }} de {{ taught_courses_page.paginator.num_pages }}</span>
+                        <div class="pagination-actions">
+                            {% if taught_courses_page.has_previous %}
+                                <a class="page-button" data-async-panel="taught-courses-panel" href="?pending_requests_page={{ pending_requests_page.number }}&taught_courses_page={{ taught_courses_page.previous_page_number }}">← Anterior</a>
+                            {% endif %}
+                            {% if taught_courses_page.has_next %}
+                                <a class="page-button" data-async-panel="taught-courses-panel" href="?pending_requests_page={{ pending_requests_page.number }}&taught_courses_page={{ taught_courses_page.next_page_number }}">Próxima →</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
             {% else %}
                 <div class="empty-state">
                     <h3>Você ainda não criou cursos.</h3>
@@ -170,18 +196,18 @@
             {% endif %}
         </section>
     {% else %}
-        <section class="panel">
+        <section id="available-courses-panel" class="panel async-panel">
             <div class="section-head">
                 <div>
                     <p class="eyebrow">Cursos abertos</p>
                     <h2>Disciplinas disponíveis para matrícula</h2>
                 </div>
-                <span>{{ available_courses|length }} opção{{ available_courses|length|pluralize }}</span>
+                <span>{{ available_courses_count }} opção{{ available_courses_count|pluralize }}</span>
             </div>
 
-            {% if available_courses %}
+            {% if available_courses_page.paginator.count %}
                 <div class="course-grid">
-                    {% for course in available_courses %}
+                    {% for course in available_courses_page %}
                         <article class="course-card">
                             <div class="course-head">
                                 <strong>{{ course.code }}</strong>
@@ -207,6 +233,19 @@
                         </article>
                     {% endfor %}
                 </div>
+                {% if available_courses_page.has_other_pages %}
+                    <div class="pagination-row">
+                        <span class="pagination-label">Página {{ available_courses_page.number }} de {{ available_courses_page.paginator.num_pages }}</span>
+                        <div class="pagination-actions">
+                            {% if available_courses_page.has_previous %}
+                                <a class="page-button" data-async-panel="available-courses-panel" href="?available_courses_page={{ available_courses_page.previous_page_number }}">← Anterior</a>
+                            {% endif %}
+                            {% if available_courses_page.has_next %}
+                                <a class="page-button" data-async-panel="available-courses-panel" href="?available_courses_page={{ available_courses_page.next_page_number }}">Próxima →</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
             {% else %}
                 <div class="empty-state">
                     <h3>Sem cursos disponíveis agora.</h3>
@@ -215,4 +254,8 @@
             {% endif %}
         </section>
     {% endif %}
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static 'agora/js/courses_hub.js' %}"></script>
 {% endblock %}

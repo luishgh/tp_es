@@ -344,8 +344,10 @@ def courses_hub_view(request):
 
         context = {
             'form': form,
-            'taught_course_cards': taught_course_cards,
-            'pending_requests': pending_requests,
+            'taught_courses_page': Paginator(taught_course_cards, 3).get_page(request.GET.get('taught_courses_page')),
+            'pending_requests_page': Paginator(pending_requests, 5).get_page(request.GET.get('pending_requests_page')),
+            'taught_courses_count': len(taught_course_cards),
+            'pending_requests_count': len(pending_requests),
         }
         return render(request, 'agora/courses_hub.html', context)
 
@@ -404,7 +406,8 @@ def courses_hub_view(request):
         )
 
     context = {
-        'available_courses': available_courses,
+        'available_courses_page': Paginator(available_courses, 3).get_page(request.GET.get('available_courses_page')),
+        'available_courses_count': len(available_courses),
     }
     return render(request, 'agora/courses_hub.html', context)
 
