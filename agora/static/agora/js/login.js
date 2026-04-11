@@ -69,8 +69,8 @@ function LoginPage() {
                     <h2>{activeForm === 'login' ? 'Entrar' : 'Cadastro rápido'}</h2>
                     <p>
                         {activeForm === 'login'
-                            ? 'Use seu usuário e senha para acessar o ambiente virtual de aprendizagem.'
-                            : 'Crie sua conta para começar a testar o fluxo de autenticação do Ágora.'}
+                            ? 'Use seu usuário ou matrícula e senha para acessar o ambiente virtual de aprendizagem.'
+                            : 'Crie sua conta para gerar automaticamente uma matrícula de aluno no Ágora.'}
                     </p>
 
                     {errorMessage && <div className="login-error">{errorMessage}</div>}
@@ -81,7 +81,7 @@ function LoginPage() {
                             <input type="hidden" name="action" value="login" />
 
                             <div className="field">
-                                <label htmlFor="username">Usuário</label>
+                                <label htmlFor="username">Usuário ou matrícula</label>
                                 <input
                                     id="username"
                                     name="username"
@@ -89,7 +89,7 @@ function LoginPage() {
                                     autoComplete="username"
                                     value={username}
                                     onChange={(event) => setUsername(event.target.value)}
-                                    placeholder="Digite seu usuário"
+                                    placeholder="Digite seu usuário ou matrícula"
                                     required
                                 />
                             </div>
@@ -175,7 +175,7 @@ function LoginPage() {
 
                             <div className="login-actions">
                                 <button className="login-button" type="submit">Criar conta</button>
-                                <div className="login-hint">O cadastro ja persiste no banco e faz login automatico ao concluir.</div>
+                                <div className="login-hint">O cadastro cria um aluno, gera a matrícula automaticamente e faz login ao concluir.</div>
                             </div>
                         </form>
                     )}
