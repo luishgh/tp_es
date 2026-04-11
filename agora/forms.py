@@ -59,24 +59,24 @@ class SuperuserCreateUserForm(forms.Form):
 
     def save(self):
         user_model = get_user_model()
-        with transaction.atomic():
-            user = user_model.objects.create_user(
-                username=self.cleaned_data['username'],
-                first_name=self.cleaned_data['first_name'],
-                last_name=self.cleaned_data['last_name'],
-                email=self.cleaned_data['email'],
-                password=self.cleaned_data['password'],
-                is_staff=False,
-                is_superuser=False,
-            )
-            profile = user.profile
-            profile.role = self.cleaned_data['role']
-            profile.bio = self.cleaned_data['bio']
-            if profile.role == UserProfile.Role.STUDENT:
-                profile.academic_id = _generate_student_academic_id()
-            else:
-                profile.academic_id = ''
-            profile.save(update_fields=['role', 'bio', 'academic_id'])
+        user = user_model.objects.create_user(
+            username=self.cleaned_data['username'],
+            first_name=self.cleaned_data['first_name'],
+            last_name=self.cleaned_data['last_name'],
+            email=self.cleaned_data['email'],
+            password=self.cleaned_data['password'],
+            is_staff=False,
+            is_superuser=False,
+        )
+        profile = user.profile
+        profile.role = self.cleaned_data['role']
+        if self.cleaned_data['role'] == UserProfile.Role.STUDENT:
+            profile.academic_id = self.cleaned_data['academic_id'] or profile.academic_id
+            profile.ensure_academic_id()
+        else:
+            profile.academic_id = ''
+        profile.bio = self.cleaned_data['bio']
+        profile.save()
         return user
 
 
