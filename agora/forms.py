@@ -38,6 +38,11 @@ class SuperuserCreateUserForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput, label='Senha')
     password_confirm = forms.CharField(widget=forms.PasswordInput, label='Confirmar senha')
     role = forms.ChoiceField(choices=UserProfile.Role.choices, label='Papel')
+    academic_id = forms.CharField(max_length=30, required=False, label='Matricula')
+    cpf = forms.CharField(max_length=14, required=False, label='CPF')
+    birth_date = forms.DateField(required=False, label='Data de nascimento')
+    social_name = forms.CharField(max_length=150, required=False, label='Nome social')
+    phone = forms.CharField(max_length=20, required=False, label='Telefone')
     bio = forms.CharField(widget=forms.Textarea, required=False, label='Biografia')
 
     def clean_username(self):
@@ -75,6 +80,10 @@ class SuperuserCreateUserForm(forms.Form):
             profile.ensure_academic_id()
         else:
             profile.academic_id = ''
+        profile.cpf = self.cleaned_data['cpf']
+        profile.birth_date = self.cleaned_data['birth_date']
+        profile.social_name = self.cleaned_data['social_name']
+        profile.phone = self.cleaned_data['phone']
         profile.bio = self.cleaned_data['bio']
         profile.save()
         return user

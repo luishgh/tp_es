@@ -16,7 +16,13 @@
     {{ error_message|json_script:"login-error-message" }}
     {{ initial_username|json_script:"login-initial-username" }}
     {{ initial_register_username|json_script:"login-initial-register-username" }}
+    {{ initial_register_first_name|json_script:"login-initial-register-first-name" }}
+    {{ initial_register_last_name|json_script:"login-initial-register-last-name" }}
     {{ initial_register_email|json_script:"login-initial-register-email" }}
+    {{ initial_register_cpf|json_script:"login-initial-register-cpf" }}
+    {{ initial_register_birth_date|json_script:"login-initial-register-birth-date" }}
+    {{ initial_register_social_name|json_script:"login-initial-register-social-name" }}
+    {{ initial_register_phone|json_script:"login-initial-register-phone" }}
     {{ csrf_token_value|json_script:"csrf-token" }}
 
     <div id="login-root"></div>

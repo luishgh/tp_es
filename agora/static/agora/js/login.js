@@ -10,7 +10,13 @@ function LoginPage() {
     const [username, setUsername] = useState(readJsonScriptContent('login-initial-username'));
     const [password, setPassword] = useState('');
     const [registerUsername, setRegisterUsername] = useState(readJsonScriptContent('login-initial-register-username'));
+    const [registerFirstName, setRegisterFirstName] = useState(readJsonScriptContent('login-initial-register-first-name'));
+    const [registerLastName, setRegisterLastName] = useState(readJsonScriptContent('login-initial-register-last-name'));
     const [registerEmail, setRegisterEmail] = useState(readJsonScriptContent('login-initial-register-email'));
+    const [registerCpf, setRegisterCpf] = useState(readJsonScriptContent('login-initial-register-cpf'));
+    const [registerBirthDate, setRegisterBirthDate] = useState(readJsonScriptContent('login-initial-register-birth-date'));
+    const [registerSocialName, setRegisterSocialName] = useState(readJsonScriptContent('login-initial-register-social-name'));
+    const [registerPhone, setRegisterPhone] = useState(readJsonScriptContent('login-initial-register-phone'));
     const [registerPassword, setRegisterPassword] = useState('');
     const [registerPasswordConfirm, setRegisterPasswordConfirm] = useState('');
     const [errorMessage, setErrorMessage] = useState(readJsonScriptContent('login-error-message'));
@@ -133,6 +139,32 @@ function LoginPage() {
                             </div>
 
                             <div className="field">
+                                <label htmlFor="register_first_name">Nome</label>
+                                <input
+                                    id="register_first_name"
+                                    name="register_first_name"
+                                    type="text"
+                                    autoComplete="given-name"
+                                    value={registerFirstName}
+                                    onChange={(event) => setRegisterFirstName(event.target.value)}
+                                    placeholder="Seu nome"
+                                />
+                            </div>
+
+                            <div className="field">
+                                <label htmlFor="register_last_name">Sobrenome</label>
+                                <input
+                                    id="register_last_name"
+                                    name="register_last_name"
+                                    type="text"
+                                    autoComplete="family-name"
+                                    value={registerLastName}
+                                    onChange={(event) => setRegisterLastName(event.target.value)}
+                                    placeholder="Seu sobrenome"
+                                />
+                            </div>
+
+                            <div className="field">
                                 <label htmlFor="register_email">Email</label>
                                 <input
                                     id="register_email"
@@ -142,6 +174,54 @@ function LoginPage() {
                                     value={registerEmail}
                                     onChange={(event) => setRegisterEmail(event.target.value)}
                                     placeholder="voce@exemplo.com"
+                                />
+                            </div>
+
+                            <div className="field">
+                                <label htmlFor="register_cpf">CPF</label>
+                                <input
+                                    id="register_cpf"
+                                    name="register_cpf"
+                                    type="text"
+                                    value={registerCpf}
+                                    onChange={(event) => setRegisterCpf(event.target.value)}
+                                    placeholder="000.000.000-00"
+                                />
+                            </div>
+
+                            <div className="field">
+                                <label htmlFor="register_birth_date">Data de nascimento</label>
+                                <input
+                                    id="register_birth_date"
+                                    name="register_birth_date"
+                                    type="date"
+                                    value={registerBirthDate}
+                                    onChange={(event) => setRegisterBirthDate(event.target.value)}
+                                />
+                            </div>
+
+                            <div className="field">
+                                <label htmlFor="register_social_name">Nome social</label>
+                                <input
+                                    id="register_social_name"
+                                    name="register_social_name"
+                                    type="text"
+                                    value={registerSocialName}
+                                    onChange={(event) => setRegisterSocialName(event.target.value)}
+                                    placeholder="Como deseja ser chamado(a)"
+                                />
+                            </div>
+
+                            <div className="field">
+                                <label htmlFor="register_phone">Telefone</label>
+                                <input
+                                    id="register_phone"
+                                    name="register_phone"
+                                    type="text"
+                                    autoComplete="tel"
+                                    value={registerPhone}
+                                    onChange={(event) => setRegisterPhone(event.target.value)}
+                                    placeholder="(00) 00000-0000"
                                 />
                             </div>
 
