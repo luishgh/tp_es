@@ -1,7 +1,6 @@
 from collections import defaultdict
 
 import locale
-locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
 import calendar as month_calendar
 from datetime import date
 from datetime import timedelta
@@ -18,6 +17,18 @@ from django.views.decorators.cache import never_cache
 
 from .forms import CourseCreateForm, SuperuserCreateUserForm
 from .models import Activity, Course, Enrollment, Submission, UserProfile
+
+
+def _configure_time_locale():
+    for locale_name in ('pt_BR.UTF-8', 'pt_BR.utf8', 'Portuguese_Brazil.1252'):
+        try:
+            locale.setlocale(locale.LC_TIME, locale_name)
+            return
+        except locale.Error:
+            continue
+
+
+_configure_time_locale()
 
 
 @never_cache
@@ -65,7 +76,11 @@ def login_view(request):
         else:
             username = request.POST.get('username', '').strip()
             password = request.POST.get('password', '')
-            user = authenticate(request, username=username, password=password)
+            user = _authenticate_by_username_or_academic_id(
+                request=request,
+                identifier=username,
+                password=password,
+            )
 
             context['initial_username'] = username
 
@@ -76,6 +91,18 @@ def login_view(request):
             context['error_message'] = 'Usuário ou senha inválidos.'
 
     return render(request, 'agora/login.html', context)
+
+
+def _authenticate_by_username_or_academic_id(request, identifier, password):
+    user = authenticate(request, username=identifier, password=password)
+    if user is not None:
+        return user
+
+    profile = UserProfile.objects.select_related('user').filter(academic_id=identifier).first()
+    if profile is None:
+        return None
+
+    return authenticate(request, username=profile.user.username, password=password)
 
 
 @never_cache

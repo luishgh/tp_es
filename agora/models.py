@@ -4,6 +4,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 
 class UserProfile(models.Model):
@@ -40,6 +41,14 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f'{self.user.get_username()} ({self.get_role_display()})'
+
+    def ensure_academic_id(self, created_at=None):
+        if self.role != self.Role.STUDENT or self.academic_id:
+            return False
+
+        effective_created_at = created_at or getattr(self.user, 'date_joined', None)
+        self.academic_id = generate_academic_id(effective_created_at)
+        return True
 
 
 class Course(models.Model):
@@ -332,7 +341,28 @@ def _user_role(user):
     return getattr(profile, 'role', None)
 
 
+def generate_academic_id(created_at=None):
+    year_suffix = (created_at or timezone.now()).strftime('%y')
+    prefix = year_suffix
+    next_sequence = 1
+
+    existing_ids = UserProfile.objects.filter(
+        academic_id__startswith=prefix,
+    ).exclude(
+        academic_id='',
+    ).values_list('academic_id', flat=True)
+
+    for academic_id in existing_ids:
+        sequence_part = academic_id[len(prefix):]
+        if len(sequence_part) == 7 and sequence_part.isdigit():
+            next_sequence = max(next_sequence, int(sequence_part) + 1)
+
+    return f'{prefix}{next_sequence:07d}'
+
+
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        UserProfile.objects.create(user=instance)
+        profile = UserProfile.objects.create(user=instance)
+        if profile.ensure_academic_id(instance.date_joined):
+            profile.save(update_fields=['academic_id'])

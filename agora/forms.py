@@ -45,7 +45,11 @@ class SuperuserCreateUserForm(forms.Form):
         )
         profile = user.profile
         profile.role = self.cleaned_data['role']
-        profile.academic_id = self.cleaned_data['academic_id']
+        if self.cleaned_data['role'] == UserProfile.Role.STUDENT:
+            profile.academic_id = self.cleaned_data['academic_id'] or profile.academic_id
+            profile.ensure_academic_id()
+        else:
+            profile.academic_id = ''
         profile.bio = self.cleaned_data['bio']
         profile.save()
         return user
