@@ -222,7 +222,9 @@
                                 <span>{{ course.workload_hours }}h</span>
                             </div>
                             <div class="course-footer">
-                                <span>{{ course.helper_text }}</span>
+                                {% if course.helper_text %}
+                                    <span>{{ course.helper_text }}</span>
+                                {% endif %}
                                 <form action="{% url 'agora:request_enrollment' course.id %}" method="post">
                                     {% csrf_token %}
                                     <button class="primary-button compact" type="submit" {% if course.request_disabled %}disabled{% endif %}>

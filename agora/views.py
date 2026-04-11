@@ -374,7 +374,7 @@ def courses_hub_view(request):
         request_label = 'Solicitar matrícula'
         request_disabled = False
         status_badge = None
-        helper_text = f'Professor(a): {course.teacher.get_full_name() or course.teacher.username}'
+        helper_text = None
 
         if enrollment and enrollment.status == Enrollment.Status.PENDING:
             request_label = 'Solicitação enviada'
