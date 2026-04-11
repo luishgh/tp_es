@@ -12,7 +12,13 @@ class AuthenticationFlowTests(TestCase):
             {
                 'action': 'register',
                 'register_username': 'alice',
+                'register_first_name': 'Alice',
+                'register_last_name': 'Silva',
                 'register_email': 'alice@example.com',
+                'register_cpf': '123.456.789-10',
+                'register_birth_date': '2000-05-10',
+                'register_social_name': 'Ali',
+                'register_phone': '(65) 99999-0000',
                 'register_password': 'senha-forte-123',
                 'register_password_confirm': 'senha-forte-123',
             },
@@ -21,7 +27,13 @@ class AuthenticationFlowTests(TestCase):
         self.assertRedirects(response, reverse('agora:index'))
 
         user = get_user_model().objects.get(username='alice')
+        self.assertEqual(user.first_name, 'Alice')
+        self.assertEqual(user.last_name, 'Silva')
         self.assertEqual(user.profile.role, UserProfile.Role.STUDENT)
+        self.assertEqual(user.profile.cpf, '123.456.789-10')
+        self.assertEqual(str(user.profile.birth_date), '2000-05-10')
+        self.assertEqual(user.profile.social_name, 'Ali')
+        self.assertEqual(user.profile.phone, '(65) 99999-0000')
         self.assertRegex(user.profile.academic_id, r'^\d{9}$')
         self.assertTrue(user.profile.academic_id.startswith('26'))
 

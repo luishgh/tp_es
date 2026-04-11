@@ -29,6 +29,29 @@ class UserProfile(models.Model):
         blank=True,
         verbose_name='matricula',
     )
+    cpf = models.CharField(
+        max_length=14,
+        blank=True,
+        default='',
+        verbose_name='cpf',
+    )
+    birth_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='data de nascimento',
+    )
+    social_name = models.CharField(
+        max_length=150,
+        blank=True,
+        default='',
+        verbose_name='nome social',
+    )
+    phone = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        verbose_name='telefone',
+    )
     bio = models.TextField(
         blank=True,
         default='',

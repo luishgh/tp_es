@@ -4,6 +4,7 @@ import locale
 import calendar as month_calendar
 from datetime import date
 from datetime import timedelta
+from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
@@ -41,7 +42,13 @@ def login_view(request):
         'error_message': '',
         'initial_username': '',
         'initial_register_username': '',
+        'initial_register_first_name': '',
+        'initial_register_last_name': '',
         'initial_register_email': '',
+        'initial_register_cpf': '',
+        'initial_register_birth_date': '',
+        'initial_register_social_name': '',
+        'initial_register_phone': '',
         'csrf_token_value': get_token(request),
     }
 
@@ -51,13 +58,26 @@ def login_view(request):
         if action == 'register':
             user_model = get_user_model()
             username = request.POST.get('register_username', '').strip()
+            first_name = request.POST.get('register_first_name', '').strip()
+            last_name = request.POST.get('register_last_name', '').strip()
             email = request.POST.get('register_email', '').strip()
+            cpf = request.POST.get('register_cpf', '').strip()
+            birth_date_raw = request.POST.get('register_birth_date', '').strip()
+            social_name = request.POST.get('register_social_name', '').strip()
+            phone = request.POST.get('register_phone', '').strip()
             password = request.POST.get('register_password', '')
             password_confirm = request.POST.get('register_password_confirm', '')
+            birth_date = None
 
             context['active_form'] = 'register'
             context['initial_register_username'] = username
+            context['initial_register_first_name'] = first_name
+            context['initial_register_last_name'] = last_name
             context['initial_register_email'] = email
+            context['initial_register_cpf'] = cpf
+            context['initial_register_birth_date'] = birth_date_raw
+            context['initial_register_social_name'] = social_name
+            context['initial_register_phone'] = phone
 
             if not username or not password:
                 context['error_message'] = 'Preencha usuário e senha para criar a conta.'
@@ -65,12 +85,28 @@ def login_view(request):
                 context['error_message'] = 'As senhas informadas não coincidem.'
             elif user_model.objects.filter(username=username).exists():
                 context['error_message'] = 'Esse nome de usuário já está em uso.'
+            elif cpf and UserProfile.objects.filter(cpf=cpf).exists():
+                context['error_message'] = 'Esse CPF já está em uso.'
             else:
+                if birth_date_raw:
+                    try:
+                        birth_date = datetime.strptime(birth_date_raw, '%Y-%m-%d').date()
+                    except ValueError:
+                        context['error_message'] = 'Informe uma data de nascimento válida.'
+
+            if action == 'register' and not context['error_message']:
                 user = user_model.objects.create_user(
                     username=username,
+                    first_name=first_name,
+                    last_name=last_name,
                     email=email,
                     password=password,
                 )
+                user.profile.cpf = cpf
+                user.profile.birth_date = birth_date
+                user.profile.social_name = social_name
+                user.profile.phone = phone
+                user.profile.save(update_fields=['cpf', 'birth_date', 'social_name', 'phone'])
                 login(request, user)
                 return redirect('agora:index')
         else:
