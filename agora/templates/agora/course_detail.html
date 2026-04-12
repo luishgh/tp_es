@@ -9,7 +9,11 @@
 {% block page_eyebrow %}{{ course.code }} · Curso{% endblock %}
 {% block page_title %}{{ course.title }}{% endblock %}
 {% block page_lead %}
-    Gerencie seus módulos, atividades e submissões para este curso.
+    {% if is_teacher %}
+        Gerencie seus módulos, atividades e submissões para este curso.
+    {% else %}
+        Acompanhe os módulos e atividades disponíveis neste curso.
+    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -36,10 +40,12 @@
                     <p class="eyebrow">Organização</p>
                     <h2>Módulos e Atividades</h2>
                 </div>
-                <div class="section-actions">
-                    <a class="primary-button compact" href="{% url 'agora:module_create' course.id %}">Novo Módulo</a>
-                    <a class="ghost-button compact" href="{% url 'agora:activity_create' course.id %}">Nova Atividade/Recurso</a>
-                </div>
+                {% if is_teacher %}
+                    <div class="section-actions">
+                        <a class="primary-button compact" href="{% url 'agora:module_create' course.id %}">Novo Módulo</a>
+                        <a class="ghost-button compact" href="{% url 'agora:activity_create' course.id %}">Nova Atividade/Recurso</a>
+                    </div>
+                {% endif %}
             </div>
 
             {% if modules or activities_without_module %}
