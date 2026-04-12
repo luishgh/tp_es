@@ -55,21 +55,23 @@
             {% if courses_page.paginator.count %}
                 <div class="course-grid">
                     {% for course in courses_page %}
-                        <article class="course-card {{ course.accent }}">
-                            <span class="course-code">{{ course.code }}</span>
-                            <h3>{{ course.title }}</h3>
+                        <a href="{% url 'agora:course_detail' course.id %}" aria-label="Abrir curso {{ course.title }}">
+                            <article class="course-card {{ course.accent }}">
+                                <span class="course-code">{{ course.code }}</span>
+                                <h3>{{ course.title }}</h3>
 
-                            <div class="course-meta">
-                                <span>{{ course.meta_label }}</span>
-                            </div>
+                                <div class="course-meta">
+                                    <span>{{ course.meta_label }}</span>
+                                </div>
 
-                            <div class="progress-track">
-                                <span style="width: {{ course.progress }}%"></span>
-                            </div>
-                            <strong>
-                                <div class="course-progress-label">{{ course.progress_label }}</div>
-                            </strong>
-                        </article>
+                                <div class="progress-track">
+                                    <span style="width: {{ course.progress }}%"></span>
+                                </div>
+                                <strong>
+                                    <div class="course-progress-label">{{ course.progress_label }}</div>
+                                </strong>
+                            </article>
+                        </a>
                     {% endfor %}
                 </div>
                 {% if courses_page.has_other_pages %}

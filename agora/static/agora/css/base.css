@@ -437,6 +437,19 @@ button {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
+.course-grid > a {
+    display: block;
+    text-decoration: none;
+}
+
+.course-grid > a:hover {
+    text-decoration: none;
+}
+
+.course-grid > a .course-card {
+    height: 100%;
+}
+
 .course-card,
 .pending-card,
 .activity-card,
