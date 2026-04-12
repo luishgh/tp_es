@@ -1,0 +1,89 @@
+{% extends 'agora/layout.html' %}
+{% load static %}
+
+{% block title %}Submissões | {{ activity.title }} | Ágora{% endblock %}
+{% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/submission_list.css' %}">{% endblock %}
+{% block shell_class %}submission-list-shell{% endblock %}
+{% block sidebar_class %}sidebar{% endblock %}
+{% block main_class %}submission-list-main{% endblock %}
+
+{% block page_eyebrow %}{{ activity.course.code }} · {{ activity.course.title }}{% endblock %}
+{% block page_title %}{{ activity.title }}{% endblock %}
+{% block page_lead %}
+    Lista de submissões para esta atividade.
+{% endblock %}
+
+{% block content %}
+    <section class="content-grid submission-grid">
+        <div class="panel activity-overview">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Visão Geral</p>
+                    <h2>Detalhes da Atividade</h2>
+                </div>
+            </div>
+            <div class="activity-info">
+                <p><strong>Tipo:</strong> {{ activity.get_activity_type_display }}</p>
+                <p><strong>Descrição:</strong> {{ activity.description }}</p>
+                {% if activity.due_date %}
+                    <p><strong>Prazo:</strong> {{ activity.due_date|date:"d/m/Y H:i" }}</p>
+                {% endif %}
+                {% if activity.max_score %}
+                    <p><strong>Nota Máxima:</strong> {{ activity.max_score }}</p>
+                {% endif %}
+                {% if activity.attachment_url %}
+                    <p><strong>Anexo:</strong> <a href="{{ activity.attachment_url }}" target="_blank">{{ activity.attachment_url }}</a></p>
+                {% endif %}
+            </div>
+        </div>
+
+        <section class="panel submissions-panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Submissões</p>
+                    <h2>Lista de Entregas</h2>
+                </div>
+                <span>{{ submissions|length }} entrega{{ submissions|length|pluralize }}</span>
+            </div>
+
+            {% if submissions %}
+                <div class="submission-list">
+                    {% for submission in submissions %}
+                        <article class="submission-card">
+                            <div class="submission-head">
+                                <strong>{{ submission.student.get_full_name|default:submission.student.username }}</strong>
+                                <span class="status-pill {{ submission.status }}">{{ submission.get_status_display }}</span>
+                            </div>
+                            <div class="submission-meta">
+                                {% if submission.submitted_at %}
+                                    <span>Entregue em: {{ submission.submitted_at|date:"d/m/Y H:i" }}</span>
+                                {% else %}
+                                    <span>Não entregue</span>
+                                {% endif %}
+                            </div>
+                            <div class="submission-content">
+                                {% if submission.content %}
+                                    <p>{{ submission.content|truncatechars:150 }}</p>
+                                {% endif %}
+                                {% if submission.attachment_url %}
+                                    <p><a href="{{ submission.attachment_url }}" target="_blank">Anexo</a></p>
+                                {% endif %}
+                            </div>
+                            <div class="submission-grade">
+                                <h4>Avaliação (boilerplate)</h4>
+                                <p><strong>Nota:</strong> {{ submission.score|default:"Ainda não avaliado" }}</p>
+                                <p><strong>Feedback:</strong> {{ submission.feedback|default:"Nenhum feedback fornecido" }}</p>
+                                {# Placeholder for actual grading form in the future #}
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <h3>Nenhuma submissão ainda.</h3>
+                    <p>Os alunos ainda não fizeram entregas para esta atividade.</p>
+                </div>
+            {% endif %}
+        </section>
+    </section>
+{% endblock %}

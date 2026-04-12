@@ -1,31 +1,10 @@
-:root {
-    --bg: #f4efe7;
-    --surface: rgba(255, 252, 247, 0.92);
-    --surface-soft: rgba(255, 255, 255, 0.58);
-    --text: #1f2a1f;
-    --muted: #5f6b63;
-    --line: rgba(31, 42, 31, 0.12);
-    --primary: #185c37;
-    --primary-strong: #0f4729;
-    --accent: #c9692c;
-    --danger: #a12626;
-    --shadow: 0 30px 70px rgba(24, 56, 36, 0.15);
-}
+
 
 * {
     box-sizing: border-box;
 }
 
-body {
-    margin: 0;
-    min-height: 100vh;
-    font-family: 'Space Grotesk', sans-serif;
-    color: var(--text);
-    background:
-        radial-gradient(circle at top left, rgba(216, 233, 222, 0.95), transparent 28%),
-        radial-gradient(circle at bottom right, rgba(255, 211, 182, 0.7), transparent 35%),
-        linear-gradient(135deg, #f5efe7 0%, #f8f5ef 48%, #eef6f0 100%);
-}
+
 
 a {
     color: inherit;
@@ -43,65 +22,6 @@ button {
     -webkit-appearance: none;
 }
 
-.hub-shell {
-    min-height: 100vh;
-    display: grid;
-    grid-template-columns: 280px 1fr;
-}
-
-.sidebar {
-    padding: 32px 24px;
-    border-right: 1px solid rgba(255, 255, 255, 0.45);
-    background: rgba(255, 250, 242, 0.66);
-    backdrop-filter: blur(12px);
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-}
-
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.brand-mark {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #2d8f55, #a7d7b4);
-    box-shadow: 0 0 0 8px rgba(45, 143, 85, 0.12);
-}
-
-.brand strong {
-    display: block;
-    font-size: 1.1rem;
-}
-
-.brand span:last-child {
-    color: var(--muted);
-    font-size: 0.92rem;
-}
-
-.sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.nav-item {
-    padding: 14px 16px;
-    border-radius: 16px;
-    color: var(--muted);
-    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
-}
-
-.nav-item.active,
-.nav-item:hover {
-    background: rgba(24, 92, 55, 0.1);
-    color: var(--primary);
-    transform: translateX(2px);
-}
 
 .hub-main {
     padding: 28px;

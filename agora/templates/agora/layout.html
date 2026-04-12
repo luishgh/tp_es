@@ -10,12 +10,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="icon" href="{% static 'agora/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'agora/css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'agora/css/sidebar.css' %}">
     {% block stylesheet %}{% endblock %}
 </head>
 <body>
     {% with role=request.user.profile.role current=request.resolver_match.url_name %}
-        <div class="{% block shell_class %}dashboard-shell{% endblock %}">
-            <aside class="{% block sidebar_class %}sidebar{% endblock %}">
+        <div class="dashboard-shell">
+            <aside class="sidebar">
                 <div class="brand">
                     <span class="brand-mark"></span>
                     <div>

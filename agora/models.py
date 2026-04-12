@@ -153,18 +153,60 @@ class Enrollment(models.Model):
             raise ValidationError({'student': 'A matricula deve estar vinculada a um estudante.'})
 
 
+class Module(models.Model):
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='modules',
+        verbose_name='modulo',
+    )
+    title = models.CharField(
+        max_length=150,
+        verbose_name='titulo',
+    )
+    description = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='descricao',
+    )
+    order = models.PositiveIntegerField(
+        default=1,
+        verbose_name='ordem',
+    )
+
+    class Meta:
+        verbose_name = 'modulo'
+        verbose_name_plural = 'modulos'
+        ordering = ['course', 'order', 'id']
+        constraints = [
+            models.UniqueConstraint(fields=['course', 'order'], name='unique_module_order_per_course'),
+        ]
+
+    def __str__(self):
+        return f'{self.course.code} - {self.title}'
+
+
 class Activity(models.Model):
     class Type(models.TextChoices):
         ASSIGNMENT = 'assignment', 'Tarefa'
         QUIZ = 'quiz', 'Quiz'
         FORUM = 'forum', 'Fórum'
         POLL = 'poll', 'Enquete'
+        RESOURCE = 'resource', 'Material'
 
     course = models.ForeignKey(
         Course,
         on_delete=models.CASCADE,
         related_name='activities',
         verbose_name='curso',
+    )
+    module = models.ForeignKey(
+        Module,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activities',
+        verbose_name='modulo',
     )
     title = models.CharField(
         max_length=150,
@@ -178,6 +220,10 @@ class Activity(models.Model):
         choices=Type.choices,
         default=Type.ASSIGNMENT,
         verbose_name='tipo',
+    )
+    attachment_url = models.URLField(
+        blank=True,
+        verbose_name='link de anexo',
     )
     due_date = models.DateTimeField(
         null=True,
@@ -225,8 +271,12 @@ class Activity(models.Model):
         if _user_role(self.created_by) != UserProfile.Role.TEACHER:
             errors['created_by'] = 'A atividade deve ser criada por um professor.'
 
+        if self.module and self.module.course_id != self.course_id:
+            errors['module'] = 'O modulo precisa pertencer ao mesmo curso da atividade.'
+
         if errors:
             raise ValidationError(errors)
+
 
 
 class Submission(models.Model):

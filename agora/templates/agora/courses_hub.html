@@ -3,9 +3,7 @@
 
 {% block title %}Cursos | Ágora{% endblock %}
 {% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/courses_hub.css' %}">{% endblock %}
-{% block shell_class %}hub-shell{% endblock %}
-{% block sidebar_class %}sidebar{% endblock %}
-{% block main_class %}hub-main{% endblock %}
+
 
 {% block page_eyebrow %}Gestão de cursos{% endblock %}
 {% block page_title %}
@@ -26,7 +24,7 @@
 {% block content %}
     {% if request.user.profile.role == 'teacher' %}
         <section class="content-grid teacher-grid">
-            <section class="panel">
+            <section class="panel"> {# New Course Form #}
                 <div class="section-head">
                     <div>
                         <p class="eyebrow">Novo curso</p>
@@ -93,7 +91,60 @@
                 </form>
             </section>
 
-            <section id="pending-requests-panel" class="panel async-panel">
+            <section id="taught-courses-panel" class="panel async-panel"> {# Taught Courses Panel #}
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Cursos ativos</p>
+                        <h2>Turmas que você já abriu</h2>
+                    </div>
+                    <span>{{ taught_courses_count }} curso{{ taught_courses_count|pluralize }}</span>
+                </div>
+
+                {% if taught_courses_page.paginator.count %}
+                    <div class="course-grid">
+                        {% for course in taught_courses_page %}
+                            <a href="{% url 'agora:course_detail' course.id %}">
+                                <article class="course-card">
+                                    <div class="course-head">
+                                        <strong>{{ course.code }}</strong>
+                                        {% if course.is_published %}
+                                            <span class="status-pill accent">Publicado</span>
+                                        {% else %}
+                                            <span class="status-pill neutral">Rascunho</span>
+                                        {% endif %}
+                                    </div>
+                                    <h3>{{ course.title }}</h3>
+                                    <p>{{ course.description|truncatechars:160 }}</p>
+                                    <div class="course-meta">
+                                        <span>{{ course.active_students }} aluno{{ course.active_students|pluralize }} ativo{{ course.active_students|pluralize }}</span>
+                                        <span>{{ course.workload_hours }}h</span>
+                                    </div>
+                                </article>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    {% if taught_courses_page.has_other_pages %}
+                        <div class="pagination-row">
+                            <span class="pagination-label">Página {{ taught_courses_page.number }} de {{ taught_courses_page.paginator.num_pages }}</span>
+                            <div class="pagination-actions">
+                                {% if taught_courses_page.has_previous %}
+                                    <a class="page-button" data-async-panel="taught-courses-panel" href="?pending_requests_page={{ pending_requests_page.number }}&taught_courses_page={{ taught_courses_page.previous_page_number }}">← Anterior</a>
+                                {% endif %}
+                                {% if taught_courses_page.has_next %}
+                                    <a class="page-button" data-async-panel="taught-courses-panel" href="?pending_requests_page={{ pending_requests_page.number }}&taught_courses_page={{ taught_courses_page.next_page_number }}">Próxima →</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="empty-state">
+                        <h3>Você ainda não criou cursos.</h3>
+                        <p>Use o formulário acima para abrir sua primeira turma no Ágora.</p>
+                    </div>
+                {% endif %}
+            </section>
+
+            <section id="pending-requests-panel" class="panel async-panel"> {# Pending Requests Panel #}
                 <div class="section-head">
                     <div>
                         <p class="eyebrow">Solicitações</p>
@@ -143,57 +194,6 @@
                     </div>
                 {% endif %}
             </section>
-        </section>
-
-        <section id="taught-courses-panel" class="panel async-panel">
-            <div class="section-head">
-                <div>
-                    <p class="eyebrow">Cursos ativos</p>
-                    <h2>Turmas que você já abriu</h2>
-                </div>
-                <span>{{ taught_courses_count }} curso{{ taught_courses_count|pluralize }}</span>
-            </div>
-
-            {% if taught_courses_page.paginator.count %}
-                <div class="course-grid">
-                    {% for course in taught_courses_page %}
-                        <article class="course-card">
-                            <div class="course-head">
-                                <strong>{{ course.code }}</strong>
-                                {% if course.is_published %}
-                                    <span class="status-pill accent">Publicado</span>
-                                {% else %}
-                                    <span class="status-pill neutral">Rascunho</span>
-                                {% endif %}
-                            </div>
-                            <h3>{{ course.title }}</h3>
-                            <p>{{ course.description|truncatechars:160 }}</p>
-                            <div class="course-meta">
-                                <span>{{ course.active_students }} aluno{{ course.active_students|pluralize }} ativo{{ course.active_students|pluralize }}</span>
-                                <span>{{ course.workload_hours }}h</span>
-                            </div>
-                        </article>
-                    {% endfor %}
-                </div>
-                {% if taught_courses_page.has_other_pages %}
-                    <div class="pagination-row">
-                        <span class="pagination-label">Página {{ taught_courses_page.number }} de {{ taught_courses_page.paginator.num_pages }}</span>
-                        <div class="pagination-actions">
-                            {% if taught_courses_page.has_previous %}
-                                <a class="page-button" data-async-panel="taught-courses-panel" href="?pending_requests_page={{ pending_requests_page.number }}&taught_courses_page={{ taught_courses_page.previous_page_number }}">← Anterior</a>
-                            {% endif %}
-                            {% if taught_courses_page.has_next %}
-                                <a class="page-button" data-async-panel="taught-courses-panel" href="?pending_requests_page={{ pending_requests_page.number }}&taught_courses_page={{ taught_courses_page.next_page_number }}">Próxima →</a>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% endif %}
-            {% else %}
-                <div class="empty-state">
-                    <h3>Você ainda não criou cursos.</h3>
-                    <p>Use o formulário acima para abrir sua primeira turma no Ágora.</p>
-                </div>
-            {% endif %}
         </section>
     {% else %}
         <section id="available-courses-panel" class="panel async-panel">
