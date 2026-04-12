@@ -1,0 +1,98 @@
+{% extends 'agora/layout.html' %}
+{% load static %}
+
+{% block title %}{{ form_title }} | {{ course.title }} | Ágora{% endblock %}
+{% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/form_page.css' %}">{% endblock %}
+{# Removed shell_class, sidebar_class, and main_class block overrides #}
+
+{% block page_eyebrow %}{{ course.code }} · {{ course.title }}{% endblock %}
+{% block page_title %}{{ form_title }}{% endblock %}
+{% block page_lead %}
+    Preencha os dados para {{ form_title|lower }}.
+{% endblock %}
+
+{% block content %}
+    <section class="content-grid">
+        <section class="panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">{{ course.code }} · {{ course.title }}</p>
+                    <h2>{{ form_title }}</h2>
+                </div>
+            </div>
+            <form class="agora-form" method="post">
+                {% csrf_token %}
+
+                <div class="form-field">
+                    <label for="{{ form.module.id_for_label }}">{{ form.module.label }}</label>
+                    {{ form.module }}
+                    {% for error in form.module.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+                    {{ form.title }}
+                    {% for error in form.title.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+                    {{ form.description }}
+                    {% for error in form.description.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.activity_type.id_for_label }}">{{ form.activity_type.label }}</label>
+                    {{ form.activity_type }}
+                    {% for error in form.activity_type.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.attachment_url.id_for_label }}">{{ form.attachment_url.label }}</label>
+                    {{ form.attachment_url }}
+                    {% for error in form.attachment_url.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.due_date.id_for_label }}">{{ form.due_date.label }}</label>
+                    {{ form.due_date }}
+                    {% for error in form.due_date.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.max_score.id_for_label }}">{{ form.max_score.label }}</label>
+                    {{ form.max_score }}
+                    {% for error in form.max_score.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <label class="checkbox-field" for="{{ form.is_published.id_for_label }}">
+                    {{ form.is_published }}
+                    <span>{{ form.is_published.label }}</span>
+                </label>
+
+                {% for error in form.non_field_errors %}
+                    <span class="field-error">{{ error }}</span>
+                {% endfor %}
+
+                <div class="form-actions">
+                    <button class="primary-button" type="submit">{{ submit_button_text }}</button>
+                    <a href="{% url 'agora:course_detail' course.id %}" class="ghost-button">Cancelar</a>
+                </div>
+            </form>
+        </section>
+    </section>
+{% endblock %}

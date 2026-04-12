@@ -13,11 +13,12 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 
-from .forms import CourseCreateForm, SuperuserCreateUserForm
-from .models import Activity, Course, Enrollment, Submission, UserProfile
+from .forms import ActivityCreateForm, CourseCreateForm, ModuleCreateForm, SuperuserCreateUserForm
+from .models import Activity, Course, Enrollment, Module, Submission, UserProfile
 
 
 @never_cache
@@ -332,6 +333,7 @@ def courses_hub_view(request):
 
         taught_course_cards = [
             {
+                'id': course.id, # Added course ID for linking to course_detail_view
                 'code': course.code,
                 'title': course.title,
                 'description': course.description,
@@ -419,6 +421,58 @@ def course_detail_view(request, course_id):
         Course.objects.select_related('teacher', 'teacher__profile'),
         pk=course_id,
     )
+    role = _user_role(request.user)
+    is_teacher = role == UserProfile.Role.TEACHER and course.teacher_id == request.user.id
+    is_enrolled_student = Enrollment.objects.filter(
+        course=course,
+        student=request.user,
+        status=Enrollment.Status.ACTIVE,
+    ).exists()
+
+    if not is_teacher and not is_enrolled_student:
+        messages.error(request, 'Você não tem permissão para acessar esta página.')
+        return redirect('agora:courses_hub')
+
+    modules = course.modules.all().order_by('order')
+    activities_by_module = defaultdict(list)
+    activities_without_module = []
+
+    activities_query = Activity.objects.filter(course=course)
+    if is_teacher:
+        activities_query = activities_query.annotate(submission_count=Count('submissions'))
+    else:
+        activities_query = activities_query.filter(is_published=True).annotate(
+            submission_count=Count('submissions', filter=Q(submissions__student=request.user))
+        )
+
+    activities_with_submission_counts = activities_query.order_by('due_date', 'title')
+
+    for activity in activities_with_submission_counts:
+        activity_data = {
+            'id': activity.id,
+            'title': activity.title,
+            'description': activity.description,
+            'activity_type': activity.get_activity_type_display(),
+            'attachment_url': activity.attachment_url,
+            'due_date': activity.due_date,
+            'max_score': activity.max_score,
+            'is_published': activity.is_published,
+            'submission_count': activity.submission_count,
+        }
+        if activity.module:
+            activities_by_module[activity.module.id].append(activity_data)
+        else:
+            activities_without_module.append(activity_data)
+
+    modules_data = []
+    for module in modules:
+        modules_data.append({
+            'id': module.id,
+            'title': module.title,
+            'description': module.description,
+            'activities': activities_by_module[module.id]
+        })
+
     active_enrollments = list(
         Enrollment.objects.select_related('student', 'student__profile')
         .filter(course=course, status=Enrollment.Status.ACTIVE)
@@ -430,8 +484,89 @@ def course_detail_view(request, course_id):
         'professor_name': course.teacher.get_full_name() or course.teacher.username,
         'active_enrollments': active_enrollments,
         'student_count': len(active_enrollments),
+        'is_teacher': is_teacher,
+        'is_enrolled_student': is_enrolled_student,
+        'modules': modules_data,
+        'activities_without_module': activities_without_module,
     }
     return render(request, 'agora/course_detail.html', context)
+
+
+@never_cache
+@login_required(login_url='agora:login')
+@user_passes_test(lambda u: _user_role(u) == UserProfile.Role.TEACHER)
+def module_create_view(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    if course.teacher != request.user:
+        messages.error(request, 'Você não tem permissão para criar módulos neste curso.')
+        return redirect('agora:course_detail', course_id=course.id)
+
+    if request.method == 'POST':
+        form = ModuleCreateForm(request.POST)
+        if form.is_valid():
+            module = form.save(commit=False)
+            module.course = course
+            module.save()
+            messages.success(request, f'Módulo "{module.title}" criado com sucesso.')
+            return redirect('agora:course_detail', course_id=course.id)
+    else:
+        form = ModuleCreateForm(initial={'course': course})
+    
+    context = {
+        'form': form,
+        'course': course,
+        'form_title': 'Criar Novo Módulo',
+        'submit_button_text': 'Criar Módulo',
+    }
+    return render(request, 'agora/module_form.html', context)
+
+
+@never_cache
+@login_required(login_url='agora:login')
+@user_passes_test(lambda u: _user_role(u) == UserProfile.Role.TEACHER)
+def activity_create_view(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    if course.teacher != request.user:
+        messages.error(request, 'Você não tem permissão para criar atividades neste curso.')
+        return redirect('agora:course_detail', course_id=course.id)
+
+    if request.method == 'POST':
+        form = ActivityCreateForm(request.POST, course=course)
+        if form.is_valid():
+            activity = form.save(commit=False)
+            activity.course = course
+            activity.created_by = request.user
+            activity.save()
+            messages.success(request, f'Atividade/Recurso "{activity.title}" criado com sucesso.')
+            return redirect('agora:course_detail', course_id=course.id)
+    else:
+        form = ActivityCreateForm(course=course)
+    
+    context = {
+        'form': form,
+        'course': course,
+        'form_title': 'Criar Nova Atividade ou Recurso',
+        'submit_button_text': 'Criar',
+    }
+    return render(request, 'agora/activity_form.html', context)
+
+
+@never_cache
+@login_required(login_url='agora:login')
+@user_passes_test(lambda u: _user_role(u) == UserProfile.Role.TEACHER)
+def submission_list_view(request, activity_id):
+    activity = get_object_or_404(Activity.objects.select_related('course'), pk=activity_id)
+    if activity.course.teacher != request.user:
+        messages.error(request, 'Você não tem permissão para visualizar as submissões desta atividade.')
+        return redirect('agora:course_detail', course_id=activity.course.id)
+
+    submissions = Submission.objects.filter(activity=activity).select_related('student').order_by('-submitted_at')
+
+    context = {
+        'activity': activity,
+        'submissions': submissions,
+    }
+    return render(request, 'agora/submission_list.html', context)
 
 
 @never_cache

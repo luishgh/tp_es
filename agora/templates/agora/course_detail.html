@@ -1,0 +1,134 @@
+{% extends 'agora/layout.html' %}
+{% load static %}
+
+{% block title %}{{ course.title }} | Ágora{% endblock %}
+{% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/course_detail.css' %}">{% endblock %}
+{# Removed shell_class and main_class block overrides #}
+
+
+{% block page_eyebrow %}{{ course.code }} · Curso{% endblock %}
+{% block page_title %}{{ course.title }}{% endblock %}
+{% block page_lead %}
+    Gerencie seus módulos, atividades e submissões para este curso.
+{% endblock %}
+
+{% block content %}
+    <section class="content-grid">
+        <section class="panel"> {# Course Overview #}
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Visão Geral</p>
+                    <h2>Informações do Curso</h2>
+                </div>
+            </div>
+            <div class="course-info">
+                <p><strong>Descrição:</strong> {{ course.description }}</p>
+                <p><strong>Ementa:</strong> {{ course.syllabus|default:"Não informada" }}</p>
+                <p><strong>Carga Horária:</strong> {{ course.workload_hours }}h</p>
+                <p><strong>Professor:</strong> {{ course.teacher.get_full_name|default:course.teacher.username }}</p>
+                <p><strong>Status:</strong> {% if course.is_published %}Publicado{% else %}Rascunho{% endif %}</p>
+            </div>
+        </section>
+
+        <section class="panel modules-panel"> {# Modules and Activities #}
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Organização</p>
+                    <h2>Módulos e Atividades</h2>
+                </div>
+                <div class="section-actions">
+                    <a class="primary-button compact" href="{% url 'agora:module_create' course.id %}">Novo Módulo</a>
+                    <a class="ghost-button compact" href="{% url 'agora:activity_create' course.id %}">Nova Atividade/Recurso</a>
+                </div>
+            </div>
+
+            {% if modules or activities_without_module %}
+                {% for module in modules %}
+                    <div class="module-section">
+                        <h3>{{ module.order }}. {{ module.title }}</h3>
+                        {% if module.description %}
+                            <p class="module-description">{{ module.description }}</p>
+                        {% endif %}
+                        <div class="activity-list">
+                            {% for activity in module.activities %}
+                                <article class="activity-card">
+                                    <div class="activity-head">
+                                        <strong>{{ activity.title }}</strong>
+                                        {% if activity.is_published %}
+                                            <span class="status-pill accent">Publicado</span>
+                                        {% else %}
+                                            <span class="status-pill neutral">Rascunho</span>
+                                        {% endif %}
+                                    </div>
+                                    <p>{{ activity.description|truncatechars:100 }}</p>
+                                    <div class="activity-meta">
+                                        <span>Tipo: {{ activity.activity_type }}</span>
+                                        {% if activity.due_date %}
+                                            <span>Prazo: {{ activity.due_date|date:"d/m/Y H:i" }}</span>
+                                        {% endif %}
+                                        {% if activity.max_score %}
+                                            <span>Nota Máxima: {{ activity.max_score }}</span>
+                                        {% endif %}
+                                        {% if activity.attachment_url %}
+                                            <span><a href="{{ activity.attachment_url }}" target="_blank">Anexo</a></span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="activity-footer">
+                                        {% if activity.activity_type != 'Material' %} {# Only show submission link for non-resource activities #}
+                                            <a href="{% url 'agora:submission_list' activity.id %}">{{ activity.submission_count }} submissões</a>
+                                        {% endif %}
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% empty %}
+                    {# No modules, but might have activities without module #}
+                {% endfor %}
+
+                {% if activities_without_module %}
+                    <div class="module-section">
+                        <h3>Atividades sem Módulo</h3>
+                        <div class="activity-list">
+                            {% for activity in activities_without_module %}
+                                <article class="activity-card">
+                                    <div class="activity-head">
+                                        <strong>{{ activity.title }}</strong>
+                                        {% if activity.is_published %}
+                                            <span class="status-pill accent">Publicado</span>
+                                        {% else %}
+                                            <span class="status-pill neutral">Rascunho</span>
+                                        {% endif %}
+                                    </div>
+                                    <p>{{ activity.description|truncatechars:100 }}</p>
+                                    <div class="activity-meta">
+                                        <span>Tipo: {{ activity.activity_type }}</span>
+                                        {% if activity.due_date %}
+                                            <span>Prazo: {{ activity.due_date|date:"d/m/Y H:i" }}</span>
+                                        {% endif %}
+                                        {% if activity.max_score %}
+                                            <span>Nota Máxima: {{ activity.max_score }}</span>
+                                        {% endif %}
+                                        {% if activity.attachment_url %}
+                                            <span><a href="{{ activity.attachment_url }}" target="_blank">Anexo</a></span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="activity-footer">
+                                        {% if activity.activity_type != 'Material' %} {# Only show submission link for non-resource activities #}
+                                            <a href="{% url 'agora:submission_list' activity.id %}">{{ activity.submission_count }} submissões</a>
+                                        {% endif %}
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <h3>Nenhum módulo ou atividade criado.</h3>
+                    <p>Comece a organizar seu curso adicionando módulos e atividades.</p>
+                </div>
+            {% endif %}
+        </section>
+    </section>
+{% endblock %}

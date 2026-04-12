@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import Course, UserProfile
+from .models import Activity, Course, Module, UserProfile
 
 
 class SuperuserCreateUserForm(forms.Form):
@@ -73,3 +73,57 @@ class CourseCreateForm(forms.ModelForm):
 
     def clean_title(self):
         return self.cleaned_data['title'].strip()
+
+
+class ModuleCreateForm(forms.ModelForm):
+    class Meta:
+        model = Module
+        fields = ['title', 'description', 'order']
+        labels = {
+            'title': 'Título do Módulo',
+            'description': 'Descrição',
+            'order': 'Ordem de exibição',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def clean_title(self):
+        return self.cleaned_data['title'].strip()
+
+
+class ActivityCreateForm(forms.ModelForm):
+    class Meta:
+        model = Activity
+        fields = [
+            'module',
+            'title',
+            'description',
+            'activity_type',
+            'attachment_url',
+            'due_date',
+            'max_score',
+            'is_published',
+        ]
+        labels = {
+            'module': 'Módulo (opcional)',
+            'title': 'Título da Atividade/Recurso',
+            'description': 'Descrição',
+            'activity_type': 'Tipo',
+            'attachment_url': 'Link do Anexo (para recursos)',
+            'due_date': 'Data de Entrega (para tarefas)',
+            'max_score': 'Nota Máxima',
+            'is_published': 'Publicar agora',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+            'due_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        course = kwargs.pop('course', None)
+        super().__init__(*args, **kwargs)
+        if course:
+            self.fields['module'].queryset = Module.objects.filter(course=course).order_by('order', 'title')
+            self.fields['module'].required = False
+

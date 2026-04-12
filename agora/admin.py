@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Activity, Course, Enrollment, Submission, UserProfile
+from .models import Activity, Course, Enrollment, Module, Submission, UserProfile
 
 
 @admin.register(UserProfile)
@@ -17,6 +17,13 @@ class CourseAdmin(admin.ModelAdmin):
     search_fields = ('code', 'title', 'teacher__username')
 
 
+@admin.register(Module)
+class ModuleAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'order')
+    list_filter = ('course',)
+    search_fields = ('title', 'course__code', 'course__title')
+
+
 @admin.register(Enrollment)
 class EnrollmentAdmin(admin.ModelAdmin):
     list_display = ('student', 'course', 'status', 'enrolled_at', 'final_grade')
@@ -26,9 +33,9 @@ class EnrollmentAdmin(admin.ModelAdmin):
 
 @admin.register(Activity)
 class ActivityAdmin(admin.ModelAdmin):
-    list_display = ('title', 'course', 'activity_type', 'due_date', 'is_published')
-    list_filter = ('activity_type', 'is_published', 'course')
-    search_fields = ('title', 'course__code', 'course__title')
+    list_display = ('title', 'course', 'module', 'activity_type', 'due_date', 'is_published')
+    list_filter = ('activity_type', 'is_published', 'course', 'module')
+    search_fields = ('title', 'course__code', 'course__title', 'module__title')
 
 
 @admin.register(Submission)
