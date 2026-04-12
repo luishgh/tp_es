@@ -414,6 +414,28 @@ def courses_hub_view(request):
 
 @never_cache
 @login_required(login_url='agora:login')
+def course_detail_view(request, course_id):
+    course = get_object_or_404(
+        Course.objects.select_related('teacher', 'teacher__profile'),
+        pk=course_id,
+    )
+    active_enrollments = list(
+        Enrollment.objects.select_related('student', 'student__profile')
+        .filter(course=course, status=Enrollment.Status.ACTIVE)
+        .order_by('student__first_name', 'student__last_name', 'student__username')
+    )
+
+    context = {
+        'course': course,
+        'professor_name': course.teacher.get_full_name() or course.teacher.username,
+        'active_enrollments': active_enrollments,
+        'student_count': len(active_enrollments),
+    }
+    return render(request, 'agora/course_detail.html', context)
+
+
+@never_cache
+@login_required(login_url='agora:login')
 def request_enrollment_view(request, course_id):
     if request.method != 'POST' or _user_role(request.user) != UserProfile.Role.STUDENT:
         return redirect('agora:courses_hub')
