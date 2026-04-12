@@ -23,7 +23,7 @@ button {
 }
 
 
-.hub-main {
+.dashboard-main {
     padding: 28px;
     display: flex;
     flex-direction: column;
@@ -172,11 +172,14 @@ button {
 
 .content-grid {
     display: grid;
+    grid-template-columns: 1.15fr 1fr;
     gap: 20px;
     border: 0;
     background: transparent;
     box-shadow: none;
     padding: 0;
+    align-items: start;
+    min-width: 0;
 }
 
 .teacher-grid {
@@ -185,6 +188,7 @@ button {
 
 .panel {
     padding: 24px;
+    min-width: 0;
 }
 
 .async-panel {
@@ -278,11 +282,17 @@ button {
     display: grid;
     gap: 16px;
     align-content: start;
+    min-width: 0;
+}
+
+.course-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .request-card,
 .course-card {
     padding: 18px;
+    min-width: 0;
 }
 
 .request-card {
@@ -307,6 +317,7 @@ button {
 .request-actions {
     display: flex;
     gap: 10px;
+    flex-shrink: 0;
 }
 
 .course-head,
@@ -316,6 +327,7 @@ button {
     justify-content: space-between;
     gap: 12px;
     align-items: center;
+    min-width: 0;
 }
 
 .course-head {
@@ -442,7 +454,7 @@ button {
 }
 
 @media (max-width: 1080px) {
-    .hub-shell {
+    .content-grid {
         grid-template-columns: 1fr;
     }
 
@@ -451,32 +463,20 @@ button {
     }
 }
 
-@media (max-width: 780px) {
-    .hub-main {
-        padding: 22px 16px;
+@media (max-width: 920px) {
+    .dashboard-main {
+        padding: 20px;
     }
 
     .topbar,
-    .course-footer,
-    .request-card,
-    .course-meta {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .two-columns {
+    .content-grid {
         grid-template-columns: 1fr;
+        display: grid;
     }
 
-    .request-actions {
-        width: 100%;
-    }
-
-    .request-actions form,
-    .request-actions button,
-    .course-footer form,
-    .course-footer button {
-        width: 100%;
+    .topbar-actions {
+        flex-wrap: wrap;
+        justify-content: space-between;
     }
 
     .pagination-row {

@@ -1,65 +1,15 @@
-/* Base styles from layout.css might apply */
-
-.course-detail-shell {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-
-.course-detail-main {
-    flex-grow: 1;
-    padding: var(--size-9) var(--size-10); /* Adjust padding as needed */
-    max-width: 1400px; /* Max width for content */
-    margin: 0 auto; /* Center the content */
-    width: 100%;
-}
-
 .content-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--size-7); /* Spacing between sections */
+    grid-template-columns: 1fr 2fr;
+    align-items: start;
 }
 
-@media (min-width: 900px) {
-    .content-grid {
-        grid-template-columns: 1fr 2fr; /* Two columns on larger screens */
-    }
-}
-
-
-/* Panel styles - general structure */
-.panel {
-    background-color: var(--surface-2);
-    border-radius: var(--radius-3);
-    padding: var(--size-7);
-    box-shadow: var(--shadow-2);
-}
-
-.section-head {
+.section-actions {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--size-5);
-    padding-bottom: var(--size-3);
-    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: var(--size-3);
+    justify-content: flex-end;
 }
 
-.section-head .eyebrow {
-    font-size: var(--font-size-0);
-    color: var(--text-2);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: var(--size-1);
-}
-
-.section-head h2 {
-    font-size: var(--font-size-5);
-    font-weight: var(--font-weight-5);
-    color: var(--text-1);
-    margin: 0;
-}
-
-/* Course Overview */
 .course-info p {
     margin-bottom: var(--size-2);
     line-height: var(--font-lineheight-3);
@@ -70,7 +20,6 @@
     color: var(--text-1);
 }
 
-/* Modules and Activities */
 .modules-panel .section-head {
     align-items: flex-end;
 }
@@ -146,7 +95,7 @@
     font-size: var(--font-size-1);
     color: var(--text-2);
     margin-bottom: var(--size-3);
-    flex-grow: 1; /* Allow description to take available space */
+    flex-grow: 1;
 }
 
 .activity-meta {
@@ -182,26 +131,16 @@
     font-weight: var(--font-weight-5);
 }
 
-/* Status Pills */
-.status-pill {
-    font-size: var(--font-size-0);
-    padding: var(--size-1) var(--size-2);
-    border-radius: var(--radius-pill);
-    font-weight: var(--font-weight-5);
-    text-transform: uppercase;
-}
-
-.status-pill.accent { /* Published */
+.status-pill.accent {
     background-color: var(--accent-1-light);
     color: var(--accent-1);
 }
 
-.status-pill.neutral { /* Draft */
+.status-pill.neutral {
     background-color: var(--neutral-1-light);
     color: var(--neutral-1);
 }
 
-/* Empty State */
 .empty-state {
     text-align: center;
     padding: var(--size-8) var(--size-5);
@@ -221,194 +160,20 @@
     line-height: var(--font-lineheight-3);
 }
 
-/* Form page specific styles (for module_form.html and activity_form.html) */
-.form-shell {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-
-.form-main {
-    flex-grow: 1;
-    padding: var(--size-9) var(--size-10);
-    max-width: 800px; /* Forms usually need less width */
-    margin: 0 auto;
-    width: 100%;
-}
-
-.agora-form {
-    background-color: var(--surface-2);
-    border-radius: var(--radius-3);
-    padding: var(--size-7);
-    box-shadow: var(--shadow-2);
-}
-
-.agora-form .form-field {
-    margin-bottom: var(--size-5);
-}
-
-.agora-form label {
-    display: block;
-    font-size: var(--font-size-2);
-    font-weight: var(--font-weight-5);
-    color: var(--text-1);
-    margin-bottom: var(--size-2);
-}
-
-.agora-form input[type="text"],
-.agora-form input[type="email"],
-.agora-form input[type="password"],
-.agora-form input[type="number"],
-.agora-form input[type="datetime-local"],
-.agora-form textarea,
-.agora-form select {
-    width: 100%;
-    padding: var(--size-3);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-2);
-    background-color: var(--surface-1);
-    color: var(--text-1);
-    font-size: var(--font-size-2);
-}
-
-.agora-form input[type="text"]:focus,
-.agora-form input[type="email"]:focus,
-.agora-form input[type="password"]:focus,
-.agora-form input[type="number"]:focus,
-.agora-form input[type="datetime-local"]:focus,
-.agora-form textarea:focus,
-.agora-form select:focus {
-    outline: 2px solid var(--accent-1);
-    border-color: var(--accent-1);
-}
-
-.agora-form textarea {
-    resize: vertical;
-}
-
-.agora-form .form-row {
-    display: flex;
-    gap: var(--size-5);
-}
-
-.agora-form .form-row.two-columns > .form-field {
-    flex: 1;
-}
-
-.agora-form .checkbox-field {
-    display: flex;
-    align-items: center;
-    margin-top: var(--size-4);
-    margin-bottom: var(--size-5);
-}
-
-.agora-form .checkbox-field input[type="checkbox"] {
-    margin-right: var(--size-2);
-    width: auto;
-}
-
-.agora-form .field-error {
-    color: var(--danger-color);
-    font-size: var(--font-size-0);
-    margin-top: var(--size-1);
-    display: block;
-}
-
-.agora-form .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--size-3);
-    margin-top: var(--size-7);
-    padding-top: var(--size-5);
-    border-top: 1px dashed var(--border-color);
-}
-
-/* Submission List Specific Styles */
-.submission-list-shell {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-
-.submission-list-main {
-    flex-grow: 1;
-    padding: var(--size-9) var(--size-10);
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-}
-
-.submission-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--size-7);
-}
-
-@media (min-width: 900px) {
-    .submission-grid {
-        grid-template-columns: 1fr 2fr;
+@media (max-width: 920px) {
+    .content-grid {
+        grid-template-columns: 1fr;
     }
-}
 
-.submissions-panel .section-head {
-    align-items: flex-start;
-}
+    .section-head {
+        align-items: flex-start;
+    }
 
-.submission-list {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--size-4);
-}
+    .section-actions {
+        justify-content: flex-start;
+    }
 
-.submission-card {
-    background-color: var(--surface-1);
-    border-radius: var(--radius-2);
-    padding: var(--size-4);
-    box-shadow: var(--shadow-1);
-    border: 1px solid var(--border-color);
-}
-
-.submission-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--size-2);
-    padding-bottom: var(--size-2);
-    border-bottom: 1px dotted var(--border-color);
-}
-
-.submission-head strong {
-    font-size: var(--font-size-3);
-    color: var(--text-1);
-}
-
-.submission-meta {
-    font-size: var(--font-size-0);
-    color: var(--text-3);
-    margin-bottom: var(--size-3);
-}
-
-.submission-content p {
-    font-size: var(--font-size-1);
-    color: var(--text-2);
-    margin-bottom: var(--size-3);
-}
-
-.submission-grade {
-    margin-top: var(--size-4);
-    padding-top: var(--size-4);
-    border-top: 1px dashed var(--border-color);
-}
-
-.submission-grade h4 {
-    font-size: var(--font-size-2);
-    color: var(--text-1);
-    margin-top: 0;
-    margin-bottom: var(--size-2);
-}
-
-.submission-grade p {
-    font-size: var(--font-size-1);
-    color: var(--text-2);
-    margin-bottom: var(--size-1);
+    .activity-list {
+        grid-template-columns: 1fr;
+    }
 }
