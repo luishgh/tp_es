@@ -495,6 +495,28 @@ def course_detail_view(request, course_id):
 @never_cache
 @login_required(login_url='agora:login')
 @user_passes_test(lambda u: _user_role(u) == UserProfile.Role.TEACHER)
+def publish_course_view(request, course_id):
+    if request.method != 'POST':
+        return redirect('agora:course_detail', course_id=course_id)
+
+    course = get_object_or_404(Course, pk=course_id)
+    if course.teacher != request.user:
+        messages.error(request, 'Você não tem permissão para publicar este curso.')
+        return redirect('agora:course_detail', course_id=course.id)
+
+    if course.is_published:
+        messages.info(request, 'Este curso já está publicado.')
+        return redirect('agora:course_detail', course_id=course.id)
+
+    course.is_published = True
+    course.save(update_fields=['is_published'])
+    messages.success(request, f'{course.code} foi publicado com sucesso.')
+    return redirect('agora:course_detail', course_id=course.id)
+
+
+@never_cache
+@login_required(login_url='agora:login')
+@user_passes_test(lambda u: _user_role(u) == UserProfile.Role.TEACHER)
 def module_create_view(request, course_id):
     course = get_object_or_404(Course, pk=course_id)
     if course.teacher != request.user:
