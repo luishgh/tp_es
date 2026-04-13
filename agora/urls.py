@@ -12,6 +12,7 @@ from .views import (
     logout_view,
     module_create_view,
     request_enrollment_view,
+    publish_course_view,
     submission_list_view,
 )
 
@@ -22,6 +23,7 @@ urlpatterns = [
     path('calendario/', calendar_view, name='calendar'),
     path('cursos/', courses_hub_view, name='courses_hub'),
     path('cursos/<int:course_id>/', course_detail_view, name='course_detail'),
+    path('cursos/<int:course_id>/publicar/', publish_course_view, name='publish_course'),
     path('cursos/<int:course_id>/modulos/criar/', module_create_view, name='module_create'),
     path('cursos/<int:course_id>/atividades/criar/', activity_create_view, name='activity_create'),
     path('atividades/<int:activity_id>/submissoes/', submission_list_view, name='submission_list'),
