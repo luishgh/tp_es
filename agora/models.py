@@ -268,7 +268,9 @@ class Activity(models.Model):
         super().clean()
         errors = {}
 
-        if _user_role(self.created_by) != UserProfile.Role.TEACHER:
+        if not self.created_by_id:
+            errors['created_by'] = 'A atividade deve ser associada ao usuário criador.'
+        elif _user_role(self.created_by) != UserProfile.Role.TEACHER:
             errors['created_by'] = 'A atividade deve ser criada por um professor.'
 
         if self.module and self.module.course_id != self.course_id:
