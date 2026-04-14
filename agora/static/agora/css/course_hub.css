@@ -1,0 +1,110 @@
+.teacher-grid {
+    grid-template-columns: 1.1fr 0.9fr;
+}
+
+.course-form {
+    display: grid;
+    gap: 16px;
+}
+
+.form-row {
+    display: grid;
+    gap: 16px;
+}
+
+.two-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-field {
+    display: grid;
+    gap: 8px;
+}
+
+.form-field label,
+.checkbox-field {
+    font-weight: 500;
+}
+
+.form-field input,
+.form-field textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.74);
+    color: var(--text);
+}
+
+.form-field textarea {
+    resize: vertical;
+    min-height: 118px;
+}
+
+.checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.5);
+    align-self: end;
+}
+
+.field-error {
+    color: var(--danger);
+    font-size: 0.9rem;
+}
+
+.request-card {
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    border-radius: 28px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 18px;
+    min-width: 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+}
+
+.request-copy {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.request-copy span {
+    color: var(--muted);
+}
+
+.request-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 1080px) {
+    .teacher-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 920px) {
+    .two-columns {
+        grid-template-columns: 1fr;
+    }
+
+    .request-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .request-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+}
+
