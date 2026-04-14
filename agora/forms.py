@@ -127,3 +127,34 @@ class ActivityCreateForm(forms.ModelForm):
             self.instance.course = course
             self.fields['module'].queryset = Module.objects.filter(course=course).order_by('order', 'title')
             self.fields['module'].required = False
+
+        activity_type_field = self.fields.get('activity_type')
+        if activity_type_field:
+            activity_type_field.choices = [('', 'Selecione o tipo')] + list(Activity.Type.choices)
+            activity_type_field.widget.attrs['class'] = (
+                (activity_type_field.widget.attrs.get('class', '') + ' js-activity-type').strip()
+            )
+            if not self.is_bound and not getattr(self.instance, 'pk', None):
+                activity_type_field.initial = ''
+
+    def clean(self):
+        cleaned_data = super().clean()
+        activity_type = cleaned_data.get('activity_type')
+
+        if activity_type == Activity.Type.ASSIGNMENT:
+            attachment_url = cleaned_data.get('attachment_url', '')
+            if attachment_url:
+                cleaned_data['attachment_url'] = attachment_url.strip()
+            if not cleaned_data.get('due_date'):
+                self.add_error('due_date', 'Informe a data de entrega para uma tarefa.')
+        elif activity_type == Activity.Type.RESOURCE:
+            if not cleaned_data.get('attachment_url'):
+                self.add_error('attachment_url', 'Informe o link do material.')
+            cleaned_data['due_date'] = None
+            cleaned_data['max_score'] = 0
+        elif activity_type in (None, ''):
+            self.add_error('activity_type', 'Selecione o tipo.')
+        else:
+            self.add_error('activity_type', 'Tipo não suportado.')
+
+        return cleaned_data
