@@ -185,11 +185,13 @@ class ActivityCreateForm(forms.ModelForm):
                 cleaned_data['attachment_url'] = attachment_url.strip()
             if not cleaned_data.get('due_date'):
                 self.add_error('due_date', 'Informe a data de entrega para uma tarefa.')
+            if cleaned_data.get('max_score') is None:
+                self.add_error('max_score', 'Informe a nota máxima para uma tarefa.')
         elif activity_type == Activity.Type.RESOURCE:
             if not cleaned_data.get('attachment_url'):
                 self.add_error('attachment_url', 'Informe o link do material.')
             cleaned_data['due_date'] = None
-            cleaned_data['max_score'] = 0
+            cleaned_data['max_score'] = None
         elif activity_type in (None, ''):
             self.add_error('activity_type', 'Selecione o tipo.')
         else:

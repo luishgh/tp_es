@@ -45,7 +45,7 @@
                 {% if activity.due_date %}
                     <p><strong>Prazo:</strong> {{ activity.due_date|date:"d/m/Y H:i" }}</p>
                 {% endif %}
-                {% if activity.activity_type == 'assignment' and activity.max_score %}
+                {% if activity.activity_type == 'assignment' and activity.max_score|default_if_none:"" != "" %}
                     <p><strong>Nota Máxima:</strong> {{ activity.max_score }}</p>
                 {% endif %}
                 {% if activity.attachment_url %}

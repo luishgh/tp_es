@@ -136,23 +136,20 @@ class ActivityCreateViewTests(TestCase):
             order=1,
         )
 
-    def test_teacher_can_create_activity_with_module_from_same_course(self):
+    def test_teacher_can_create_assignment_with_module_from_same_course(self):
         self.client.force_login(self.teacher)
 
         response = self.client.post(
-            reverse('agora:login'),
-            {
-                'action': 'register',
-                'register_username': 'alice',
-                'register_first_name': 'Alice',
-                'register_last_name': 'Silva',
-                'register_email': 'alice@example.com',
-                'register_cpf': '123.456.789-10',
-                'register_birth_date': '2000-05-10',
-                'register_social_name': 'Ali',
-                'register_phone': '(65) 99999-0000',
-                'register_password': 'senha-forte-123',
-                'register_password_confirm': 'senha-forte-123',
+            reverse('agora:activity_create', args=[self.course.id]),
+            data={
+                'module': str(self.module.id),
+                'title': 'Lista 1',
+                'description': 'Exercícios da semana.',
+                'activity_type': Activity.Type.ASSIGNMENT,
+                'attachment_url': '',
+                'due_date': '2026-04-30T23:59',
+                'max_score': '10',
+                'is_published': 'on',
             },
         )
 
@@ -161,23 +158,8 @@ class ActivityCreateViewTests(TestCase):
         self.assertEqual(activity.course_id, self.course.id)
         self.assertEqual(activity.module_id, self.module.id)
 
-        user = get_user_model().objects.get(username='alice')
-        self.assertEqual(user.first_name, 'Alice')
-        self.assertEqual(user.last_name, 'Silva')
-        self.assertEqual(user.profile.role, UserProfile.Role.STUDENT)
-        self.assertEqual(user.profile.cpf, '123.456.789-10')
-        self.assertEqual(str(user.profile.birth_date), '2000-05-10')
-        self.assertEqual(user.profile.social_name, 'Ali')
-        self.assertEqual(user.profile.phone, '(65) 99999-0000')
-        self.assertRegex(user.profile.academic_id, r'^\d{9}$')
-        self.assertTrue(user.profile.academic_id.startswith('26'))
-
-    def test_login_accepts_academic_id(self):
-        user = get_user_model().objects.create_user(
-            username='bob',
-            email='bob@example.com',
-            password='senha-forte-123',
-        )
+    def test_teacher_cannot_create_activity_with_module_from_other_course(self):
+        self.client.force_login(self.teacher)
 
         response = self.client.post(
             reverse('agora:activity_create', args=[self.course.id]),
@@ -196,6 +178,47 @@ class ActivityCreateViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         form = response.context['form']
         self.assertIn('module', form.errors)
+
+    def test_teacher_can_create_material_without_due_date_and_max_score(self):
+        self.client.force_login(self.teacher)
+
+        response = self.client.post(
+            reverse('agora:activity_create', args=[self.course.id]),
+            data={
+                'module': str(self.module.id),
+                'title': 'Slides 1',
+                'description': 'Material de apoio.',
+                'activity_type': Activity.Type.RESOURCE,
+                'attachment_url': 'https://example.com/slides',
+                'is_published': 'on',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        activity = Activity.objects.get(title='Slides 1')
+        self.assertEqual(activity.activity_type, Activity.Type.RESOURCE)
+        self.assertIsNone(activity.due_date)
+        self.assertIsNone(activity.max_score)
+
+    def test_assignment_requires_max_score(self):
+        self.client.force_login(self.teacher)
+
+        response = self.client.post(
+            reverse('agora:activity_create', args=[self.course.id]),
+            data={
+                'module': str(self.module.id),
+                'title': 'Lista sem nota',
+                'description': 'Teste.',
+                'activity_type': Activity.Type.ASSIGNMENT,
+                'attachment_url': '',
+                'due_date': '2026-04-30T23:59',
+                'is_published': 'on',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        form = response.context['form']
+        self.assertIn('max_score', form.errors)
 
 
 class ResourceDetailViewTests(TestCase):
@@ -262,7 +285,7 @@ class ResourceDetailViewTests(TestCase):
             activity_type=Activity.Type.RESOURCE,
             attachment_url='https://example.com/slides',
             due_date=None,
-            max_score=0,
+            max_score=None,
             is_published=True,
             created_by=self.teacher,
         )

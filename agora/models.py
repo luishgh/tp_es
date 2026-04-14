@@ -259,7 +259,8 @@ class Activity(models.Model):
     max_score = models.DecimalField(
         max_digits=5,
         decimal_places=2,
-        default=100,
+        null=True,
+        blank=True,
         validators=[MinValueValidator(0)],
         verbose_name='nota maxima',
     )
@@ -396,7 +397,11 @@ class Submission(models.Model):
         if self.graded_by and _user_role(self.graded_by) != UserProfile.Role.TEACHER:
             errors['graded_by'] = 'A correcao deve ser feita por um professor.'
 
-        if self.score is not None and self.score > self.activity.max_score:
+        if (
+            self.score is not None
+            and self.activity.max_score is not None
+            and self.score > self.activity.max_score
+        ):
             errors['score'] = 'A nota nao pode ser maior que a nota maxima da atividade.'
 
         if errors:
