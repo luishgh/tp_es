@@ -555,9 +555,9 @@ def activity_create_view(request, course_id):
     if request.method == 'POST':
         form = ActivityCreateForm(request.POST, course=course)
         form.instance.created_by = request.user
+        form.instance.course = course
         if form.is_valid():
             activity = form.save(commit=False)
-            activity.course = course
             activity.save()
             messages.success(request, f'Atividade/Recurso "{activity.title}" criado com sucesso.')
             return redirect('agora:course_detail', course_id=course.id)
