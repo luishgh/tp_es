@@ -744,6 +744,28 @@ def resource_detail_view(request, activity_id):
 
 @never_cache
 @login_required(login_url='agora:login')
+@user_passes_test(lambda u: _user_role(u) == UserProfile.Role.TEACHER)
+def publish_activity_view(request, activity_id):
+    if request.method != 'POST':
+        return redirect('agora:resource_detail', activity_id=activity_id)
+
+    activity = get_object_or_404(Activity.objects.select_related('course'), pk=activity_id)
+    if activity.course.teacher_id != request.user.id:
+        messages.error(request, 'Você não tem permissão para publicar esta atividade.')
+        return redirect('agora:resource_detail', activity_id=activity.id)
+
+    if activity.is_published:
+        messages.info(request, 'Esta atividade já está publicada.')
+        return redirect('agora:resource_detail', activity_id=activity.id)
+
+    activity.is_published = True
+    activity.save(update_fields=['is_published'])
+    messages.success(request, 'Atividade publicada com sucesso.')
+    return redirect('agora:resource_detail', activity_id=activity.id)
+
+
+@never_cache
+@login_required(login_url='agora:login')
 def request_enrollment_view(request, course_id):
     if request.method != 'POST' or _user_role(request.user) != UserProfile.Role.STUDENT:
         return redirect('agora:courses_hub')

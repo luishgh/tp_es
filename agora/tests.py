@@ -317,3 +317,26 @@ class ResourceDetailViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Entregas dos Alunos')
         self.assertContains(response, 'Grace Hopper')
+
+    def test_teacher_can_publish_activity(self):
+        self.assignment.is_published = False
+        self.assignment.save(update_fields=['is_published'])
+
+        self.client.force_login(self.teacher)
+
+        response = self.client.post(reverse('agora:publish_activity', args=[self.assignment.id]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assignment.refresh_from_db()
+        self.assertTrue(self.assignment.is_published)
+
+    def test_publish_activity_is_idempotent(self):
+        self.client.force_login(self.teacher)
+
+        first = self.client.post(reverse('agora:publish_activity', args=[self.assignment.id]))
+        second = self.client.post(reverse('agora:publish_activity', args=[self.assignment.id]))
+
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(second.status_code, 302)
+        self.assignment.refresh_from_db()
+        self.assertTrue(self.assignment.is_published)

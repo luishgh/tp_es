@@ -22,10 +22,17 @@
                     <p class="eyebrow">Visão Geral</p>
                     <h2>Detalhes</h2>
                 </div>
+                {% if is_teacher and not activity.is_published %}
+                    <form method="post" action="{% url 'agora:publish_activity' activity.id %}" onsubmit="return confirm('Deseja publicar esta atividade?');">
+                        {% csrf_token %}
+                        <button class="ghost-button compact" type="submit">Publicar atividade</button>
+                    </form>
+                {% else %}
                 {% if activity.is_published %}
                     <span class="status-pill accent">Publicado</span>
                 {% else %}
                     <span class="status-pill neutral">Rascunho</span>
+                {% endif %}
                 {% endif %}
             </div>
 
@@ -122,4 +129,3 @@
         {% endif %}
     </section>
 {% endblock %}
-
