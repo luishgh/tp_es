@@ -453,6 +453,7 @@ def course_detail_view(request, course_id):
             'title': activity.title,
             'description': activity.description,
             'activity_type': activity.get_activity_type_display(),
+            'activity_type_value': activity.activity_type,
             'attachment_url': activity.attachment_url,
             'due_date': activity.due_date,
             'max_score': activity.max_score,

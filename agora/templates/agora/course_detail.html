@@ -78,7 +78,7 @@
                                         {% if activity.due_date %}
                                             <span>Prazo: {{ activity.due_date|date:"d/m/Y H:i" }}</span>
                                         {% endif %}
-                                        {% if activity.max_score %}
+                                        {% if activity.activity_type_value == 'assignment' and activity.max_score %}
                                             <span>Nota Máxima: {{ activity.max_score }}</span>
                                         {% endif %}
                                         {% if activity.attachment_url %}
@@ -86,7 +86,7 @@
                                         {% endif %}
                                     </div>
                                     <div class="activity-footer">
-                                        {% if activity.activity_type != 'Material' %} {# Only show submission link for non-resource activities #}
+                                        {% if activity.activity_type_value != 'resource' %} {# Only show submission link for non-resource activities #}
                                             <a href="{% url 'agora:submission_list' activity.id %}">{{ activity.submission_count }} submissões</a>
                                         {% endif %}
                                     </div>
@@ -118,7 +118,7 @@
                                         {% if activity.due_date %}
                                             <span>Prazo: {{ activity.due_date|date:"d/m/Y H:i" }}</span>
                                         {% endif %}
-                                        {% if activity.max_score %}
+                                        {% if activity.activity_type_value == 'assignment' and activity.max_score %}
                                             <span>Nota Máxima: {{ activity.max_score }}</span>
                                         {% endif %}
                                         {% if activity.attachment_url %}
@@ -126,7 +126,7 @@
                                         {% endif %}
                                     </div>
                                     <div class="activity-footer">
-                                        {% if activity.activity_type != 'Material' %} {# Only show submission link for non-resource activities #}
+                                        {% if activity.activity_type_value != 'resource' %} {# Only show submission link for non-resource activities #}
                                             <a href="{% url 'agora:submission_list' activity.id %}">{{ activity.submission_count }} submissões</a>
                                         {% endif %}
                                     </div>
