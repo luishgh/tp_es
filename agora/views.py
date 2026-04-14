@@ -594,6 +594,78 @@ def submission_list_view(request, activity_id):
 
 @never_cache
 @login_required(login_url='agora:login')
+def resource_detail_view(request, activity_id):
+    activity = get_object_or_404(
+        Activity.objects.select_related('course', 'module', 'created_by', 'course__teacher'),
+        pk=activity_id,
+    )
+
+    role = _user_role(request.user)
+    is_teacher = role == UserProfile.Role.TEACHER and activity.course.teacher_id == request.user.id
+    is_enrolled_student = Enrollment.objects.filter(
+        course=activity.course,
+        student=request.user,
+        status=Enrollment.Status.ACTIVE,
+    ).exists()
+
+    if not is_teacher:
+        if role != UserProfile.Role.STUDENT or not is_enrolled_student:
+            messages.error(request, 'Você não tem permissão para acessar esta atividade.')
+            return redirect('agora:courses_hub')
+        if not activity.is_published:
+            messages.error(request, 'Você não tem permissão para acessar esta atividade.')
+            return redirect('agora:courses_hub')
+
+    submission_status = None
+    if role == UserProfile.Role.STUDENT and is_enrolled_student:
+        submission = Submission.objects.filter(activity=activity, student=request.user).first()
+        if submission:
+            submission_status = {
+                'label': submission.get_status_display(),
+                'tone': 'accent' if submission.status in (Submission.Status.SUBMITTED, Submission.Status.REVIEWED) else 'neutral',
+                'submitted_at': submission.submitted_at,
+            }
+        else:
+            submission_status = {
+                'label': 'Não iniciado',
+                'tone': 'neutral',
+                'submitted_at': None,
+            }
+
+    submissions = []
+    if is_teacher and activity.activity_type == Activity.Type.ASSIGNMENT:
+        submissions_qs = Submission.objects.filter(activity=activity).select_related('student').order_by('-submitted_at', '-updated_at')
+        for submission in submissions_qs:
+            if submission.status == Submission.Status.REVIEWED:
+                tone = 'accent'
+            elif submission.status in (Submission.Status.SUBMITTED, Submission.Status.LATE):
+                tone = 'warning'
+            else:
+                tone = 'neutral'
+
+            submissions.append({
+                'id': submission.id,
+                'student_name': submission.student.get_full_name() or submission.student.username,
+                'status_label': submission.get_status_display(),
+                'status_tone': tone,
+                'submitted_at': submission.submitted_at,
+                'score': submission.score,
+            })
+
+    context = {
+        'activity': activity,
+        'course': activity.course,
+        'module': activity.module,
+        'is_teacher': is_teacher,
+        'is_student': role == UserProfile.Role.STUDENT,
+        'submission_status': submission_status,
+        'submissions': submissions,
+    }
+    return render(request, 'agora/resource_detail.html', context)
+
+
+@never_cache
+@login_required(login_url='agora:login')
 def request_enrollment_view(request, course_id):
     if request.method != 'POST' or _user_role(request.user) != UserProfile.Role.STUDENT:
         return redirect('agora:courses_hub')

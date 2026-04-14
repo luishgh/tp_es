@@ -65,7 +65,7 @@
                             {% for activity in module.activities %}
                                 <article class="activity-card">
                                     <div class="activity-head">
-                                        <strong>{{ activity.title }}</strong>
+                                        <strong><a href="{% url 'agora:resource_detail' activity.id %}">{{ activity.title }}</a></strong>
                                         {% if activity.is_published %}
                                             <span class="status-pill accent">Publicado</span>
                                         {% else %}
@@ -83,11 +83,6 @@
                                         {% endif %}
                                         {% if activity.attachment_url %}
                                             <span><a href="{{ activity.attachment_url }}" target="_blank">Anexo</a></span>
-                                        {% endif %}
-                                    </div>
-                                    <div class="activity-footer">
-                                        {% if activity.activity_type_value != 'resource' %} {# Only show submission link for non-resource activities #}
-                                            <a href="{% url 'agora:submission_list' activity.id %}">{{ activity.submission_count }} submissões</a>
                                         {% endif %}
                                     </div>
                                 </article>
@@ -105,7 +100,7 @@
                             {% for activity in activities_without_module %}
                                 <article class="activity-card">
                                     <div class="activity-head">
-                                        <strong>{{ activity.title }}</strong>
+                                        <strong><a href="{% url 'agora:resource_detail' activity.id %}">{{ activity.title }}</a></strong>
                                         {% if activity.is_published %}
                                             <span class="status-pill accent">Publicado</span>
                                         {% else %}
@@ -123,11 +118,6 @@
                                         {% endif %}
                                         {% if activity.attachment_url %}
                                             <span><a href="{{ activity.attachment_url }}" target="_blank">Anexo</a></span>
-                                        {% endif %}
-                                    </div>
-                                    <div class="activity-footer">
-                                        {% if activity.activity_type_value != 'resource' %} {# Only show submission link for non-resource activities #}
-                                            <a href="{% url 'agora:submission_list' activity.id %}">{{ activity.submission_count }} submissões</a>
                                         {% endif %}
                                     </div>
                                 </article>

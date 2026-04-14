@@ -13,6 +13,7 @@ from .views import (
     module_create_view,
     request_enrollment_view,
     publish_course_view,
+    resource_detail_view,
     submission_list_view,
 )
 
@@ -26,6 +27,7 @@ urlpatterns = [
     path('cursos/<int:course_id>/publicar/', publish_course_view, name='publish_course'),
     path('cursos/<int:course_id>/modulos/criar/', module_create_view, name='module_create'),
     path('cursos/<int:course_id>/atividades/criar/', activity_create_view, name='activity_create'),
+    path('atividades/<int:activity_id>/', resource_detail_view, name='resource_detail'),
     path('atividades/<int:activity_id>/submissoes/', submission_list_view, name='submission_list'),
     path('cursos/<int:course_id>/solicitar-matricula/', request_enrollment_view, name='request_enrollment'),
     path('matriculas/<int:enrollment_id>/<str:decision>/', enrollment_decision_view, name='enrollment_decision'),
