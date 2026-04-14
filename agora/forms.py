@@ -124,6 +124,6 @@ class ActivityCreateForm(forms.ModelForm):
         course = kwargs.pop('course', None)
         super().__init__(*args, **kwargs)
         if course:
+            self.instance.course = course
             self.fields['module'].queryset = Module.objects.filter(course=course).order_by('order', 'title')
             self.fields['module'].required = False
-
