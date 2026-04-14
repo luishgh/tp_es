@@ -48,8 +48,8 @@ def login_view(request):
         'initial_register_email': '',
         'initial_register_cpf': '',
         'initial_register_birth_date': '',
-        'initial_register_social_name': '',
         'initial_register_phone': '',
+        'initial_register_bio': '',
         'csrf_token_value': get_token(request),
     }
 
@@ -64,11 +64,12 @@ def login_view(request):
             email = request.POST.get('register_email', '').strip()
             cpf = request.POST.get('register_cpf', '').strip()
             birth_date_raw = request.POST.get('register_birth_date', '').strip()
-            social_name = request.POST.get('register_social_name', '').strip()
             phone = request.POST.get('register_phone', '').strip()
+            bio = request.POST.get('register_bio', '').strip()
             password = request.POST.get('register_password', '')
             password_confirm = request.POST.get('register_password_confirm', '')
             birth_date = None
+            cpf_digits = ''.join(character for character in cpf if character.isdigit())
 
             context['active_form'] = 'register'
             context['initial_register_username'] = username
@@ -77,16 +78,28 @@ def login_view(request):
             context['initial_register_email'] = email
             context['initial_register_cpf'] = cpf
             context['initial_register_birth_date'] = birth_date_raw
-            context['initial_register_social_name'] = social_name
             context['initial_register_phone'] = phone
+            context['initial_register_bio'] = bio
 
             if not username or not password:
                 context['error_message'] = 'Preencha usuário e senha para criar a conta.'
+            elif not first_name or not last_name:
+                context['error_message'] = 'Preencha nome e sobrenome.'
+            elif not email:
+                context['error_message'] = 'Preencha o email.'
+            elif not cpf:
+                context['error_message'] = 'Preencha o CPF.'
+            elif len(cpf_digits) != 11:
+                context['error_message'] = 'Informe um CPF válido.'
+            elif not birth_date_raw:
+                context['error_message'] = 'Preencha a data de nascimento.'
+            elif not phone:
+                context['error_message'] = 'Preencha o telefone.'
             elif password != password_confirm:
                 context['error_message'] = 'As senhas informadas não coincidem.'
             elif user_model.objects.filter(username=username).exists():
                 context['error_message'] = 'Esse nome de usuário já está em uso.'
-            elif cpf and UserProfile.objects.filter(cpf=cpf).exists():
+            elif cpf_digits and UserProfile.objects.filter(cpf=cpf_digits).exists():
                 context['error_message'] = 'Esse CPF já está em uso.'
             else:
                 if birth_date_raw:
@@ -103,11 +116,13 @@ def login_view(request):
                     email=email,
                     password=password,
                 )
-                user.profile.cpf = cpf
+                user.profile.role = UserProfile.Role.STUDENT
+                user.profile.cpf = cpf_digits
                 user.profile.birth_date = birth_date
-                user.profile.social_name = social_name
                 user.profile.phone = phone
-                user.profile.save(update_fields=['cpf', 'birth_date', 'social_name', 'phone'])
+                user.profile.bio = bio
+                user.profile.ensure_academic_id(user.date_joined)
+                user.profile.save(update_fields=['role', 'cpf', 'birth_date', 'phone', 'bio', 'academic_id'])
                 login(request, user)
                 return redirect('agora:index')
         else:

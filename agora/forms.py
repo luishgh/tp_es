@@ -1,48 +1,24 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from django.db import transaction
-from django.utils import timezone
+import re
 
 from .models import Activity, Course, Module, UserProfile
 
 
-def _generate_student_academic_id():
-    year_prefix = str(timezone.localtime().year)
-    max_suffix = 0
-
-    for existing in UserProfile.objects.filter(
-        role=UserProfile.Role.STUDENT,
-        academic_id__startswith=year_prefix,
-    ).values_list('academic_id', flat=True):
-        if not existing or not existing.startswith(year_prefix):
-            continue
-        suffix = existing[len(year_prefix):]
-        if suffix.isdigit():
-            max_suffix = max(max_suffix, int(suffix))
-
-    next_suffix = max_suffix + 1
-    academic_id = f'{year_prefix}{next_suffix:04d}'
-
-    while UserProfile.objects.filter(academic_id=academic_id).exists():
-        next_suffix += 1
-        academic_id = f'{year_prefix}{next_suffix:04d}'
-
-    return academic_id
-
-
 class SuperuserCreateUserForm(forms.Form):
     username = forms.CharField(max_length=150, label='Nome de usuario')
-    first_name = forms.CharField(max_length=150, required=False, label='Nome')
-    last_name = forms.CharField(max_length=150, required=False, label='Sobrenome')
-    email = forms.EmailField(required=False, label='Email')
+    first_name = forms.CharField(max_length=150, label='Nome')
+    last_name = forms.CharField(max_length=150, label='Sobrenome')
+    email = forms.EmailField(label='Email')
     password = forms.CharField(widget=forms.PasswordInput, label='Senha')
     password_confirm = forms.CharField(widget=forms.PasswordInput, label='Confirmar senha')
     role = forms.ChoiceField(choices=UserProfile.Role.choices, label='Papel')
-    academic_id = forms.CharField(max_length=30, required=False, label='Matricula')
-    cpf = forms.CharField(max_length=14, required=False, label='CPF')
-    birth_date = forms.DateField(required=False, label='Data de nascimento')
-    social_name = forms.CharField(max_length=150, required=False, label='Nome social')
-    phone = forms.CharField(max_length=20, required=False, label='Telefone')
+    cpf = forms.CharField(max_length=14, label='CPF')
+    birth_date = forms.DateField(
+        label='Data de nascimento',
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    phone = forms.CharField(max_length=20, label='Telefone')
     bio = forms.CharField(widget=forms.Textarea, required=False, label='Biografia')
 
     def clean_username(self):
@@ -51,6 +27,32 @@ class SuperuserCreateUserForm(forms.Form):
         if user_model.objects.filter(username=username).exists():
             raise forms.ValidationError('Esse nome de usuario ja esta em uso.')
         return username
+    
+    def clean_cpf(self):
+        cpf = (self.cleaned_data.get('cpf') or '').strip()
+        if not cpf:
+            raise forms.ValidationError('Preencha o CPF.')
+
+        digits = re.sub(r'\\D', '', cpf)
+        if len(digits) != 11:
+            raise forms.ValidationError('Informe um CPF válido.')
+
+        if UserProfile.objects.filter(cpf=digits).exists():
+            raise forms.ValidationError('Esse CPF já está em uso.')
+
+        return digits
+
+    def clean_first_name(self):
+        return (self.cleaned_data.get('first_name') or '').strip()
+
+    def clean_last_name(self):
+        return (self.cleaned_data.get('last_name') or '').strip()
+
+    def clean_email(self):
+        return (self.cleaned_data.get('email') or '').strip()
+
+    def clean_phone(self):
+        return (self.cleaned_data.get('phone') or '').strip()
 
     def clean(self):
         cleaned_data = super().clean()
@@ -75,17 +77,15 @@ class SuperuserCreateUserForm(forms.Form):
         )
         profile = user.profile
         profile.role = self.cleaned_data['role']
-        if self.cleaned_data['role'] == UserProfile.Role.STUDENT:
-            profile.academic_id = self.cleaned_data['academic_id'] or profile.academic_id
-            profile.ensure_academic_id()
+        if profile.role == UserProfile.Role.STUDENT:
+            profile.ensure_academic_id(user.date_joined)
         else:
             profile.academic_id = ''
         profile.cpf = self.cleaned_data['cpf']
         profile.birth_date = self.cleaned_data['birth_date']
-        profile.social_name = self.cleaned_data['social_name']
         profile.phone = self.cleaned_data['phone']
         profile.bio = self.cleaned_data['bio']
-        profile.save()
+        profile.save(update_fields=['role', 'academic_id', 'cpf', 'birth_date', 'phone', 'bio'])
         return user
 
 

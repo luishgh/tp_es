@@ -1,0 +1,125 @@
+{% extends 'agora/layout.html' %}
+{% load static %}
+
+{% block title %}{{ activity.title }} | {{ course.title }} | Ágora{% endblock %}
+{% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/course_detail.css' %}">{% endblock %}
+
+{% block page_eyebrow %}{{ course.code }} · {{ course.title }}{% endblock %}
+{% block page_title %}{{ activity.title }}{% endblock %}
+{% block page_lead %}
+    {% if module %}
+        {{ module.title }} · {{ activity.get_activity_type_display }}
+    {% else %}
+        {{ activity.get_activity_type_display }}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <section class="content-grid">
+        <section class="panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Visão Geral</p>
+                    <h2>Detalhes</h2>
+                </div>
+                {% if activity.is_published %}
+                    <span class="status-pill accent">Publicado</span>
+                {% else %}
+                    <span class="status-pill neutral">Rascunho</span>
+                {% endif %}
+            </div>
+
+            <div class="course-info">
+                {% if module %}
+                    <p><strong>Módulo:</strong> {{ module.order }}. {{ module.title }}</p>
+                {% endif %}
+                <p><strong>Tipo:</strong> {{ activity.get_activity_type_display }}</p>
+                <p><strong>Descrição:</strong> {{ activity.description }}</p>
+                {% if activity.due_date %}
+                    <p><strong>Prazo:</strong> {{ activity.due_date|date:"d/m/Y H:i" }}</p>
+                {% endif %}
+                {% if activity.activity_type == 'assignment' and activity.max_score %}
+                    <p><strong>Nota Máxima:</strong> {{ activity.max_score }}</p>
+                {% endif %}
+                {% if activity.attachment_url %}
+                    <p><strong>Anexo:</strong> <a href="{{ activity.attachment_url }}" target="_blank">Abrir link</a></p>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if is_student %}
+            <section class="panel">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Entrega</p>
+                        <h2>Situação de Envio</h2>
+                    </div>
+                    {% if submission_status %}
+                        <span class="status-pill {{ submission_status.tone }}">{{ submission_status.label }}</span>
+                    {% else %}
+                        <span class="status-pill neutral">Desconhecido</span>
+                    {% endif %}
+                </div>
+
+                <div class="course-info">
+                    <p>Envio ainda não implementado.</p>
+                    {% if submission_status and submission_status.submitted_at %}
+                        <p><strong>Último envio:</strong> {{ submission_status.submitted_at|date:"d/m/Y H:i" }}</p>
+                    {% endif %}
+                </div>
+            </section>
+        {% endif %}
+
+        {% if is_teacher %}
+            <section class="panel modules-panel">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Submissões</p>
+                        <h2>Entregas dos Alunos</h2>
+                    </div>
+                    {% if activity.activity_type == 'assignment' %}
+                        <span>{{ submissions|length }} entrega{{ submissions|length|pluralize }}</span>
+                    {% else %}
+                        <span>—</span>
+                    {% endif %}
+                </div>
+
+                {% if activity.activity_type != 'assignment' %}
+                    <div class="empty-state">
+                        <h3>Material não possui submissões.</h3>
+                        <p>Somente tarefas geram entregas de alunos.</p>
+                    </div>
+                {% else %}
+                    {% if submissions %}
+                        <div class="activity-list">
+                            {% for submission in submissions %}
+                                <article class="activity-card">
+                                    <div class="activity-head">
+                                        <strong>{{ submission.student_name }}</strong>
+                                        <span class="status-pill {{ submission.status_tone }}">{{ submission.status_label }}</span>
+                                    </div>
+                                    <div class="activity-meta">
+                                        {% if submission.submitted_at %}
+                                            <span>Enviado em: {{ submission.submitted_at|date:"d/m/Y H:i" }}</span>
+                                        {% else %}
+                                            <span>Não enviado</span>
+                                        {% endif %}
+                                        {% if submission.score %}
+                                            <span>Nota: {{ submission.score }}</span>
+                                        {% endif %}
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <h3>Nenhuma submissão ainda.</h3>
+                            <p>Os alunos ainda não fizeram entregas para esta tarefa.</p>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </section>
+        {% endif %}
+    </section>
+{% endblock %}
+
