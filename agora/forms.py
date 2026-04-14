@@ -1,7 +1,33 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.utils import timezone
 
 from .models import Activity, Course, Module, UserProfile
+
+
+def _generate_student_academic_id():
+    year_prefix = str(timezone.localtime().year)
+    max_suffix = 0
+
+    for existing in UserProfile.objects.filter(
+        role=UserProfile.Role.STUDENT,
+        academic_id__startswith=year_prefix,
+    ).values_list('academic_id', flat=True):
+        if not existing or not existing.startswith(year_prefix):
+            continue
+        suffix = existing[len(year_prefix):]
+        if suffix.isdigit():
+            max_suffix = max(max_suffix, int(suffix))
+
+    next_suffix = max_suffix + 1
+    academic_id = f'{year_prefix}{next_suffix:04d}'
+
+    while UserProfile.objects.filter(academic_id=academic_id).exists():
+        next_suffix += 1
+        academic_id = f'{year_prefix}{next_suffix:04d}'
+
+    return academic_id
 
 
 class SuperuserCreateUserForm(forms.Form):
@@ -12,7 +38,6 @@ class SuperuserCreateUserForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput, label='Senha')
     password_confirm = forms.CharField(widget=forms.PasswordInput, label='Confirmar senha')
     role = forms.ChoiceField(choices=UserProfile.Role.choices, label='Papel')
-    academic_id = forms.CharField(max_length=30, required=False, label='Matricula')
     bio = forms.CharField(widget=forms.Textarea, required=False, label='Biografia')
 
     def clean_username(self):
@@ -34,20 +59,24 @@ class SuperuserCreateUserForm(forms.Form):
 
     def save(self):
         user_model = get_user_model()
-        user = user_model.objects.create_user(
-            username=self.cleaned_data['username'],
-            first_name=self.cleaned_data['first_name'],
-            last_name=self.cleaned_data['last_name'],
-            email=self.cleaned_data['email'],
-            password=self.cleaned_data['password'],
-            is_staff=False,
-            is_superuser=False,
-        )
-        profile = user.profile
-        profile.role = self.cleaned_data['role']
-        profile.academic_id = self.cleaned_data['academic_id']
-        profile.bio = self.cleaned_data['bio']
-        profile.save()
+        with transaction.atomic():
+            user = user_model.objects.create_user(
+                username=self.cleaned_data['username'],
+                first_name=self.cleaned_data['first_name'],
+                last_name=self.cleaned_data['last_name'],
+                email=self.cleaned_data['email'],
+                password=self.cleaned_data['password'],
+                is_staff=False,
+                is_superuser=False,
+            )
+            profile = user.profile
+            profile.role = self.cleaned_data['role']
+            profile.bio = self.cleaned_data['bio']
+            if profile.role == UserProfile.Role.STUDENT:
+                profile.academic_id = _generate_student_academic_id()
+            else:
+                profile.academic_id = ''
+            profile.save(update_fields=['role', 'bio', 'academic_id'])
         return user
 
 
