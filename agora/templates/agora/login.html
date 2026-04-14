@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="{% static 'agora/favicon.ico' %}">
     <link rel="stylesheet" href="{% static 'agora/css/login.css' %}">
 </head>
 <body>
@@ -21,8 +22,8 @@
     {{ initial_register_email|json_script:"login-initial-register-email" }}
     {{ initial_register_cpf|json_script:"login-initial-register-cpf" }}
     {{ initial_register_birth_date|json_script:"login-initial-register-birth-date" }}
-    {{ initial_register_social_name|json_script:"login-initial-register-social-name" }}
     {{ initial_register_phone|json_script:"login-initial-register-phone" }}
+    {{ initial_register_bio|json_script:"login-initial-register-bio" }}
     {{ csrf_token_value|json_script:"csrf-token" }}
 
     <div id="login-root"></div>

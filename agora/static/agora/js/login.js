@@ -15,8 +15,8 @@ function LoginPage() {
     const [registerEmail, setRegisterEmail] = useState(readJsonScriptContent('login-initial-register-email'));
     const [registerCpf, setRegisterCpf] = useState(readJsonScriptContent('login-initial-register-cpf'));
     const [registerBirthDate, setRegisterBirthDate] = useState(readJsonScriptContent('login-initial-register-birth-date'));
-    const [registerSocialName, setRegisterSocialName] = useState(readJsonScriptContent('login-initial-register-social-name'));
     const [registerPhone, setRegisterPhone] = useState(readJsonScriptContent('login-initial-register-phone'));
+    const [registerBio, setRegisterBio] = useState(readJsonScriptContent('login-initial-register-bio'));
     const [registerPassword, setRegisterPassword] = useState('');
     const [registerPasswordConfirm, setRegisterPasswordConfirm] = useState('');
     const [errorMessage, setErrorMessage] = useState(readJsonScriptContent('login-error-message'));
@@ -148,6 +148,7 @@ function LoginPage() {
                                     value={registerFirstName}
                                     onChange={(event) => setRegisterFirstName(event.target.value)}
                                     placeholder="Seu nome"
+                                    required
                                 />
                             </div>
 
@@ -161,6 +162,7 @@ function LoginPage() {
                                     value={registerLastName}
                                     onChange={(event) => setRegisterLastName(event.target.value)}
                                     placeholder="Seu sobrenome"
+                                    required
                                 />
                             </div>
 
@@ -174,6 +176,7 @@ function LoginPage() {
                                     value={registerEmail}
                                     onChange={(event) => setRegisterEmail(event.target.value)}
                                     placeholder="voce@exemplo.com"
+                                    required
                                 />
                             </div>
 
@@ -186,6 +189,7 @@ function LoginPage() {
                                     value={registerCpf}
                                     onChange={(event) => setRegisterCpf(event.target.value)}
                                     placeholder="000.000.000-00"
+                                    required
                                 />
                             </div>
 
@@ -197,18 +201,7 @@ function LoginPage() {
                                     type="date"
                                     value={registerBirthDate}
                                     onChange={(event) => setRegisterBirthDate(event.target.value)}
-                                />
-                            </div>
-
-                            <div className="field">
-                                <label htmlFor="register_social_name">Nome social</label>
-                                <input
-                                    id="register_social_name"
-                                    name="register_social_name"
-                                    type="text"
-                                    value={registerSocialName}
-                                    onChange={(event) => setRegisterSocialName(event.target.value)}
-                                    placeholder="Como deseja ser chamado(a)"
+                                    required
                                 />
                             </div>
 
@@ -222,6 +215,19 @@ function LoginPage() {
                                     value={registerPhone}
                                     onChange={(event) => setRegisterPhone(event.target.value)}
                                     placeholder="(00) 00000-0000"
+                                    required
+                                />
+                            </div>
+
+                            <div className="field">
+                                <label htmlFor="register_bio">Biografia</label>
+                                <textarea
+                                    id="register_bio"
+                                    name="register_bio"
+                                    value={registerBio}
+                                    onChange={(event) => setRegisterBio(event.target.value)}
+                                    placeholder="Conte um pouco sobre você (opcional)"
+                                    rows={3}
                                 />
                             </div>
 
