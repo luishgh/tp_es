@@ -232,42 +232,73 @@ button {
 
 .calendar-month-title {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1.28rem;
     font-weight: 700;
     white-space: nowrap;
     text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .calendar-nav-button {
-    justify-self: end;
     border: 0;
-    border-radius: 14px;
+    border-radius: 999px;
     cursor: pointer;
-    min-height: 38px;
-    padding: 8px 12px;
+    min-height: 40px;
+    padding: 8px 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     color: var(--primary-strong);
     background: rgba(24, 92, 55, 0.1);
-    transition: transform 0.2s ease, background 0.2s ease;
+    transition: transform 0.18s ease, background 0.18s ease;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    justify-self: end;
 }
 
-.calendar-nav-button:hover {
+.calendar-nav-button:hover,
+.calendar-nav-button:focus-visible {
     transform: translateY(-1px);
     background: rgba(24, 92, 55, 0.18);
 }
 
 .calendar-nav-button.ghost {
-    justify-self: start;
     color: var(--accent);
     background: rgba(201, 105, 44, 0.14);
+    justify-self: start;
 }
 
 .calendar-nav-button.ghost:hover {
     background: rgba(201, 105, 44, 0.2);
 }
 
+.calendar-nav-button.is-current-month {
+    background: linear-gradient(180deg, rgba(24, 92, 55, 0.24), rgba(24, 92, 55, 0.16));
+    color: var(--primary-strong);
+}
+
 .calendar-nav-button:focus-visible {
     outline: 2px solid rgba(24, 92, 55, 0.45);
     outline-offset: 2px;
+}
+
+.calendar-nav-button:disabled {
+    opacity: 0.52;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.calendar-nav-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.calendar-nav-text {
+    white-space: nowrap;
 }
 
 .weekday-row,
@@ -285,6 +316,7 @@ button {
 }
 
 .day-card {
+    position: relative;
     min-height: 150px;
     padding: 14px;
     display: flex;
@@ -311,6 +343,24 @@ button {
     font-weight: 700;
     color: var(--primary);
     background: rgba(24, 92, 55, 0.08);
+}
+
+.day-multi-indicator {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    height: 22px;
+    min-width: 22px;
+    padding: 0 7px;
+    border-radius: 999px;
+    display: inline-grid;
+    place-items: center;
+    line-height: 1;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--surface-strong);
+    background: linear-gradient(135deg, rgba(24, 92, 55, 0.95), rgba(20, 77, 41, 0.95));
+    box-shadow: 0 10px 20px rgba(24, 56, 36, 0.25);
 }
 
 .day-items {
@@ -601,7 +651,13 @@ button {
     }
 
     .calendar-month-bar {
-        grid-template-columns: 1fr;
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        gap: 8px;
+    }
+
+    .calendar-month-title {
+        text-align: left;
+        font-size: 1.08rem;
     }
 
     .topbar-actions {
@@ -632,5 +688,24 @@ button {
     .day-card {
         min-height: 120px;
         padding: 10px;
+    }
+}
+
+@media (max-width: 640px) {
+    .calendar-month-bar {
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+    }
+
+    .calendar-nav-text {
+        display: none;
+    }
+
+    .calendar-nav-button {
+        padding: 8px 10px;
+        min-width: 40px;
+    }
+
+    .calendar-month-title {
+        min-width: 0;
     }
 }
