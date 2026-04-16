@@ -21,4 +21,5 @@ from .courses import (  # noqa: E402,F401
     publish_course_view,
     request_enrollment_view,
 )
-from .dashboard import calendar_view, index  # noqa: E402,F401
+from .calendar import calendar_view  # noqa: E402,F401
+from .dashboard import index  # noqa: E402,F401
