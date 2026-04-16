@@ -16,16 +16,18 @@
 
     <section class="calendar-layout">
         <section class="calendar-panel">
-            <div class="calendar-month-bar">
-                <button class="calendar-nav-button" id="calendar-prev-month" type="button" aria-label="Mês anterior">
-                    ← Anterior
+            <div class="calendar-month-bar" id="calendar-month-controls" aria-label="Navegação do mês">
+                <button class="calendar-nav-button" id="calendar-prev-month" type="button" aria-label="Mês anterior" aria-controls="calendar-grid">
+                    <span class="calendar-nav-icon" aria-hidden="true">‹</span>
+                    <span class="calendar-nav-text">Anterior</span>
                 </button>
-                <div class="calendar-month-title" id="calendar-month-label" aria-live="polite" role="status"></div>
-                <button class="calendar-nav-button" id="calendar-next-month" type="button" aria-label="Próximo mês">
-                    Próximo →
-                </button>
-                <button class="calendar-nav-button ghost" id="calendar-today-month" type="button">
+                <div class="calendar-month-title" id="calendar-month-label" aria-live="polite" role="status" aria-atomic="true"></div>
+                <button class="calendar-nav-button ghost" id="calendar-today-month" type="button" aria-label="Voltar para o mês atual" aria-controls="calendar-grid">
                     Hoje
+                </button>
+                <button class="calendar-nav-button" id="calendar-next-month" type="button" aria-label="Próximo mês" aria-controls="calendar-grid">
+                    <span class="calendar-nav-text">Próximo</span>
+                    <span class="calendar-nav-icon" aria-hidden="true">›</span>
                 </button>
             </div>
 
