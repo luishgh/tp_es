@@ -1,8 +1,6 @@
 from collections import defaultdict
 
 import locale
-import calendar as month_calendar
-from datetime import date
 from datetime import timedelta
 from datetime import datetime
 
@@ -838,18 +836,12 @@ def enrollment_decision_view(request, enrollment_id, decision):
 @never_cache
 @login_required(login_url='agora:login')
 def calendar_view(request):
-    now = timezone.localtime()
-
     role = _user_role(request.user)
 
     if role == UserProfile.Role.TEACHER:
         return redirect('agora:index')
-    
-    current_year = now.year
-    current_month = now.month
-    month_matrix = month_calendar.monthcalendar(current_year, current_month)
+
     weekday_labels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
-    month_label = date(current_year, current_month, 1).strftime('%B de %Y').capitalize()
 
     enrollments = list(request.user.enrollments.filter(
         status=Enrollment.Status.ACTIVE
@@ -861,69 +853,62 @@ def calendar_view(request):
         .filter(
             course_id__in=course_ids,
             is_published=True,
-            due_date__year=current_year,
-            due_date__month=current_month,
-        )
-        .exclude(
-            submissions__student=request.user,
-            submissions__status__in=[
-                Submission.Status.SUBMITTED,
-                Submission.Status.REVIEWED,
-                Submission.Status.LATE,
-            ],
+            due_date__isnull=False,
         )
         .distinct()
         .order_by('due_date', 'title')
     )
 
-    activities_by_day = defaultdict(list)
-    upcoming_items = []
-    today = now.date()
+    submission_status_by_activity = {
+        item['activity_id']: item['status']
+        for item in Submission.objects.filter(
+            student=request.user,
+            activity__in=activities,
+        ).values('activity_id', 'status')
+    }
+
+    sent_statuses = {
+        Submission.Status.SUBMITTED,
+        Submission.Status.REVIEWED,
+        Submission.Status.LATE,
+    }
+
+    calendar_items = []
+    agenda_items = []
 
     for activity in activities:
         due_dt = timezone.localtime(activity.due_date) if activity.due_date else None
         if not due_dt:
             continue
 
-        status = 'Planejada'
-        tone = 'neutral'
-        if due_dt.date() < today:
-            status = 'Atrasada'
-            tone = 'danger'
-        elif due_dt.date() == today:
-            status = 'Hoje'
-            tone = 'warning'
-        elif due_dt.date() <= today + timedelta(days=3):
-            status = 'Próxima'
-            tone = 'accent'
+        is_sent = submission_status_by_activity.get(activity.id) in sent_statuses
+        status_label = 'Enviada' if is_sent else 'Pendente'
+        status_tone = 'sent' if is_sent else 'pending'
+        due_sort = due_dt.timestamp()
 
         item = {
+            'id': activity.id,
+            'detail_url': reverse('agora:resource_detail', args=[activity.id]),
             'title': activity.title,
             'course_code': activity.course.code,
             'course_title': activity.course.title,
+            'due_iso': due_dt.isoformat(),
+            'due_sort': due_sort,
             'time_label': due_dt.strftime('%H:%M'),
             'date_label': due_dt.strftime('%d/%m, %H:%M'),
-            'status_label': status,
-            'status_tone': tone,
+            'status_label': status_label,
+            'status_tone': status_tone,
         }
-        activities_by_day[due_dt.day].append(item)
-        upcoming_items.append(item)
+        calendar_items.append(item)
 
-    calendar_weeks = []
-    for week in month_matrix:
-        cells = []
-        for day_number in week:
-            in_month = day_number != 0
-            day_items = activities_by_day.get(day_number, []) if in_month else []
-            cells.append({
-                    'day': day_number,
-                    'in_month': in_month,
-                    'is_today': in_month and day_number == today.day,
-                    'items': day_items[:2],
-                    'extra_count': max(len(day_items) - 2, 0),
-            })
+        if not is_sent:
+            agenda_items.append(item)
 
-        calendar_weeks.append(cells)
+    agenda_items.sort(key=lambda item: (
+        item['due_sort'],
+        item['course_code'],
+        item['title'],
+    ))
 
     reviewed_submissions = list(
         Submission.objects.select_related('activity', 'activity__course', 'activity__course__teacher')
@@ -932,30 +917,32 @@ def calendar_view(request):
             activity__course_id__in=course_ids,
             status=Submission.Status.REVIEWED,
             score__isnull=False,
+            graded_at__isnull=False,
         )
         .order_by('-graded_at', '-updated_at', '-id')
     )
 
     grade_cards = [{
+            'id': submission.activity.id,
+            'detail_url': reverse('agora:resource_detail', args=[submission.activity.id]),
             'course_code': submission.activity.course.code,
             'course_title': submission.activity.course.title,
             'teacher_name': submission.activity.course.teacher.get_full_name() or submission.activity.course.teacher.username,
             'activity_title': submission.activity.title,
             'score': submission.score,
-            'graded_at': submission.graded_at or submission.updated_at,
+            'graded_at': submission.graded_at,
             'feedback': submission.feedback,
         } for submission in reviewed_submissions
     ]
 
-    agenda_page = Paginator(upcoming_items, 3).get_page(request.GET.get('agenda_page'))
-    grade_page = Paginator(grade_cards, 3).get_page(request.GET.get('grade_page'))
+    agenda_items = agenda_items[:3]
+    grade_cards = grade_cards[:3]
 
     context = {
-        'month_label': month_label,
         'weekday_labels': weekday_labels,
-        'calendar_weeks': calendar_weeks,
-        'agenda_page': agenda_page,
-        'grade_page': grade_page,
+        'calendar_items': calendar_items,
+        'agenda_items': agenda_items,
+        'grade_cards': grade_cards,
     }
 
     return render(request, 'agora/calendar.html', context)

@@ -8,60 +8,51 @@
 {% block main_class %}calendar-main{% endblock %}
 
 {% block page_eyebrow %}Calendário acadêmico{% endblock %}
-{% block page_title %}{{ month_label }}{% endblock %}
-{% block page_lead %}As atividades são marcadas diretamente nos dias do mês para facilitar a visualização dos prazos.{% endblock %}
+{% block page_title %}Calendário{% endblock %}
+{% block page_lead %}As atividades são marcadas nos dias do mês para facilitar a visualização dos prazos e status de envio.{% endblock %}
 
 {% block content %}
+    {{ calendar_items|json_script:'calendar-data' }}
+
     <section class="calendar-layout">
         <section class="calendar-panel">
+            <div class="calendar-month-bar">
+                <button class="calendar-nav-button" id="calendar-prev-month" type="button" aria-label="Mês anterior">
+                    ← Anterior
+                </button>
+                <div class="calendar-month-title" id="calendar-month-label" aria-live="polite" role="status"></div>
+                <button class="calendar-nav-button" id="calendar-next-month" type="button" aria-label="Próximo mês">
+                    Próximo →
+                </button>
+                <button class="calendar-nav-button ghost" id="calendar-today-month" type="button">
+                    Hoje
+                </button>
+            </div>
+
             <div class="weekday-row">
                 {% for label in weekday_labels %}
                     <div class="weekday-cell">{{ label }}</div>
                 {% endfor %}
             </div>
 
-            <div class="calendar-grid">
-                {% for week in calendar_weeks %}
-                    {% for day in week %}
-                        <article class="day-card {% if not day.in_month %}is-empty{% endif %} {% if day.is_today %}is-today{% endif %}">
-                            {% if day.in_month %}
-                                <div class="day-number">{{ day.day }}</div>
-
-                                {% if day.items %}
-                                    <div class="day-items">
-                                        {% for item in day.items %}
-                                            <div class="calendar-badge {{ item.status_tone }}">
-                                                <strong>{{ item.course_code }}</strong>
-                                                <span>{{ item.title }}</span>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                    {% if day.extra_count %}
-                                        <div class="extra-label">+{{ day.extra_count }} tarefa{{ day.extra_count|pluralize }}</div>
-                                    {% endif %}
-                                {% else %}
-                                    <div class="day-empty">Sem tarefas</div>
-                                {% endif %}
-                            {% endif %}
-                        </article>
-                    {% endfor %}
-                {% endfor %}
+            <div class="calendar-grid" id="calendar-grid">
+                <article class="day-card is-empty"></article>
             </div>
         </section>
 
         <aside class="info-column">
-            <section id="agenda-panel" class="panel async-panel">
+            <section id="agenda-panel" class="panel">
                 <div class="section-head">
                     <div>
-                        <p class="eyebrow">Agenda do mês</p>
+                        <p class="eyebrow">Agenda</p>
                         <h2>Tarefas pendentes</h2>
                     </div>
                 </div>
 
-                {% if agenda_page.paginator.count %}
+                {% if agenda_items %}
                     <div class="agenda-list">
-                        {% for item in agenda_page %}
-                            <article class="agenda-item">
+                        {% for item in agenda_items %}
+                            <a class="agenda-item agenda-item-link" href="{{ item.detail_url }}">
                                 <div class="agenda-head">
                                     <strong>{{ item.title }}</strong>
                                     <span class="status-pill {{ item.status_tone }}">{{ item.status_label }}</span>
@@ -70,31 +61,18 @@
                                     <span>{{ item.course_code }} · {{ item.course_title }}</span>
                                     <span>{{ item.date_label }}</span>
                                 </div>
-                            </article>
+                            </a>
                         {% endfor %}
                     </div>
-                    {% if agenda_page.has_other_pages %}
-                        <div class="pagination-row">
-                            <span class="pagination-label">Página {{ agenda_page.number }} de {{ agenda_page.paginator.num_pages }}</span>
-                            <div class="pagination-actions">
-                                {% if agenda_page.has_previous %}
-                                    <a class="page-button" data-async-panel="agenda-panel" href="?agenda_page={{ agenda_page.previous_page_number }}&grade_page={{ grade_page.number }}">← Anterior</a>
-                                {% endif %}
-                                {% if agenda_page.has_next %}
-                                    <a class="page-button" data-async-panel="agenda-panel" href="?agenda_page={{ agenda_page.next_page_number }}&grade_page={{ grade_page.number }}">Próxima →</a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endif %}
                 {% else %}
                     <div class="empty-state">
-                        <h3>Nenhuma atividade neste mês.</h3>
-                        <p>Quando houver tarefas com prazo definido para este mês, elas aparecerão aqui e no calendário.</p>
+                        <h3>Nenhuma tarefa pendente.</h3>
+                        <p>Quando houver novas tarefas aguardando envio, elas aparecerão aqui e no calendário.</p>
                     </div>
                 {% endif %}
             </section>
 
-            <section id="grade-panel" class="panel async-panel">
+            <section id="grade-panel" class="panel">
                 <div class="section-head">
                     <div>
                         <p class="eyebrow">Desempenho acadêmico</p>
@@ -102,10 +80,10 @@
                     </div>
                 </div>
 
-                {% if grade_page.paginator.count %}
+                {% if grade_cards %}
                     <div class="grade-list">
-                        {% for grade in grade_page %}
-                            <article class="grade-card">
+                        {% for grade in grade_cards %}
+                            <a class="grade-card grade-item-link" href="{{ grade.detail_url }}">
                                 <div class="grade-head">
                                     <strong>{{ grade.course_code }}</strong>
                                     <span>{{ grade.activity_title }}</span>
@@ -118,22 +96,9 @@
                                     <span>Nota: {{ grade.score }}</span>
                                     <span>Corrigida em {{ grade.graded_at|date:"d/m, H:i" }}</span>
                                 </div>
-                            </article>
+                            </a>
                         {% endfor %}
                     </div>
-                    {% if grade_page.has_other_pages %}
-                        <div class="pagination-row">
-                            <span class="pagination-label">Página {{ grade_page.number }} de {{ grade_page.paginator.num_pages }}</span>
-                            <div class="pagination-actions">
-                                {% if grade_page.has_previous %}
-                                    <a class="page-button" data-async-panel="grade-panel" href="?agenda_page={{ agenda_page.number }}&grade_page={{ grade_page.previous_page_number }}">← Anterior</a>
-                                {% endif %}
-                                {% if grade_page.has_next %}
-                                    <a class="page-button" data-async-panel="grade-panel" href="?agenda_page={{ agenda_page.number }}&grade_page={{ grade_page.next_page_number }}">Próxima →</a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endif %}
                 {% else %}
                     <div class="empty-state">
                         <h3>Nenhuma atividade corrigida ainda.</h3>
@@ -146,5 +111,5 @@
 {% endblock %}
 
 {% block scripts %}
-    <script src="{% static 'agora/js/async_panels.js' %}"></script>
+    <script src="{% static 'agora/js/calendar.js' %}" defer></script>
 {% endblock %}
