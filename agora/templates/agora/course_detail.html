@@ -47,7 +47,7 @@
                 {% if is_teacher %}
                     <div class="section-actions">
                         <a class="primary-button compact" href="{% url 'agora:module_create' course.id %}">Novo Módulo</a>
-                        <a class="ghost-button compact" href="{% url 'agora:course_item_create' course.id %}">Nova Atividade/Recurso</a>
+                        <a class="ghost-button compact" href="{% url 'agora:course_item_create' course.id %}">Novo Conteúdo</a>
                         {% if not course.is_published %}
                             <form method="post" action="{% url 'agora:publish_course' course.id %}" onsubmit="return confirm('Deseja publicar este curso?');">
                                 {% csrf_token %}
