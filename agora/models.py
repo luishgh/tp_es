@@ -250,6 +250,12 @@ class Activity(models.Model):
         blank=True,
         verbose_name='link de anexo',
     )
+    attachment_file = models.FileField(
+        upload_to='activity_materials/',
+        blank=True,
+        null=True,
+        verbose_name='arquivo de anexo',
+    )
     due_date = models.DateTimeField(
         null=True,
         blank=True,

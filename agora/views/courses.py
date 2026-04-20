@@ -153,6 +153,7 @@ def course_detail_view(request, course_id):
             'activity_type': activity.get_activity_type_display(),
             'activity_type_value': activity.activity_type,
             'attachment_url': activity.attachment_url,
+            'attachment_file_url': activity.attachment_file.url if activity.attachment_file else '',
             'due_date': activity.due_date,
             'max_score': activity.max_score,
             'is_published': activity.is_published,

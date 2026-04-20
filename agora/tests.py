@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
@@ -197,6 +198,32 @@ class ActivityCreateViewTests(TestCase):
         self.assertEqual(activity.activity_type, Activity.Type.RESOURCE)
         self.assertIsNone(activity.due_date)
         self.assertIsNone(activity.max_score)
+
+    def test_teacher_can_create_material_with_uploaded_file(self):
+        self.client.force_login(self.teacher)
+
+        uploaded_file = SimpleUploadedFile(
+            'slides.pdf',
+            b'%PDF-1.4 fake pdf content',
+            content_type='application/pdf',
+        )
+
+        response = self.client.post(
+            reverse('agora:activity_create', args=[self.course.id]),
+            data={
+                'activity_kind': Activity.Type.RESOURCE,
+                'module': str(self.module.id),
+                'title': 'Arquivo 1',
+                'description': 'Material com upload.',
+                'attachment_file': uploaded_file,
+                'is_published': 'on',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        activity = Activity.objects.get(title='Arquivo 1')
+        self.assertTrue(bool(activity.attachment_file))
+        self.assertEqual(activity.attachment_url, '')
 
     def test_assignment_requires_max_score(self):
         self.client.force_login(self.teacher)

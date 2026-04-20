@@ -38,7 +38,7 @@
                 </div>
             </div>
 
-            <form class="agora-form activity-create-form" method="post">
+            <form class="agora-form activity-create-form" method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <input type="hidden" name="activity_kind" value="{{ selected_type }}">
 
@@ -73,6 +73,16 @@
                         <label for="{{ form.attachment_url.id_for_label }}">{{ form.attachment_url.label }}</label>
                         {{ form.attachment_url }}
                         {% for error in form.attachment_url.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if form.attachment_file %}
+                    <div class="form-field">
+                        <label for="{{ form.attachment_file.id_for_label }}">{{ form.attachment_file.label }}</label>
+                        {{ form.attachment_file }}
+                        {% for error in form.attachment_file.errors %}
                             <span class="field-error">{{ error }}</span>
                         {% endfor %}
                     </div>

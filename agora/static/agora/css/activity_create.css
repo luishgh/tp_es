@@ -51,6 +51,7 @@
 .activity-create-form {
     display: grid;
     gap: 22px;
+    padding: 20px;
 }
 
 .activity-form-grid {

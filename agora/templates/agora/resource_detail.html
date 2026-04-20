@@ -48,8 +48,11 @@
                 {% if activity.activity_type == 'assignment' and activity.max_score|default_if_none:"" != "" %}
                     <p><strong>Nota Máxima:</strong> {{ activity.max_score }}</p>
                 {% endif %}
+                {% if activity.attachment_file %}
+                    <p><strong>Arquivo:</strong> <a href="{{ activity.attachment_file.url }}" target="_blank">Baixar material</a></p>
+                {% endif %}
                 {% if activity.attachment_url %}
-                    <p><strong>Anexo:</strong> <a href="{{ activity.attachment_url }}" target="_blank">Abrir link</a></p>
+                    <p><strong>Link:</strong> <a href="{{ activity.attachment_url }}" target="_blank">Abrir link</a></p>
                 {% endif %}
             </div>
         </section>

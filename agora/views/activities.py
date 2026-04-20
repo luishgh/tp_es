@@ -91,7 +91,7 @@ def activity_create_view(request, course_id):
     form_class = selected_config['form_class']
 
     if request.method == 'POST':
-        form = form_class(request.POST, course=course)
+        form = form_class(request.POST, request.FILES, course=course)
         form.instance.created_by = request.user
         form.instance.course = course
         form.instance.activity_type = selected_type

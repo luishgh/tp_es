@@ -88,9 +88,6 @@
                                         {% if activity.activity_type_value == 'assignment' and activity.max_score|default_if_none:"" != "" %}
                                             <span>Nota Máxima: {{ activity.max_score }}</span>
                                         {% endif %}
-                                        {% if activity.attachment_url %}
-                                            <span><a href="{{ activity.attachment_url }}" target="_blank">Anexo</a></span>
-                                        {% endif %}
                                     </div>
                                 </article>
                             {% endfor %}
@@ -147,9 +144,6 @@
                                         {% endif %}
                                         {% if activity.activity_type_value == 'assignment' and activity.max_score|default_if_none:"" != "" %}
                                             <span>Nota Máxima: {{ activity.max_score }}</span>
-                                        {% endif %}
-                                        {% if activity.attachment_url %}
-                                            <span><a href="{{ activity.attachment_url }}" target="_blank">Anexo</a></span>
                                         {% endif %}
                                     </div>
                                 </article>

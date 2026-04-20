@@ -188,26 +188,35 @@ class ResourceCreateForm(BaseCourseActivityForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['attachment_url'].widget.attrs.update({'placeholder': 'https://...'})
+        self.fields['attachment_file'].widget.attrs.update({
+            'accept': '.pdf,.doc,.docx,.ppt,.pptx,.txt,.zip,.png,.jpg,.jpeg',
+        })
 
     class Meta:
         model = Activity
-        fields = ['module', 'title', 'description', 'attachment_url', 'is_published']
+        fields = ['module', 'title', 'description', 'attachment_url', 'attachment_file', 'is_published']
         labels = {
             'module': 'Módulo (opcional)',
             'title': 'Título do material',
             'description': 'Descrição',
             'attachment_url': 'Link do material',
+            'attachment_file': 'Arquivo do material',
             'is_published': 'Publicar agora',
         }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 5}),
         }
 
-    def clean_attachment_url(self):
-        attachment_url = (self.cleaned_data.get('attachment_url') or '').strip()
-        if not attachment_url:
-            raise forms.ValidationError('Informe o link do material.')
-        return attachment_url
+    def clean(self):
+        cleaned_data = super().clean()
+        attachment_url = (cleaned_data.get('attachment_url') or '').strip()
+        attachment_file = cleaned_data.get('attachment_file')
+
+        cleaned_data['attachment_url'] = attachment_url
+        if not attachment_url and not attachment_file:
+            raise forms.ValidationError('Informe um link ou envie um arquivo para o material.')
+
+        return cleaned_data
 
 
 class AssignmentCreateForm(BaseCourseActivityForm):
