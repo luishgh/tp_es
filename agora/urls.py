@@ -1,22 +1,6 @@
 from django.urls import path
 
-from .views import (
-    activity_create_view,
-    calendar_view,
-    course_detail_view,
-    courses_hub_view,
-    create_user_view,
-    enrollment_decision_view,
-    index,
-    login_view,
-    logout_view,
-    module_create_view,
-    request_enrollment_view,
-    publish_course_view,
-    resource_detail_view,
-    publish_activity_view,
-    submission_list_view,
-)
+from .views import *
 
 app_name = 'agora'
 
