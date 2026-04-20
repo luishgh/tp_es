@@ -381,7 +381,7 @@ def course_item_detail_view(request, course_item_id):
         'quiz_score': quiz_score,
         'material_actions': material_actions,
     }
-    return render(request, 'agora/resource_detail.html', context)
+    return render(request, 'agora/course_item_detail.html', context)
 
 
 @never_cache

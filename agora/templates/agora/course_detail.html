@@ -72,7 +72,7 @@
                             {% for activity in module.activities_page %}
                                 <article class="activity-card">
                                     <div class="activity-head">
-                                        <strong><a href="{% url 'agora:resource_detail' activity.id %}">{{ activity.title }}</a></strong>
+                                        <strong><a href="{% url 'agora:course_item_detail' activity.id %}">{{ activity.title }}</a></strong>
                                         {% if activity.is_published %}
                                             <span class="status-pill accent">Publicado</span>
                                         {% else %}
@@ -129,7 +129,7 @@
                             {% for activity in activities_without_module %}
                                 <article class="activity-card">
                                     <div class="activity-head">
-                                        <strong><a href="{% url 'agora:resource_detail' activity.id %}">{{ activity.title }}</a></strong>
+                                        <strong><a href="{% url 'agora:course_item_detail' activity.id %}">{{ activity.title }}</a></strong>
                                         {% if activity.is_published %}
                                             <span class="status-pill accent">Publicado</span>
                                         {% else %}
