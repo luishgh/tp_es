@@ -285,7 +285,6 @@ button {
     text-decoration: none;
 }
 
-.calendar-badge-link:hover .calendar-badge span,
 .agenda-item-link:hover .agenda-head strong {
     text-decoration: underline;
 }
