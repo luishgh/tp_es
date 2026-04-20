@@ -142,11 +142,10 @@ class ActivityCreateViewTests(TestCase):
         response = self.client.post(
             reverse('agora:activity_create', args=[self.course.id]),
             data={
+                'activity_kind': Activity.Type.ASSIGNMENT,
                 'module': str(self.module.id),
                 'title': 'Lista 1',
                 'description': 'Exercícios da semana.',
-                'activity_type': Activity.Type.ASSIGNMENT,
-                'attachment_url': '',
                 'due_date': '2026-04-30T23:59',
                 'max_score': '10',
                 'is_published': 'on',
@@ -164,11 +163,10 @@ class ActivityCreateViewTests(TestCase):
         response = self.client.post(
             reverse('agora:activity_create', args=[self.course.id]),
             data={
+                'activity_kind': Activity.Type.ASSIGNMENT,
                 'module': str(self.other_module.id),
                 'title': 'Lista X',
                 'description': 'Teste.',
-                'activity_type': Activity.Type.ASSIGNMENT,
-                'attachment_url': '',
                 'due_date': '2026-04-30T23:59',
                 'max_score': '10',
                 'is_published': 'on',
@@ -185,10 +183,10 @@ class ActivityCreateViewTests(TestCase):
         response = self.client.post(
             reverse('agora:activity_create', args=[self.course.id]),
             data={
+                'activity_kind': Activity.Type.RESOURCE,
                 'module': str(self.module.id),
                 'title': 'Slides 1',
                 'description': 'Material de apoio.',
-                'activity_type': Activity.Type.RESOURCE,
                 'attachment_url': 'https://example.com/slides',
                 'is_published': 'on',
             },
@@ -206,11 +204,10 @@ class ActivityCreateViewTests(TestCase):
         response = self.client.post(
             reverse('agora:activity_create', args=[self.course.id]),
             data={
+                'activity_kind': Activity.Type.ASSIGNMENT,
                 'module': str(self.module.id),
                 'title': 'Lista sem nota',
                 'description': 'Teste.',
-                'activity_type': Activity.Type.ASSIGNMENT,
-                'attachment_url': '',
                 'due_date': '2026-04-30T23:59',
                 'is_published': 'on',
             },

@@ -2,53 +2,83 @@
 {% load static %}
 
 {% block title %}{{ form_title }} | {{ course.title }} | Ágora{% endblock %}
-{% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/base.css' %}">{% endblock %}
-{% block scripts %}<script defer src="{% static 'agora/js/activity_form.js' %}"></script>{% endblock %}
-{# Removed shell_class, sidebar_class, and main_class block overrides #}
+{% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/activity_create.css' %}">{% endblock %}
 
 {% block page_eyebrow %}{{ course.code }} · {{ course.title }}{% endblock %}
-{% block page_title %}{{ form_title }}{% endblock %}
+{% block page_title %}Criar Atividade{% endblock %}
 {% block page_lead %}
-    Preencha os dados para {{ form_title|lower }}.
+    Escolha o tipo de atividade que deseja adicionar ao curso e preencha o formulário correspondente.
 {% endblock %}
 
 {% block content %}
-    <section class="content-grid">
-        <section class="panel">
-            <div class="section-head">
+    <section class="activity-create-shell">
+        <section class="panel activity-type-panel">
+            <div class="section-head activity-type-head">
                 <div>
-                    <p class="eyebrow">{{ course.code }} · {{ course.title }}</p>
+                    <p class="eyebrow">Tipo de atividade</p>
+                    <h2>O que você quer criar?</h2>
+                </div>
+            </div>
+
+            <div class="activity-type-grid">
+                {% for option in activity_type_options %}
+                    <a class="activity-type-card {% if option.is_selected %}is-selected{% endif %}" href="{{ option.url }}">
+                        <strong>{{ option.label }}</strong>
+                        <p>{{ option.description }}</p>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="panel activity-form-panel">
+            <div class="section-head activity-form-head">
+                <div>
+                    <p class="eyebrow">Formulário</p>
                     <h2>{{ form_title }}</h2>
                 </div>
             </div>
-            <form class="agora-form" method="post">
-                {% csrf_token %}
 
-                <div class="form-field">
-                    <label for="{{ form.activity_type.id_for_label }}">{{ form.activity_type.label }}</label>
-                    {{ form.activity_type }}
-                    {% for error in form.activity_type.errors %}
-                        <span class="field-error">{{ error }}</span>
-                    {% endfor %}
+            <form class="agora-form activity-create-form" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="activity_kind" value="{{ selected_type }}">
+
+                {% for error in form.non_field_errors %}
+                    <span class="field-error form-error-banner">{{ error }}</span>
+                {% endfor %}
+
+                <div class="activity-form-grid">
+                    {% if form.module %}
+                        <div class="form-field">
+                            <label for="{{ form.module.id_for_label }}">{{ form.module.label }}</label>
+                            {{ form.module }}
+                            {% for error in form.module.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    {% if form.title %}
+                        <div class="form-field form-field-wide">
+                            <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+                            {{ form.title }}
+                            {% for error in form.title.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
 
-                <div class="js-activity-fields" hidden>
+                {% if form.attachment_url %}
                     <div class="form-field">
-                        <label for="{{ form.module.id_for_label }}">{{ form.module.label }}</label>
-                        {{ form.module }}
-                        {% for error in form.module.errors %}
+                        <label for="{{ form.attachment_url.id_for_label }}">{{ form.attachment_url.label }}</label>
+                        {{ form.attachment_url }}
+                        {% for error in form.attachment_url.errors %}
                             <span class="field-error">{{ error }}</span>
                         {% endfor %}
                     </div>
+                {% endif %}
 
-                    <div class="form-field">
-                        <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
-                        {{ form.title }}
-                        {% for error in form.title.errors %}
-                            <span class="field-error">{{ error }}</span>
-                        {% endfor %}
-                    </div>
-
+                {% if form.description %}
                     <div class="form-field">
                         <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
                         {{ form.description }}
@@ -56,8 +86,10 @@
                             <span class="field-error">{{ error }}</span>
                         {% endfor %}
                     </div>
+                {% endif %}
 
-                    <div class="js-fields-assignment" hidden>
+                <div class="activity-form-grid">
+                    {% if form.due_date %}
                         <div class="form-field">
                             <label for="{{ form.due_date.id_for_label }}">{{ form.due_date.label }}</label>
                             {{ form.due_date }}
@@ -65,7 +97,9 @@
                                 <span class="field-error">{{ error }}</span>
                             {% endfor %}
                         </div>
+                    {% endif %}
 
+                    {% if form.max_score %}
                         <div class="form-field">
                             <label for="{{ form.max_score.id_for_label }}">{{ form.max_score.label }}</label>
                             {{ form.max_score }}
@@ -73,27 +107,15 @@
                                 <span class="field-error">{{ error }}</span>
                             {% endfor %}
                         </div>
-                    </div>
+                    {% endif %}
+                </div>
 
-                    <div class="js-fields-resource" hidden>
-                        <div class="form-field">
-                            <label for="{{ form.attachment_url.id_for_label }}">{{ form.attachment_url.label }}</label>
-                            {{ form.attachment_url }}
-                            {% for error in form.attachment_url.errors %}
-                                <span class="field-error">{{ error }}</span>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <label class="checkbox-field" for="{{ form.is_published.id_for_label }}">
+                {% if form.is_published %}
+                    <label class="checkbox-field activity-checkbox" for="{{ form.is_published.id_for_label }}">
                         {{ form.is_published }}
                         <span>{{ form.is_published.label }}</span>
                     </label>
-                </div>
-
-                {% for error in form.non_field_errors %}
-                    <span class="field-error">{{ error }}</span>
-                {% endfor %}
+                {% endif %}
 
                 <div class="form-actions">
                     <button class="primary-button" type="submit">{{ submit_button_text }}</button>

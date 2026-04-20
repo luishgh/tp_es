@@ -159,71 +159,128 @@ class ModuleCreateForm(forms.ModelForm):
         return cleaned_data
 
 
-class ActivityCreateForm(forms.ModelForm):
-    class Meta:
-        model = Activity
-        fields = [
-            'module',
-            'title',
-            'description',
-            'activity_type',
-            'attachment_url',
-            'due_date',
-            'max_score',
-            'is_published',
-        ]
-        labels = {
-            'module': 'Módulo (opcional)',
-            'title': 'Título da Atividade/Recurso',
-            'description': 'Descrição',
-            'activity_type': 'Tipo',
-            'attachment_url': 'Link do Anexo (para recursos)',
-            'due_date': 'Data de Entrega (para tarefas)',
-            'max_score': 'Nota Máxima',
-            'is_published': 'Publicar agora',
-        }
-        widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'due_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        }
+class BaseCourseActivityForm(forms.ModelForm):
+    title_placeholder = ''
+    description_placeholder = ''
 
     def __init__(self, *args, **kwargs):
         course = kwargs.pop('course', None)
         super().__init__(*args, **kwargs)
-        if course:
+
+        if course and 'module' in self.fields:
             self.instance.course = course
             self.fields['module'].queryset = Module.objects.filter(course=course).order_by('order', 'title')
             self.fields['module'].required = False
 
-        activity_type_field = self.fields.get('activity_type')
-        if activity_type_field:
-            activity_type_field.choices = [('', 'Selecione o tipo')] + list(Activity.Type.choices)
-            activity_type_field.widget.attrs['class'] = (
-                (activity_type_field.widget.attrs.get('class', '') + ' js-activity-type').strip()
-            )
-            if not self.is_bound and not getattr(self.instance, 'pk', None):
-                activity_type_field.initial = ''
+        if 'title' in self.fields and self.title_placeholder:
+            self.fields['title'].widget.attrs.update({'placeholder': self.title_placeholder})
+        if 'description' in self.fields and self.description_placeholder:
+            self.fields['description'].widget.attrs.update({'placeholder': self.description_placeholder})
+
+    def clean_title(self):
+        return self.cleaned_data['title'].strip()
+
+
+class ResourceCreateForm(BaseCourseActivityForm):
+    title_placeholder = 'Ex.: Slides da aula 1'
+    description_placeholder = 'Explique brevemente o que o estudante encontrará neste material.'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['attachment_url'].widget.attrs.update({'placeholder': 'https://...'})
+
+    class Meta:
+        model = Activity
+        fields = ['module', 'title', 'description', 'attachment_url', 'is_published']
+        labels = {
+            'module': 'Módulo (opcional)',
+            'title': 'Título do material',
+            'description': 'Descrição',
+            'attachment_url': 'Link do material',
+            'is_published': 'Publicar agora',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 5}),
+        }
+
+    def clean_attachment_url(self):
+        attachment_url = (self.cleaned_data.get('attachment_url') or '').strip()
+        if not attachment_url:
+            raise forms.ValidationError('Informe o link do material.')
+        return attachment_url
+
+
+class AssignmentCreateForm(BaseCourseActivityForm):
+    title_placeholder = 'Ex.: Lista 1'
+    description_placeholder = 'Descreva a proposta da tarefa, critérios e orientações de entrega.'
+
+    class Meta:
+        model = Activity
+        fields = ['module', 'title', 'description', 'due_date', 'max_score', 'is_published']
+        labels = {
+            'module': 'Módulo (opcional)',
+            'title': 'Título da tarefa',
+            'description': 'Descrição',
+            'due_date': 'Data de entrega',
+            'max_score': 'Nota máxima',
+            'is_published': 'Publicar agora',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 5}),
+            'due_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
 
     def clean(self):
         cleaned_data = super().clean()
-        activity_type = cleaned_data.get('activity_type')
-
-        if activity_type == Activity.Type.ASSIGNMENT:
-            attachment_url = cleaned_data.get('attachment_url', '')
-            if attachment_url:
-                cleaned_data['attachment_url'] = attachment_url.strip()
-            if not cleaned_data.get('due_date'):
-                self.add_error('due_date', 'Informe a data de entrega para uma tarefa.')
-            if cleaned_data.get('max_score') is None:
-                self.add_error('max_score', 'Informe a nota máxima para uma tarefa.')
-        elif activity_type == Activity.Type.RESOURCE:
-            if not cleaned_data.get('attachment_url'):
-                self.add_error('attachment_url', 'Informe o link do material.')
-            cleaned_data['due_date'] = None
-            cleaned_data['max_score'] = None
-        elif activity_type in (None, ''):
-            self.add_error('activity_type', 'Selecione o tipo.')
-        else:
-            self.add_error('activity_type', 'Tipo não suportado.')
-
+        if not cleaned_data.get('due_date'):
+            self.add_error('due_date', 'Informe a data de entrega da tarefa.')
+        if cleaned_data.get('max_score') is None:
+            self.add_error('max_score', 'Informe a nota máxima da tarefa.')
         return cleaned_data
+
+
+class QuizCreateForm(BaseCourseActivityForm):
+    title_placeholder = 'Ex.: Quiz 1'
+    description_placeholder = 'Descreva o objetivo do quiz e as orientações principais.'
+
+    class Meta:
+        model = Activity
+        fields = ['module', 'title', 'description', 'due_date', 'max_score', 'is_published']
+        labels = {
+            'module': 'Módulo (opcional)',
+            'title': 'Título do quiz',
+            'description': 'Descrição',
+            'due_date': 'Prazo de realização',
+            'max_score': 'Pontuação máxima',
+            'is_published': 'Publicar agora',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 5}),
+            'due_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get('due_date'):
+            self.add_error('due_date', 'Informe o prazo de realização do quiz.')
+        if cleaned_data.get('max_score') is None:
+            self.add_error('max_score', 'Informe a pontuação máxima do quiz.')
+        return cleaned_data
+
+
+class ForumCreateForm(BaseCourseActivityForm):
+    title_placeholder = 'Ex.: Fórum de discussão da unidade'
+    description_placeholder = 'Apresente o tema do debate e indique como os estudantes devem participar.'
+
+    class Meta:
+        model = Activity
+        fields = ['module', 'title', 'description', 'is_published']
+        labels = {
+            'module': 'Módulo (opcional)',
+            'title': 'Título do fórum',
+            'description': 'Descrição',
+            'is_published': 'Publicar agora',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 6}),
+        }

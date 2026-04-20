@@ -114,7 +114,7 @@ class Command(BaseCommand):
         # ACTIVITIES
         # =========================
         activity_templates = [
-            ('Lista', Activity.Type.ASSIGNMENT, 100),
+            ('Tarefa', Activity.Type.ASSIGNMENT, 100),
             ('Quiz', Activity.Type.QUIZ, 20),
             ('Fórum', Activity.Type.FORUM, None),
             ('Material', Activity.Type.RESOURCE, None),

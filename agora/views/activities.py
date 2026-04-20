@@ -4,9 +4,47 @@ from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import never_cache
 
-from ..forms import ActivityCreateForm, ModuleCreateForm
+from ..forms import (
+    AssignmentCreateForm,
+    ForumCreateForm,
+    ModuleCreateForm,
+    QuizCreateForm,
+    ResourceCreateForm,
+)
 from ..models import Activity, Course, Enrollment, Submission, UserProfile
 from .common import _user_role
+
+
+ACTIVITY_CREATE_CONFIG = {
+    Activity.Type.RESOURCE: {
+        'form_class': ResourceCreateForm,
+        'title': 'Criar Novo Material',
+        'submit_label': 'Criar Material',
+        'button_label': 'Material',
+        'description': 'Publique links, leituras, slides e materiais de apoio.',
+    },
+    Activity.Type.ASSIGNMENT: {
+        'form_class': AssignmentCreateForm,
+        'title': 'Criar Nova Tarefa',
+        'submit_label': 'Criar Tarefa',
+        'button_label': 'Tarefa',
+        'description': 'Defina uma entrega com prazo e nota máxima.',
+    },
+    Activity.Type.QUIZ: {
+        'form_class': QuizCreateForm,
+        'title': 'Criar Novo Quiz',
+        'submit_label': 'Criar Quiz',
+        'button_label': 'Quiz',
+        'description': 'Cadastre um quiz com prazo e pontuação.',
+    },
+    Activity.Type.FORUM: {
+        'form_class': ForumCreateForm,
+        'title': 'Criar Novo Fórum',
+        'submit_label': 'Criar Fórum',
+        'button_label': 'Fórum',
+        'description': 'Abra um espaço de discussão entre os estudantes.',
+    },
+}
 
 
 @never_cache
@@ -45,23 +83,48 @@ def activity_create_view(request, course_id):
         messages.error(request, 'Você não tem permissão para criar atividades neste curso.')
         return redirect('agora:course_detail', course_id=course.id)
 
+    selected_type = request.POST.get('activity_kind') or request.GET.get('type') or Activity.Type.RESOURCE
+    if selected_type not in ACTIVITY_CREATE_CONFIG:
+        selected_type = Activity.Type.RESOURCE
+
+    selected_config = ACTIVITY_CREATE_CONFIG[selected_type]
+    form_class = selected_config['form_class']
+
     if request.method == 'POST':
-        form = ActivityCreateForm(request.POST, course=course)
+        form = form_class(request.POST, course=course)
         form.instance.created_by = request.user
         form.instance.course = course
+        form.instance.activity_type = selected_type
         if form.is_valid():
             activity = form.save(commit=False)
+            activity.activity_type = selected_type
+            activity.created_by = request.user
+            activity.course = course
             activity.save()
-            messages.success(request, f'Atividade/Recurso "{activity.title}" criado com sucesso.')
+            messages.success(request, f'{activity.get_activity_type_display()} "{activity.title}" criado com sucesso.')
             return redirect('agora:course_detail', course_id=course.id)
     else:
-        form = ActivityCreateForm(course=course)
+        form = form_class(course=course)
+        form.instance.created_by = request.user
+        form.instance.course = course
+        form.instance.activity_type = selected_type
 
     context = {
         'form': form,
         'course': course,
-        'form_title': 'Criar Nova Atividade ou Recurso',
-        'submit_button_text': 'Criar',
+        'form_title': selected_config['title'],
+        'submit_button_text': selected_config['submit_label'],
+        'selected_type': selected_type,
+        'activity_type_options': [
+            {
+                'value': activity_type,
+                'label': config['button_label'],
+                'description': config['description'],
+                'url': f"?type={activity_type}",
+                'is_selected': activity_type == selected_type,
+            }
+            for activity_type, config in ACTIVITY_CREATE_CONFIG.items()
+        ],
     }
     return render(request, 'agora/activity_form.html', context)
 

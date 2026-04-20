@@ -217,7 +217,6 @@ class Activity(models.Model):
         ASSIGNMENT = 'assignment', 'Tarefa'
         QUIZ = 'quiz', 'Quiz'
         FORUM = 'forum', 'Fórum'
-        POLL = 'poll', 'Enquete'
         RESOURCE = 'resource', 'Material'
 
     course = models.ForeignKey(
