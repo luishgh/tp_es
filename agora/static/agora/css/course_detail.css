@@ -22,10 +22,21 @@
 
 .modules-panel .section-head {
     align-items: flex-end;
+    flex-wrap: wrap;
 }
 
 .modules-panel .section-head a {
     margin-left: var(--size-3);
+}
+
+.modules-summary {
+    margin: 0 0 var(--size-4);
+    color: var(--text-2);
+    font-size: var(--font-size-1);
+}
+
+.module-pagination {
+    margin-top: var(--size-5);
 }
 
 .module-section {

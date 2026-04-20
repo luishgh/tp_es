@@ -55,9 +55,9 @@
                             <span class="user-avatar">
                                 <span class="user-avatar-letter">{{ request.user.username|first|upper }}</span>
                             </span>
-                            <div>
+                            <div class="user-chip-copy">
                                 <strong>{{ request.user.username }}</strong>
-                                <span>
+                                <span class="user-chip-meta">
                                     {{ request.user.profile.get_role_display }}
                                     {% if request.user.profile.academic_id %}
                                         · {{ request.user.profile.academic_id }}

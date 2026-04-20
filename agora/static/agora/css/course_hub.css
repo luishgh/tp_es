@@ -2,6 +2,12 @@
     grid-template-columns: 1.1fr 0.9fr;
 }
 
+.teacher-side-column {
+    display: grid;
+    gap: 20px;
+    align-content: start;
+}
+
 .course-form {
     display: grid;
     gap: 16px;
@@ -86,9 +92,69 @@
     flex-shrink: 0;
 }
 
+.course-grid-fixed {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.enrollment-course-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.enrollment-course-footer {
+    margin-top: auto;
+    min-height: 44px;
+    padding-top: 20px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.enrollment-course-footer form {
+    margin-left: auto;
+}
+
+.enrollment-request-button,
+.enrollment-status-badge {
+    margin-left: auto;
+    min-height: 40px;
+    padding: 0 18px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.enrollment-request-button {
+    border: 1px solid rgba(15, 71, 41, 0.14);
+    box-shadow: 0 10px 20px rgba(24, 92, 55, 0.14);
+}
+
+.enrollment-request-button:hover {
+    box-shadow: 0 14px 28px rgba(24, 92, 55, 0.18);
+}
+
+.enrollment-status-badge {
+    box-shadow: 0 10px 20px rgba(201, 105, 44, 0.12);
+    border: 1px solid rgba(201, 105, 44, 0.18);
+    background: linear-gradient(135deg, rgba(201, 105, 44, 0.12), rgba(201, 105, 44, 0.18));
+}
+
 @media (max-width: 1080px) {
     .teacher-grid {
         grid-template-columns: 1fr;
+    }
+
+    .teacher-side-column {
+        grid-template-columns: 1fr;
+    }
+
+    .course-grid-fixed {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -106,5 +172,8 @@
         width: 100%;
         flex-wrap: wrap;
     }
-}
 
+    .course-grid-fixed {
+        grid-template-columns: 1fr;
+    }
+}

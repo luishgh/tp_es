@@ -370,6 +370,23 @@ button {
     border: 1px solid var(--line);
 }
 
+.user-chip-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.user-chip-copy strong {
+    line-height: 1.1;
+}
+
+.user-chip-meta {
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.2;
+}
+
 .user-avatar {
     width: 42px;
     height: 42px;
@@ -503,6 +520,17 @@ button {
 .course-meta {
     margin-top: 20px;
     font-size: 0.94rem;
+}
+
+.course-footer {
+    margin-top: 18px;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 14px;
+}
+
+.course-footer form {
+    display: flex;
 }
 
 .course-code {

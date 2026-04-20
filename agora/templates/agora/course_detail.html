@@ -4,6 +4,7 @@
 {% block title %}{{ course.title }} | Ágora{% endblock %}
 {% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/course_detail.css' %}">{% endblock %}
 {# Removed shell_class and main_class block overrides #}
+{% block scripts %}<script src="{% static 'agora/js/async_panels.js' %}"></script>{% endblock %}
 
 
 {% block page_eyebrow %}{{ course.code }} · Curso{% endblock %}
@@ -34,12 +35,15 @@
             </div>
         </section>
 
-        <section class="panel modules-panel"> {# Modules and Activities #}
+        <section id="modules-panel" class="panel modules-panel async-panel"> {# Modules and Activities #}
             <div class="section-head">
                 <div>
                     <p class="eyebrow">Organização</p>
                     <h2>Módulos e Atividades</h2>
                 </div>
+                {% if modules_page.paginator.count and not is_teacher %}
+                    <span>{{ modules_count }} módulo{{ modules_count|pluralize }}</span>
+                {% endif %}
                 {% if is_teacher %}
                     <div class="section-actions">
                         <a class="primary-button compact" href="{% url 'agora:module_create' course.id %}">Novo Módulo</a>
@@ -54,15 +58,18 @@
                 {% endif %}
             </div>
 
-            {% if modules or activities_without_module %}
-                {% for module in modules %}
+            {% if modules_page.paginator.count or activities_without_module %}
+                {% if modules_page.paginator.count and is_teacher %}
+                    <p class="modules-summary">{{ modules_count }} módulo{{ modules_count|pluralize }}</p>
+                {% endif %}
+                {% for module in modules_page %}
                     <div class="module-section">
                         <h3>{{ module.order }}. {{ module.title }}</h3>
                         {% if module.description %}
                             <p class="module-description">{{ module.description }}</p>
                         {% endif %}
                         <div class="activity-list">
-                            {% for activity in module.activities %}
+                            {% for activity in module.activities_page %}
                                 <article class="activity-card">
                                     <div class="activity-head">
                                         <strong><a href="{% url 'agora:resource_detail' activity.id %}">{{ activity.title }}</a></strong>
@@ -88,10 +95,35 @@
                                 </article>
                             {% endfor %}
                         </div>
+                        {% if module.activities_page.has_other_pages %}
+                            <div class="pagination-row module-pagination">
+                                <span class="pagination-label">Página {{ module.activities_page.number }} de {{ module.activities_page.paginator.num_pages }}</span>
+                                <div class="pagination-actions">
+                                    {% if module.activities_page.has_previous %}
+                                        <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.number }}&activity_page={{ module.activities_page.previous_page_number }}">← Anterior</a>
+                                    {% endif %}
+                                    {% if module.activities_page.has_next %}
+                                        <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.number }}&activity_page={{ module.activities_page.next_page_number }}">Próxima →</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
                     </div>
-                {% empty %}
-                    {# No modules, but might have activities without module #}
                 {% endfor %}
+
+                {% if modules_page.has_other_pages %}
+                    <div class="pagination-row module-pagination">
+                        <span class="pagination-label">Página {{ modules_page.number }} de {{ modules_page.paginator.num_pages }}</span>
+                        <div class="pagination-actions">
+                            {% if modules_page.has_previous %}
+                                <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.previous_page_number }}&activity_page=1">← Anterior</a>
+                            {% endif %}
+                            {% if modules_page.has_next %}
+                                <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.next_page_number }}&activity_page=1">Próxima →</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
 
                 {% if activities_without_module %}
                     <div class="module-section">

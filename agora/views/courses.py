@@ -59,7 +59,7 @@ def courses_hub_view(request):
         context = {
             'form': form,
             'taught_courses_page': Paginator(taught_course_cards, 3).get_page(request.GET.get('taught_courses_page')),
-            'pending_requests_page': Paginator(pending_requests, 5).get_page(request.GET.get('pending_requests_page')),
+            'pending_requests_page': Paginator(pending_requests, 3).get_page(request.GET.get('pending_requests_page')),
             'taught_courses_count': len(taught_course_cards),
             'pending_requests_count': len(pending_requests),
         }
@@ -83,24 +83,17 @@ def courses_hub_view(request):
         if enrollment and enrollment.status == Enrollment.Status.ACTIVE:
             continue
 
-        request_label = 'Solicitar matrícula'
-        request_disabled = False
+        can_request = True
         status_badge = None
-        helper_text = None
-
         if enrollment and enrollment.status == Enrollment.Status.PENDING:
-            request_label = 'Solicitação enviada'
-            request_disabled = True
+            can_request = False
             status_badge = 'Aguardando aprovação'
-            helper_text = 'Seu pedido já foi enviado e está aguardando resposta do professor.'
         elif enrollment and enrollment.status == Enrollment.Status.COMPLETED:
-            request_label = 'Curso concluído'
-            request_disabled = True
+            can_request = False
             status_badge = 'Concluído'
-            helper_text = 'Esse curso já aparece no seu histórico e não precisa de uma nova solicitação.'
         elif enrollment and enrollment.status == Enrollment.Status.CANCELLED:
-            status_badge = 'Solicitação anterior recusada'
-            helper_text = 'Você pode enviar uma nova solicitação de matrícula para este curso.'
+            can_request = False
+            status_badge = 'Solicitação recusada'
 
         available_courses.append(
             {
@@ -110,10 +103,8 @@ def courses_hub_view(request):
                 'description': course.description,
                 'teacher_name': course.teacher.get_full_name() or course.teacher.username,
                 'workload_hours': course.workload_hours,
-                'request_label': request_label,
-                'request_disabled': request_disabled,
+                'can_request': can_request,
                 'status_badge': status_badge,
-                'helper_text': helper_text,
             }
         )
 
@@ -176,10 +167,16 @@ def course_detail_view(request, course_id):
     for module in modules:
         modules_data.append({
             'id': module.id,
+            'order': module.order,
             'title': module.title,
             'description': module.description,
             'activities': activities_by_module[module.id],
         })
+
+    modules_page = Paginator(modules_data, 1).get_page(request.GET.get('module_page'))
+    activity_page_number = request.GET.get('activity_page')
+    for module in modules_page.object_list:
+        module['activities_page'] = Paginator(module['activities'], 3).get_page(activity_page_number)
 
     active_enrollments = list(
         Enrollment.objects.select_related('student', 'student__profile')
@@ -194,7 +191,8 @@ def course_detail_view(request, course_id):
         'student_count': len(active_enrollments),
         'is_teacher': is_teacher,
         'is_enrolled_student': is_enrolled_student,
-        'modules': modules_data,
+        'modules_page': modules_page,
+        'modules_count': len(modules_data),
         'activities_without_module': activities_without_module,
     }
     return render(request, 'agora/course_detail.html', context)
@@ -202,7 +200,6 @@ def course_detail_view(request, course_id):
 
 @never_cache
 @login_required(login_url='agora:login')
-@user_passes_test(lambda u: _user_role(u) == UserProfile.Role.TEACHER)
 def publish_course_view(request, course_id):
     if request.method != 'POST':
         return redirect('agora:course_detail', course_id=course_id)
