@@ -5,6 +5,7 @@
 {% block stylesheet %}
     <link rel="stylesheet" href="{% static 'agora/css/course_detail.css' %}">
     <link rel="stylesheet" href="{% static 'agora/css/course_item_detail.css' %}">
+    <link rel="stylesheet" href="{% static 'agora/css/course_item_form.css' %}">
 {% endblock %}
 
 {% block page_eyebrow %}{{ course.code }} · {{ course.title }}{% endblock %}
@@ -64,44 +65,50 @@
             {% endif %}
         </section>
 
-        <section class="panel item-focus-panel">
+        <section class="panel item-focus-panel activity-form-panel submission-review-panel">
             <div class="section-head">
                 <div>
                     <p class="eyebrow">Correção</p>
                     <h2>{% if is_reviewed %}Atualizar avaliação{% else %}Registrar avaliação{% endif %}</h2>
                 </div>
+            </div>  
+
+            <div class="resource-highlight assignment-brief">
+                <p>
+                    {% if is_reviewed %}
+                        Esta entrega já foi avaliada. Você pode ajustar a nota e o feedback se quiser refinar a correção.
+                    {% else %}
+                        Registre a nota e deixe um feedback claro para orientar o estudante sobre o resultado da entrega.
+                    {% endif %}
+                </p>
             </div>
 
-            {% if is_reviewed %}
-                <div class="resource-highlight assignment-brief">
-                    <p>Esta entrega já foi avaliada. Você pode ajustar a nota e o feedback se precisar.</p>
-                </div>
-            {% endif %}
-
-            <form class="agora-form detail-form" method="post">
+            <form class="agora-form detail-form activity-create-form submission-review-form" method="post">
                 {% csrf_token %}
 
                 {% for error in form.non_field_errors %}
                     <span class="field-error form-error-banner">{{ error }}</span>
                 {% endfor %}
 
-                <div class="form-field">
-                    <label for="{{ form.score.id_for_label }}">{{ form.score.label }}</label>
-                    {{ form.score }}
-                    {% if form.score.help_text %}
-                        <small class="field-help">{{ form.score.help_text }}</small>
-                    {% endif %}
-                    {% for error in form.score.errors %}
-                        <span class="field-error">{{ error }}</span>
-                    {% endfor %}
-                </div>
+                <div class="activity-form-grid submission-review-grid">
+                    <div class="form-field submission-score-field">
+                        <label for="{{ form.score.id_for_label }}">{{ form.score.label }}</label>
+                        {{ form.score }}
+                        {% if form.score.help_text %}
+                            <small class="field-help">{{ form.score.help_text }}</small>
+                        {% endif %}
+                        {% for error in form.score.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
 
-                <div class="form-field">
-                    <label for="{{ form.feedback.id_for_label }}">{{ form.feedback.label }}</label>
-                    {{ form.feedback }}
-                    {% for error in form.feedback.errors %}
-                        <span class="field-error">{{ error }}</span>
-                    {% endfor %}
+                    <div class="form-field form-field-wide submission-feedback-field">
+                        <label for="{{ form.feedback.id_for_label }}">{{ form.feedback.label }}</label>
+                        {{ form.feedback }}
+                        {% for error in form.feedback.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
                 </div>
 
                 <div class="form-actions">

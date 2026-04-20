@@ -285,7 +285,14 @@ def course_item_detail_view(request, course_item_id):
 
     submissions = []
     if is_teacher and isinstance(detail, AssignmentItem):
-        submissions_qs = Submission.objects.filter(assignment=detail).select_related('student').order_by('-submitted_at', '-updated_at')
+        submissions_qs = sorted(
+            Submission.objects.filter(assignment=detail).select_related('student'),
+            key=lambda submission: (
+                submission.status == Submission.Status.REVIEWED,
+                (submission.student.get_full_name() or submission.student.username).strip().lower(),
+                submission.student.username.lower(),
+            ),
+        )
         for submission in submissions_qs:
             if submission.status == Submission.Status.REVIEWED:
                 tone = 'accent'
@@ -395,7 +402,7 @@ def submission_review_view(request, submission_id):
             reviewed_submission.graded_at = timezone.now()
             reviewed_submission.save()
             messages.success(request, 'Avaliação salva com sucesso.')
-            return redirect('agora:submission_review', submission_id=submission.id)
+            return redirect('agora:course_item_detail', course_item_id=assignment.id)
     else:
         form = SubmissionReviewForm(instance=submission, assignment=assignment)
 

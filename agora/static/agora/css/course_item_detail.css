@@ -38,6 +38,56 @@
     font-size: var(--font-size-0);
 }
 
+.submission-review-panel {
+    padding: 28px;
+}
+
+.submission-review-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--size-3);
+}
+
+.review-stat-card {
+    padding: var(--size-4);
+    border-radius: 18px;
+    border: 1px solid rgba(24, 92, 55, 0.12);
+    background: rgba(255, 255, 255, 0.66);
+    box-shadow: var(--shadow-1);
+}
+
+.review-stat-label {
+    display: block;
+    margin-bottom: var(--size-2);
+    color: var(--text-3);
+    font-size: var(--font-size-0);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.review-stat-card strong {
+    font-size: var(--font-size-3);
+    color: var(--text-1);
+}
+
+.submission-review-form {
+    padding: 20px;
+}
+
+.submission-review-grid {
+    align-items: start;
+}
+
+.submission-score-field input {
+    text-align: center;
+    font-size: 1.08rem;
+    font-weight: 700;
+}
+
+.submission-feedback-field textarea {
+    min-height: 200px;
+}
+
 .submission-summary {
     padding: var(--size-5);
     border-radius: var(--radius-2);
@@ -147,5 +197,9 @@
     .forum-message-head {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .submission-review-summary {
+        grid-template-columns: 1fr;
     }
 }
