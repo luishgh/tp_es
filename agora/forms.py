@@ -349,6 +349,43 @@ class AssignmentSubmissionForm(forms.ModelForm):
         return cleaned_data
 
 
+class SubmissionReviewForm(forms.ModelForm):
+    class Meta:
+        model = Submission
+        fields = ['score', 'feedback']
+        labels = {
+            'score': 'Nota atribuída',
+            'feedback': 'Feedback para o estudante',
+        }
+        widgets = {
+            'feedback': forms.Textarea(attrs={'rows': 5, 'placeholder': 'Escreva comentários sobre a entrega, pontos fortes e o que pode melhorar.'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.assignment = kwargs.pop('assignment', None)
+        super().__init__(*args, **kwargs)
+        self.fields['score'].required = True
+        self.fields['score'].widget.attrs.update({
+            'min': 0,
+            'step': '0.01',
+        })
+
+        if self.assignment and self.assignment.max_score is not None:
+            self.fields['score'].widget.attrs['max'] = self.assignment.max_score
+            self.fields['score'].help_text = f'Informe uma nota entre 0 e {self.assignment.max_score}.'
+
+    def clean_score(self):
+        score = self.cleaned_data.get('score')
+        if score is None:
+            raise forms.ValidationError('Informe a nota da entrega.')
+
+        if self.assignment and self.assignment.max_score is not None and score > self.assignment.max_score:
+            raise forms.ValidationError(
+                f'A nota não pode ser maior que {self.assignment.max_score}.'
+            )
+        return score
+
+
 class ForumMessageForm(forms.ModelForm):
     class Meta:
         model = ForumMessage

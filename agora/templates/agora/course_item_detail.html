@@ -181,20 +181,23 @@
                     {% if submissions %}
                         <div class="activity-list">
                             {% for submission in submissions %}
-                                <article class="activity-card">
-                                    <div class="activity-head">
-                                        <strong>{{ submission.student_name }}</strong>
-                                        <span class="status-pill {{ submission.status_tone }}">{{ submission.status_label }}</span>
-                                    </div>
-                                    <div class="activity-meta">
-                                        {% if submission.submitted_at %}
-                                            <span>Enviado em: {{ submission.submitted_at|date:"d/m/Y H:i" }}</span>
-                                        {% endif %}
-                                        {% if submission.score %}
-                                            <span>Nota: {{ submission.score }}</span>
-                                        {% endif %}
-                                    </div>
-                                </article>
+                                <a class="activity-card-link" href="{% url 'agora:submission_review' submission.id %}" aria-label="Avaliar entrega de {{ submission.student_name }}">
+                                    <article class="activity-card">
+                                        <div class="activity-head">
+                                            <strong>{{ submission.student_name }}</strong>
+                                            <span class="status-pill {{ submission.status_tone }}">{{ submission.status_label }}</span>
+                                        </div>
+                                        <div class="activity-meta">
+                                            {% if submission.submitted_at %}
+                                                <span>Enviado em: {{ submission.submitted_at|date:"d/m/Y H:i" }}</span>
+                                            {% endif %}
+                                            {% if submission.score|default_if_none:"" != "" %}
+                                                <span>Nota: {{ submission.score }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <p>{% if submission.is_reviewed %}Abrir correção e atualizar avaliação.{% else %}Abrir entrega para corrigir e registrar a nota.{% endif %}</p>
+                                    </article>
+                                </a>
                             {% endfor %}
                         </div>
                     {% else %}

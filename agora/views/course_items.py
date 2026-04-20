@@ -7,6 +7,7 @@ from django.views.decorators.cache import never_cache
 
 from ..forms import (
     AssignmentSubmissionForm,
+    SubmissionReviewForm,
     AssignmentCreateForm,
     ForumMessageForm,
     ForumCreateForm,
@@ -300,6 +301,7 @@ def course_item_detail_view(request, course_item_id):
                 'status_tone': tone,
                 'submitted_at': submission.submitted_at,
                 'score': submission.score,
+                'is_reviewed': submission.status == Submission.Status.REVIEWED,
             })
     if isinstance(detail, ForumItem):
         forum_messages = list(
@@ -361,6 +363,51 @@ def course_item_detail_view(request, course_item_id):
         'material_actions': material_actions,
     }
     return render(request, 'agora/course_item_detail.html', context)
+
+
+@never_cache
+@login_required(login_url='agora:login')
+def submission_review_view(request, submission_id):
+    submission = get_object_or_404(
+        Submission.objects.select_related(
+            'assignment',
+            'assignment__course',
+            'assignment__module',
+            'student',
+            'student__profile',
+            'graded_by',
+        ),
+        pk=submission_id,
+    )
+
+    assignment = submission.assignment
+    course = assignment.course
+    if course.teacher_id != request.user.id:
+        messages.error(request, 'Você não tem permissão para avaliar esta entrega.')
+        return redirect('agora:course_item_detail', course_item_id=assignment.id)
+
+    if request.method == 'POST':
+        form = SubmissionReviewForm(request.POST, instance=submission, assignment=assignment)
+        if form.is_valid():
+            reviewed_submission = form.save(commit=False)
+            reviewed_submission.status = Submission.Status.REVIEWED
+            reviewed_submission.graded_by = request.user
+            reviewed_submission.graded_at = timezone.now()
+            reviewed_submission.save()
+            messages.success(request, 'Avaliação salva com sucesso.')
+            return redirect('agora:submission_review', submission_id=submission.id)
+    else:
+        form = SubmissionReviewForm(instance=submission, assignment=assignment)
+
+    context = {
+        'submission': submission,
+        'assignment': assignment,
+        'course': course,
+        'module': assignment.module,
+        'form': form,
+        'is_reviewed': submission.status == Submission.Status.REVIEWED,
+    }
+    return render(request, 'agora/submission_review.html', context)
 
 
 @never_cache

@@ -31,6 +31,13 @@
     gap: var(--size-4);
 }
 
+.field-help {
+    display: block;
+    margin-top: var(--size-2);
+    color: var(--text-3);
+    font-size: var(--font-size-0);
+}
+
 .submission-summary {
     padding: var(--size-5);
     border-radius: var(--radius-2);

@@ -1,0 +1,114 @@
+{% extends 'agora/layout.html' %}
+{% load static %}
+
+{% block title %}Avaliar Entrega | {{ assignment.title }} | Ágora{% endblock %}
+{% block stylesheet %}
+    <link rel="stylesheet" href="{% static 'agora/css/course_detail.css' %}">
+    <link rel="stylesheet" href="{% static 'agora/css/course_item_detail.css' %}">
+{% endblock %}
+
+{% block page_eyebrow %}{{ course.code }} · {{ course.title }}{% endblock %}
+{% block page_title %}Avaliar entrega{% endblock %}
+{% block page_lead %}
+    {{ submission.student.get_full_name|default:submission.student.username }} · {{ assignment.title }}
+{% endblock %}
+
+{% block content %}
+    <section class="content-grid course-item-detail-grid">
+        <section class="panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Visão Geral</p>
+                    <h2>Dados da submissão</h2>
+                </div>
+                <span class="status-pill {% if is_reviewed %}accent{% elif submission.status == 'submitted' or submission.status == 'late' %}warning{% else %}neutral{% endif %}">
+                    {{ submission.get_status_display }}
+                </span>
+            </div>
+
+            <div class="course-info">
+                <p><strong>Estudante:</strong> {{ submission.student.get_full_name|default:submission.student.username }}</p>
+                {% if submission.student.profile.academic_id %}
+                    <p><strong>Matrícula:</strong> {{ submission.student.profile.academic_id }}</p>
+                {% endif %}
+                {% if module %}
+                    <p><strong>Módulo:</strong> {{ module.order }}. {{ module.title }}</p>
+                {% endif %}
+                <p><strong>Tarefa:</strong> {{ assignment.title }}</p>
+                {% if submission.submitted_at %}
+                    <p><strong>Enviada em:</strong> {{ submission.submitted_at|date:"d/m/Y H:i" }}</p>
+                {% endif %}
+                {% if submission.graded_at %}
+                    <p><strong>Última avaliação:</strong> {{ submission.graded_at|date:"d/m/Y H:i" }}</p>
+                {% endif %}
+                {% if submission.graded_by %}
+                    <p><strong>Avaliada por:</strong> {{ submission.graded_by.get_full_name|default:submission.graded_by.username }}</p>
+                {% endif %}
+                <p><strong>Nota máxima:</strong> {{ assignment.max_score }}</p>
+            </div>
+
+            {% if submission.content %}
+                <div class="submission-summary">
+                    <h3>Observações do estudante</h3>
+                    <p>{{ submission.content }}</p>
+                </div>
+            {% endif %}
+
+            {% if submission.attachment_file %}
+                <div class="resource-highlight assignment-brief">
+                    <p>O arquivo enviado pelo estudante está disponível abaixo.</p>
+                    <div class="resource-actions">
+                        <a class="primary-button" href="{{ submission.attachment_file.url }}" target="_blank" rel="noreferrer">Abrir arquivo enviado</a>
+                    </div>
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="panel item-focus-panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Correção</p>
+                    <h2>{% if is_reviewed %}Atualizar avaliação{% else %}Registrar avaliação{% endif %}</h2>
+                </div>
+            </div>
+
+            {% if is_reviewed %}
+                <div class="resource-highlight assignment-brief">
+                    <p>Esta entrega já foi avaliada. Você pode ajustar a nota e o feedback se precisar.</p>
+                </div>
+            {% endif %}
+
+            <form class="agora-form detail-form" method="post">
+                {% csrf_token %}
+
+                {% for error in form.non_field_errors %}
+                    <span class="field-error form-error-banner">{{ error }}</span>
+                {% endfor %}
+
+                <div class="form-field">
+                    <label for="{{ form.score.id_for_label }}">{{ form.score.label }}</label>
+                    {{ form.score }}
+                    {% if form.score.help_text %}
+                        <small class="field-help">{{ form.score.help_text }}</small>
+                    {% endif %}
+                    {% for error in form.score.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.feedback.id_for_label }}">{{ form.feedback.label }}</label>
+                    {{ form.feedback }}
+                    {% for error in form.feedback.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-actions">
+                    <button class="primary-button" type="submit">{% if is_reviewed %}Atualizar avaliação{% else %}Salvar avaliação{% endif %}</button>
+                    <a class="ghost-button" href="{% url 'agora:course_item_detail' assignment.id %}">Voltar para a tarefa</a>
+                </div>
+            </form>
+        </section>
+    </section>
+{% endblock %}

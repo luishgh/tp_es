@@ -360,6 +360,59 @@ class ResourceDetailViewTests(TestCase):
         self.assertContains(response, 'Entregas dos alunos')
         self.assertContains(response, 'Grace Hopper')
 
+    def test_teacher_can_review_submission(self):
+        submission = Submission.objects.create(
+            assignment=self.assignment,
+            student=self.student,
+            status=Submission.Status.SUBMITTED,
+            content='Minha entrega',
+        )
+
+        self.client.force_login(self.teacher)
+
+        response = self.client.post(
+            reverse('agora:submission_review', args=[submission.id]),
+            data={
+                'score': '8.5',
+                'feedback': 'Boa resolução, mas faltou otimizar uma consulta.',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        submission.refresh_from_db()
+        self.assertEqual(submission.status, Submission.Status.REVIEWED)
+        self.assertEqual(float(submission.score), 8.5)
+        self.assertEqual(submission.feedback, 'Boa resolução, mas faltou otimizar uma consulta.')
+        self.assertEqual(submission.graded_by, self.teacher)
+        self.assertIsNotNone(submission.graded_at)
+
+    def test_teacher_can_update_existing_review(self):
+        submission = Submission.objects.create(
+            assignment=self.assignment,
+            student=self.student,
+            status=Submission.Status.REVIEWED,
+            score='7.0',
+            feedback='Primeira versão da correção.',
+            graded_by=self.teacher,
+            content='Minha entrega',
+        )
+
+        self.client.force_login(self.teacher)
+
+        response = self.client.post(
+            reverse('agora:submission_review', args=[submission.id]),
+            data={
+                'score': '9.0',
+                'feedback': 'Correção atualizada após revisão.',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        submission.refresh_from_db()
+        self.assertEqual(submission.status, Submission.Status.REVIEWED)
+        self.assertEqual(float(submission.score), 9.0)
+        self.assertEqual(submission.feedback, 'Correção atualizada após revisão.')
+
     def test_teacher_can_publish_activity(self):
         self.assignment.is_published = False
         self.assignment.save(update_fields=['is_published'])
