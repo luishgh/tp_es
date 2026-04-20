@@ -39,6 +39,27 @@
     margin-top: var(--size-5);
 }
 
+.module-items-pagination {
+    margin-top: var(--size-4);
+    padding: var(--size-2) var(--size-3);
+    border: 1px dashed var(--border-color);
+    background: rgba(24, 92, 55, 0.04);
+}
+
+.module-items-pagination .pagination-label {
+    background: rgba(24, 92, 55, 0.1);
+    color: var(--primary);
+}
+
+.module-items-pagination .page-button {
+    background: rgba(255, 255, 255, 0.72);
+    border-color: rgba(24, 92, 55, 0.08);
+}
+
+.module-items-pagination .page-button:hover {
+    background: rgba(24, 92, 55, 0.1);
+}
+
 .module-section {
     margin-bottom: var(--size-7);
     padding: var(--size-5);

@@ -47,7 +47,7 @@
                 {% if is_teacher %}
                     <div class="section-actions">
                         <a class="primary-button compact" href="{% url 'agora:module_create' course.id %}">Novo Módulo</a>
-                        <a class="ghost-button compact" href="{% url 'agora:activity_create' course.id %}">Nova Atividade/Recurso</a>
+                        <a class="ghost-button compact" href="{% url 'agora:course_item_create' course.id %}">Nova Atividade/Recurso</a>
                         {% if not course.is_published %}
                             <form method="post" action="{% url 'agora:publish_course' course.id %}" onsubmit="return confirm('Deseja publicar este curso?');">
                                 {% csrf_token %}
@@ -58,13 +58,19 @@
                 {% endif %}
             </div>
 
-            {% if modules_page.paginator.count or activities_without_module %}
+            {% if modules_page.paginator.count %}
                 {% if modules_page.paginator.count and is_teacher %}
                     <p class="modules-summary">{{ modules_count }} módulo{{ modules_count|pluralize }}</p>
                 {% endif %}
                 {% for module in modules_page %}
                     <div class="module-section">
-                        <h3>{{ module.order }}. {{ module.title }}</h3>
+                        <h3>
+                            {% if module.order %}
+                                {{ module.order }}. {{ module.title }}
+                            {% else %}
+                                {{ module.title }}
+                            {% endif %}
+                        </h3>
                         {% if module.description %}
                             <p class="module-description">{{ module.description }}</p>
                         {% endif %}
@@ -93,14 +99,14 @@
                             {% endfor %}
                         </div>
                         {% if module.activities_page.has_other_pages %}
-                            <div class="pagination-row module-pagination">
-                                <span class="pagination-label">Página {{ module.activities_page.number }} de {{ module.activities_page.paginator.num_pages }}</span>
+                            <div class="pagination-row module-items-pagination">
+                                <span class="pagination-label">Itens {{ module.activities_page.number }} de {{ module.activities_page.paginator.num_pages }}</span>
                                 <div class="pagination-actions">
                                     {% if module.activities_page.has_previous %}
-                                        <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.number }}&activity_page={{ module.activities_page.previous_page_number }}">← Anterior</a>
+                                        <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.number }}&activity_page={{ module.activities_page.previous_page_number }}">← Itens anteriores</a>
                                     {% endif %}
                                     {% if module.activities_page.has_next %}
-                                        <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.number }}&activity_page={{ module.activities_page.next_page_number }}">Próxima →</a>
+                                        <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.number }}&activity_page={{ module.activities_page.next_page_number }}">Mais itens →</a>
                                     {% endif %}
                                 </div>
                             </div>
@@ -110,44 +116,14 @@
 
                 {% if modules_page.has_other_pages %}
                     <div class="pagination-row module-pagination">
-                        <span class="pagination-label">Página {{ modules_page.number }} de {{ modules_page.paginator.num_pages }}</span>
+                        <span class="pagination-label">Módulo {{ modules_page.number }} de {{ modules_page.paginator.num_pages }}</span>
                         <div class="pagination-actions">
                             {% if modules_page.has_previous %}
-                                <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.previous_page_number }}&activity_page=1">← Anterior</a>
+                                <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.previous_page_number }}&activity_page=1">← Módulo anterior</a>
                             {% endif %}
                             {% if modules_page.has_next %}
-                                <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.next_page_number }}&activity_page=1">Próxima →</a>
+                                <a class="page-button" data-async-panel="modules-panel" href="?module_page={{ modules_page.next_page_number }}&activity_page=1">Próximo módulo →</a>
                             {% endif %}
-                        </div>
-                    </div>
-                {% endif %}
-
-                {% if activities_without_module %}
-                    <div class="module-section">
-                        <h3>Atividades sem Módulo</h3>
-                        <div class="activity-list">
-                            {% for activity in activities_without_module %}
-                                <article class="activity-card">
-                                    <div class="activity-head">
-                                        <strong><a href="{% url 'agora:course_item_detail' activity.id %}">{{ activity.title }}</a></strong>
-                                        {% if activity.is_published %}
-                                            <span class="status-pill accent">Publicado</span>
-                                        {% else %}
-                                            <span class="status-pill neutral">Rascunho</span>
-                                        {% endif %}
-                                    </div>
-                                    <p>{{ activity.description|truncatechars:100 }}</p>
-                                    <div class="activity-meta">
-                                        <span>Tipo: {{ activity.activity_type }}</span>
-                                        {% if activity.due_date %}
-                                            <span>Prazo: {{ activity.due_date|date:"d/m/Y H:i" }}</span>
-                                        {% endif %}
-                                        {% if activity.activity_type_value == 'assignment' and activity.max_score|default_if_none:"" != "" %}
-                                            <span>Nota Máxima: {{ activity.max_score }}</span>
-                                        {% endif %}
-                                    </div>
-                                </article>
-                            {% endfor %}
                         </div>
                     </div>
                 {% endif %}
