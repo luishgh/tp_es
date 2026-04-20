@@ -1,0 +1,101 @@
+.module-form-shell {
+    max-width: 880px;
+}
+
+.module-form-panel {
+    padding: 30px;
+}
+
+.module-form-head {
+    margin-bottom: 22px;
+}
+
+.module-form {
+    display: grid;
+    gap: 22px;
+    padding: 20px;
+}
+
+.module-form-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 180px;
+    gap: 18px;
+    align-items: start;
+}
+
+.form-field {
+    display: grid;
+    gap: 8px;
+}
+
+.form-field label {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.form-field input,
+.form-field textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.8);
+    color: var(--text);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.form-field input:focus,
+.form-field textarea:focus {
+    outline: none;
+    border-color: rgba(24, 92, 55, 0.3);
+    box-shadow: 0 0 0 4px rgba(24, 92, 55, 0.08);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.form-field textarea {
+    min-height: 180px;
+    resize: vertical;
+}
+
+.module-field-order input {
+    text-align: center;
+    font-size: 1.08rem;
+    font-weight: 700;
+}
+
+.field-error {
+    color: var(--danger);
+    font-size: 0.92rem;
+}
+
+.form-error-banner {
+    display: block;
+    padding: 18px 20px;
+    margin-bottom: 6px;
+    border-radius: 16px;
+    border: 1px solid rgba(161, 38, 38, 0.18);
+    background: rgba(161, 38, 38, 0.08);
+    line-height: 1.6;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+@media (max-width: 780px) {
+    .module-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .form-actions .primary-button,
+    .form-actions .ghost-button {
+        width: 100%;
+        text-align: center;
+    }
+}

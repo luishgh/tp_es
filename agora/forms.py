@@ -114,6 +114,20 @@ class CourseCreateForm(forms.ModelForm):
 
 
 class ModuleCreateForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        self.course = kwargs.pop('course', None)
+        super().__init__(*args, **kwargs)
+
+        self.fields['title'].widget.attrs.update({
+            'placeholder': 'Ex.: Introdução ao curso',
+        })
+        self.fields['description'].widget.attrs.update({
+            'placeholder': 'Descreva brevemente o foco deste módulo.',
+        })
+        self.fields['order'].widget.attrs.update({
+            'min': 1,
+        })
+
     class Meta:
         model = Module
         fields = ['title', 'description', 'order']
@@ -128,6 +142,21 @@ class ModuleCreateForm(forms.ModelForm):
 
     def clean_title(self):
         return self.cleaned_data['title'].strip()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        order = cleaned_data.get('order')
+
+        if (
+            self.course
+            and order
+            and Module.objects.filter(course=self.course, order=order).exclude(pk=self.instance.pk).exists()
+        ):
+            raise forms.ValidationError(
+                f'Já existe um módulo com a ordem {order} neste curso.'
+            )
+
+        return cleaned_data
 
 
 class ActivityCreateForm(forms.ModelForm):

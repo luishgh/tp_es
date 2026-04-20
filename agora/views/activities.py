@@ -18,7 +18,7 @@ def module_create_view(request, course_id):
         return redirect('agora:course_detail', course_id=course.id)
 
     if request.method == 'POST':
-        form = ModuleCreateForm(request.POST)
+        form = ModuleCreateForm(request.POST, course=course)
         if form.is_valid():
             module = form.save(commit=False)
             module.course = course
@@ -26,7 +26,7 @@ def module_create_view(request, course_id):
             messages.success(request, f'Módulo "{module.title}" criado com sucesso.')
             return redirect('agora:course_detail', course_id=course.id)
     else:
-        form = ModuleCreateForm(initial={'course': course})
+        form = ModuleCreateForm(course=course, initial={'order': course.modules.count() + 1})
 
     context = {
         'form': form,
