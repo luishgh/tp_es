@@ -149,27 +149,6 @@ def course_item_create_view(request, course_id):
 
 @never_cache
 @login_required(login_url='agora:login')
-def course_item_submission_list_view(request, course_item_id):
-    assignment = get_object_or_404(
-        AssignmentItem.objects.select_related('course'),
-        pk=course_item_id,
-    )
-    if assignment.course.teacher != request.user:
-        messages.error(request, 'Você não tem permissão para visualizar as submissões desta atividade.')
-        return redirect('agora:course_detail', course_id=assignment.course.id)
-
-    submissions = Submission.objects.filter(assignment=assignment).select_related('student').order_by('-submitted_at')
-
-    context = {
-        'activity': assignment,
-        'detail': assignment,
-        'submissions': submissions,
-    }
-    return render(request, 'agora/submission_list.html', context)
-
-
-@never_cache
-@login_required(login_url='agora:login')
 def course_item_detail_view(request, course_item_id):
     course_item = get_object_or_404(
         CourseItem.objects.select_related('course', 'module', 'created_by', 'course__teacher'),

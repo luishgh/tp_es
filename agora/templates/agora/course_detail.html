@@ -92,9 +92,6 @@
                                             {% if activity.due_date %}
                                                 <span>Prazo: {{ activity.due_date|date:"d/m/Y H:i" }}</span>
                                             {% endif %}
-                                            {% if activity.activity_type_value == 'assignment' and activity.max_score|default_if_none:"" != "" %}
-                                                <span>Nota Máxima: {{ activity.max_score }}</span>
-                                            {% endif %}
                                         </div>
                                     </article>
                                 </a>

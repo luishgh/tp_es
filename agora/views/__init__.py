@@ -5,7 +5,6 @@ _configure_time_locale()
 from .course_items import (  # noqa: E402,F401
     course_item_create_view,
     course_item_detail_view,
-    course_item_submission_list_view,
     module_create_view,
     publish_course_item_view,
 )

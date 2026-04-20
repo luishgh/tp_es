@@ -14,7 +14,6 @@ urlpatterns = [
     path('cursos/<int:course_id>/itens/criar/', course_item_create_view, name='course_item_create'),
     path('itens/<int:course_item_id>/', course_item_detail_view, name='course_item_detail'),
     path('itens/<int:course_item_id>/publicar/', publish_course_item_view, name='publish_course_item'),
-    path('itens/<int:course_item_id>/submissoes/', course_item_submission_list_view, name='course_item_submission_list'),
     path('cursos/<int:course_id>/solicitar-matricula/', request_enrollment_view, name='request_enrollment'),
     path('matriculas/<int:enrollment_id>/<str:decision>/', enrollment_decision_view, name='enrollment_decision'),
     path('login/', login_view, name='login'),
