@@ -272,10 +272,29 @@ button {
     gap: 8px;
 }
 
+.calendar-badge-link,
+.agenda-item-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+.calendar-badge-link:hover,
+.agenda-item-link:hover {
+    text-decoration: none;
+}
+
+.calendar-badge-link:hover .calendar-badge span,
+.agenda-item-link:hover .agenda-head strong {
+    text-decoration: underline;
+}
+
 .calendar-badge {
     padding: 8px 10px;
     border-radius: 16px;
     background: rgba(31, 42, 31, 0.06);
+    transition: all 0.2s ease-in-out;
 }
 
 .calendar-badge strong,
@@ -353,6 +372,21 @@ button {
 .agenda-item,
 .grade-card {
     padding: 18px;
+}
+
+.agenda-item {
+    transition: all 0.2s ease-in-out;
+}
+
+.calendar-badge-link:hover .calendar-badge,
+.agenda-item-link:hover .agenda-item {
+    transform: translateY(-2px);
+    box-shadow: 0 30px 70px rgba(24, 56, 36, 0.15);
+}
+
+.calendar-badge-link:active .calendar-badge,
+.agenda-item-link:active .agenda-item {
+    transform: translateY(-1px);
 }
 
 .agenda-head,

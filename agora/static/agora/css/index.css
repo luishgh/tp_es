@@ -350,6 +350,31 @@ button {
 .pending-card {
     padding: 18px 18px 16px;
     background: rgba(255, 255, 255, 0.54);
+    transition: all 0.2s ease-in-out;
+}
+
+.pending-card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+.pending-card-link:hover {
+    text-decoration: none;
+}
+
+.pending-card-link:hover .pending-head h3 {
+    text-decoration: underline;
+}
+
+.pending-card-link:hover .pending-card {
+    transform: translateY(-2px);
+    box-shadow: 0 30px 70px rgba(24, 56, 36, 0.15);
+}
+
+.pending-card-link:active .pending-card {
+    transform: translateY(-1px);
 }
 
 .pending-head {

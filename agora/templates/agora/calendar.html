@@ -30,10 +30,12 @@
                                 {% if day.items %}
                                     <div class="day-items">
                                         {% for item in day.items %}
-                                            <div class="calendar-badge {{ item.status_tone }}">
-                                                <strong>{{ item.course_code }}</strong>
-                                                <span>{{ item.title }}</span>
-                                            </div>
+                                            <a class="calendar-badge-link" href="{% url 'agora:course_item_detail' item.id %}" aria-label="Abrir item {{ item.title }}">
+                                                <div class="calendar-badge {{ item.status_tone }}">
+                                                    <strong>{{ item.course_code }}</strong>
+                                                    <span>{{ item.title }}</span>
+                                                </div>
+                                            </a>
                                         {% endfor %}
                                     </div>
                                     {% if day.extra_count %}
@@ -54,23 +56,25 @@
                 <div class="section-head">
                     <div>
                         <p class="eyebrow">Agenda do mês</p>
-                        <h2>Tarefas pendentes</h2>
+                        <h2>Atividades pendentes</h2>
                     </div>
                 </div>
 
                 {% if agenda_page.paginator.count %}
                     <div class="agenda-list">
                         {% for item in agenda_page %}
-                            <article class="agenda-item">
-                                <div class="agenda-head">
-                                    <strong>{{ item.title }}</strong>
-                                    <span class="status-pill {{ item.status_tone }}">{{ item.status_label }}</span>
-                                </div>
-                                <div class="agenda-meta">
-                                    <span>{{ item.course_code }} · {{ item.course_title }}</span>
-                                    <span>{{ item.date_label }}</span>
-                                </div>
-                            </article>
+                            <a class="agenda-item-link" href="{% url 'agora:course_item_detail' item.id %}" aria-label="Abrir item {{ item.title }}">
+                                <article class="agenda-item">
+                                    <div class="agenda-head">
+                                        <strong>{{ item.title }}</strong>
+                                        <span class="status-pill {{ item.status_tone }}">{{ item.status_label }}</span>
+                                    </div>
+                                    <div class="agenda-meta">
+                                        <span>{{ item.course_code }} · {{ item.course_title }}</span>
+                                        <span>{{ item.date_label }}</span>
+                                    </div>
+                                </article>
+                            </a>
                         {% endfor %}
                     </div>
                     {% if agenda_page.has_other_pages %}

@@ -312,6 +312,7 @@ def calendar_view(request):
             tone = 'accent'
 
         item = {
+            'id': activity.id,
             'title': activity.title,
             'course_code': activity.course.code,
             'course_title': activity.course.title,

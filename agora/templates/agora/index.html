@@ -130,20 +130,22 @@
             {% if work_page.paginator.count %}
                 <div class="pending-grid">
                     {% for activity in work_page %}
-                        <article class="pending-card">
-                            <div class="pending-head">
-                                <div>
-                                    <h3>{{ activity.title }}</h3>
-                                    <span>{{ activity.course_code }} · {{ activity.course_title }}</span>
+                        <a class="pending-card-link" href="{% url 'agora:course_item_detail' activity.id %}" aria-label="Abrir item {{ activity.title }}">
+                            <article class="pending-card">
+                                <div class="pending-head">
+                                    <div>
+                                        <h3>{{ activity.title }}</h3>
+                                        <span>{{ activity.course_code }} · {{ activity.course_title }}</span>
+                                    </div>
+                                    <span class="status-pill {{ activity.status_tone }}">{{ activity.status_label }}</span>
                                 </div>
-                                <span class="status-pill {{ activity.status_tone }}">{{ activity.status_label }}</span>
-                            </div>
 
-                            <div class="pending-meta">
-                                <span>{{ activity.activity_type }}</span>
-                                <span>{{ activity.meta_label }}</span>
-                            </div>
-                        </article>
+                                <div class="pending-meta">
+                                    <span>{{ activity.activity_type }}</span>
+                                    <span>{{ activity.meta_label }}</span>
+                                </div>
+                            </article>
+                        </a>
                     {% endfor %}
                 </div>
                 {% if work_page.has_other_pages %}
