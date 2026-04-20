@@ -3,6 +3,134 @@
 
 {% block title %}{{ form_title }} | {{ course.title }} | Ágora{% endblock %}
 {% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/course_item_form.css' %}">{% endblock %}
+{% block scripts %}
+    {{ block.super }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('.activity-create-form');
+            const moduleField = document.getElementById('{{ form.module.id_for_label|default:"" }}');
+            const titleField = document.getElementById('{{ form.title.id_for_label|default:"" }}');
+            const submitButton = document.getElementById('course-item-submit');
+            const moduleHint = document.getElementById('module-required-hint');
+            const selectedType = '{{ selected_type }}';
+            const attachmentUrlField = document.getElementById('{{ form.attachment_url.id_for_label|default:"" }}');
+            const attachmentFileField = document.getElementById('{{ form.attachment_file.id_for_label|default:"" }}');
+            const statementUrlField = document.getElementById('{{ form.statement_url.id_for_label|default:"" }}');
+            const statementFileField = document.getElementById('{{ form.statement_file.id_for_label|default:"" }}');
+            const dueDateField = document.getElementById('{{ form.due_date.id_for_label|default:"" }}');
+            const maxScoreField = document.getElementById('{{ form.max_score.id_for_label|default:"" }}');
+
+            if (!form || !moduleField || !submitButton) {
+                return;
+            }
+
+            const requiredFields = [moduleField, titleField, dueDateField, maxScoreField].filter(Boolean);
+            requiredFields.forEach(function (field) {
+                field.required = true;
+            });
+
+            const syncAlternativeRequirement = function (primaryField, secondaryField) {
+                if (!primaryField || !secondaryField) {
+                    return;
+                }
+
+                const hasPrimaryValue = Boolean(primaryField.value);
+                const hasSecondaryValue = Boolean(secondaryField.value);
+                const isMissingBoth = !hasPrimaryValue && !hasSecondaryValue;
+                const message = 'Preencha um link ou envie um arquivo.';
+
+                primaryField.required = false;
+                secondaryField.required = false;
+                primaryField.setCustomValidity(isMissingBoth ? message : '');
+                secondaryField.setCustomValidity(isMissingBoth ? message : '');
+            };
+
+            const hasRequiredPair = function (primaryField, secondaryField) {
+                if (!primaryField || !secondaryField) {
+                    return true;
+                }
+
+                return Boolean(primaryField.value) || Boolean(secondaryField.value);
+            };
+
+            const syncSubmitAvailability = function () {
+                const hasSelectedModule = Boolean(moduleField.value);
+                const hasTitle = !titleField || Boolean(titleField.value.trim());
+                const hasDueDate = !dueDateField || Boolean(dueDateField.value);
+                const hasMaxScore = !maxScoreField || Boolean(maxScoreField.value);
+                const hasAttachmentSource = hasRequiredPair(attachmentUrlField, attachmentFileField);
+                const hasStatementSource = hasRequiredPair(statementUrlField, statementFileField);
+                const canSubmit = (
+                    hasSelectedModule
+                    && hasTitle
+                    && hasDueDate
+                    && hasMaxScore
+                    && hasAttachmentSource
+                    && hasStatementSource
+                );
+
+                submitButton.disabled = !canSubmit;
+                submitButton.setAttribute('aria-disabled', String(!canSubmit));
+
+                if (moduleHint) {
+                    moduleHint.hidden = hasSelectedModule;
+                }
+            };
+
+            moduleField.addEventListener('change', syncSubmitAvailability);
+            if (titleField) {
+                titleField.addEventListener('input', syncSubmitAvailability);
+            }
+            if (dueDateField) {
+                dueDateField.addEventListener('input', syncSubmitAvailability);
+            }
+            if (maxScoreField) {
+                maxScoreField.addEventListener('input', syncSubmitAvailability);
+            }
+            if (attachmentUrlField && attachmentFileField) {
+                attachmentUrlField.addEventListener('input', function () {
+                    syncAlternativeRequirement(attachmentUrlField, attachmentFileField);
+                    syncSubmitAvailability();
+                });
+                attachmentFileField.addEventListener('change', function () {
+                    syncAlternativeRequirement(attachmentUrlField, attachmentFileField);
+                    syncSubmitAvailability();
+                });
+                syncAlternativeRequirement(attachmentUrlField, attachmentFileField);
+            }
+            if (statementUrlField && statementFileField) {
+                statementUrlField.addEventListener('input', function () {
+                    syncAlternativeRequirement(statementUrlField, statementFileField);
+                    syncSubmitAvailability();
+                });
+                statementFileField.addEventListener('change', function () {
+                    syncAlternativeRequirement(statementUrlField, statementFileField);
+                    syncSubmitAvailability();
+                });
+                syncAlternativeRequirement(statementUrlField, statementFileField);
+            }
+            syncSubmitAvailability();
+
+            form.addEventListener('submit', function (event) {
+                syncAlternativeRequirement(attachmentUrlField, attachmentFileField);
+                syncAlternativeRequirement(statementUrlField, statementFileField);
+
+                const firstInvalidField = form.querySelector(':invalid');
+                if (!firstInvalidField) {
+                    return;
+                }
+
+                event.preventDefault();
+                firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstInvalidField.focus({ preventScroll: true });
+
+                if (selectedType === 'quiz') {
+                    firstInvalidField.reportValidity();
+                }
+            });
+        });
+    </script>
+{% endblock %}
 
 {% block page_eyebrow %}{{ course.code }} · {{ course.title }}{% endblock %}
 {% block page_title %}Criar conteúdo{% endblock %}
@@ -49,8 +177,9 @@
                 <div class="activity-form-grid">
                     {% if form.module %}
                         <div class="form-field">
-                            <label for="{{ form.module.id_for_label }}">{{ form.module.label }}</label>
+                            <label for="{{ form.module.id_for_label }}">{{ form.module.label }} <span class="field-required">*</span></label>
                             {{ form.module }}
+                            <p id="module-required-hint" class="field-help">Escolha um módulo para liberar a criação deste conteúdo.</p>
                             {% for error in form.module.errors %}
                                 <span class="field-error">{{ error }}</span>
                             {% endfor %}
@@ -59,7 +188,7 @@
 
                     {% if form.title %}
                         <div class="form-field form-field-wide">
-                            <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+                            <label for="{{ form.title.id_for_label }}">{{ form.title.label }} <span class="field-required">*</span></label>
                             {{ form.title }}
                             {% for error in form.title.errors %}
                                 <span class="field-error">{{ error }}</span>
@@ -70,8 +199,11 @@
 
                 {% if form.attachment_url %}
                     <div class="form-field">
-                        <label for="{{ form.attachment_url.id_for_label }}">{{ form.attachment_url.label }}</label>
+                        <label for="{{ form.attachment_url.id_for_label }}">{{ form.attachment_url.label }} <span class="field-required">*</span></label>
                         {{ form.attachment_url }}
+                        {% if form.attachment_file %}
+                            <p class="field-help">Preencha este link ou envie o arquivo abaixo.</p>
+                        {% endif %}
                         {% for error in form.attachment_url.errors %}
                             <span class="field-error">{{ error }}</span>
                         {% endfor %}
@@ -80,7 +212,7 @@
 
                 {% if form.attachment_file %}
                     <div class="form-field">
-                        <label for="{{ form.attachment_file.id_for_label }}">{{ form.attachment_file.label }}</label>
+                        <label for="{{ form.attachment_file.id_for_label }}">{{ form.attachment_file.label }} <span class="field-required">*</span></label>
                         {{ form.attachment_file }}
                         {% for error in form.attachment_file.errors %}
                             <span class="field-error">{{ error }}</span>
@@ -90,8 +222,11 @@
 
                 {% if form.statement_url %}
                     <div class="form-field">
-                        <label for="{{ form.statement_url.id_for_label }}">{{ form.statement_url.label }}</label>
+                        <label for="{{ form.statement_url.id_for_label }}">{{ form.statement_url.label }} <span class="field-required">*</span></label>
                         {{ form.statement_url }}
+                        {% if form.statement_file %}
+                            <p class="field-help">Preencha este link ou envie o arquivo abaixo.</p>
+                        {% endif %}
                         {% for error in form.statement_url.errors %}
                             <span class="field-error">{{ error }}</span>
                         {% endfor %}
@@ -100,7 +235,7 @@
 
                 {% if form.statement_file %}
                     <div class="form-field">
-                        <label for="{{ form.statement_file.id_for_label }}">{{ form.statement_file.label }}</label>
+                        <label for="{{ form.statement_file.id_for_label }}">{{ form.statement_file.label }} <span class="field-required">*</span></label>
                         {{ form.statement_file }}
                         {% for error in form.statement_file.errors %}
                             <span class="field-error">{{ error }}</span>
@@ -121,7 +256,7 @@
                 <div class="activity-form-grid">
                     {% if form.due_date %}
                         <div class="form-field">
-                            <label for="{{ form.due_date.id_for_label }}">{{ form.due_date.label }}</label>
+                            <label for="{{ form.due_date.id_for_label }}">{{ form.due_date.label }} <span class="field-required">*</span></label>
                             {{ form.due_date }}
                             {% for error in form.due_date.errors %}
                                 <span class="field-error">{{ error }}</span>
@@ -131,7 +266,7 @@
 
                     {% if form.max_score %}
                         <div class="form-field">
-                            <label for="{{ form.max_score.id_for_label }}">{{ form.max_score.label }}</label>
+                            <label for="{{ form.max_score.id_for_label }}">{{ form.max_score.label }} <span class="field-required">*</span></label>
                             {{ form.max_score }}
                             {% for error in form.max_score.errors %}
                                 <span class="field-error">{{ error }}</span>
@@ -148,7 +283,7 @@
                 {% endif %}
 
                 <div class="form-actions">
-                    <button class="primary-button" type="submit">{{ submit_button_text }}</button>
+                    <button id="course-item-submit" class="primary-button" type="submit">{{ submit_button_text }}</button>
                     <a href="{% url 'agora:course_detail' course.id %}" class="ghost-button">Cancelar</a>
                 </div>
             </form>

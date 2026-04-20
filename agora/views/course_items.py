@@ -104,7 +104,7 @@ def course_item_create_view(request, course_id):
     if course.teacher != request.user:
         messages.error(request, 'Você não tem permissão para criar atividades neste curso.')
         return redirect('agora:course_detail', course_id=course.id)
-
+        # 
     selected_type = request.POST.get('activity_kind') or request.GET.get('type') or 'resource'
     if selected_type not in ACTIVITY_CREATE_CONFIG:
         selected_type = 'resource'

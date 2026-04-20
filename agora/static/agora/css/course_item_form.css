@@ -118,6 +118,16 @@
     font-size: 0.92rem;
 }
 
+.field-help {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.field-required {
+    color: var(--danger);
+}
+
 .form-error-banner {
     display: block;
     padding: 18px 20px;
@@ -131,6 +141,12 @@
     display: flex;
     justify-content: flex-end;
     gap: 12px;
+}
+
+.form-actions .primary-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
 @media (max-width: 1080px) {
