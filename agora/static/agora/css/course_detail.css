@@ -94,6 +94,17 @@
     gap: var(--size-4);
 }
 
+.activity-card-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.activity-card-link:hover {
+    text-decoration: none;
+}
+
 .activity-card {
     background-color: var(--surface-1);
     border-radius: var(--radius-2);
@@ -103,12 +114,16 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    transition: all 0.2s ease-in-out;
 }
 
-.activity-card:hover {
+.activity-card-link:hover .activity-card {
     box-shadow: var(--shadow-2);
     transform: translateY(-2px);
-    transition: all 0.2s ease-in-out;
+}
+
+.activity-card-link:active .activity-card {
+    transform: translateY(-1px);
 }
 
 .activity-head {
@@ -121,6 +136,10 @@
 .activity-head strong {
     font-size: var(--font-size-3);
     color: var(--text-1);
+}
+
+.activity-card-link:hover .activity-head strong {
+    text-decoration: underline;
 }
 
 .activity-card p {

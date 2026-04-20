@@ -76,26 +76,28 @@
                         {% endif %}
                         <div class="activity-list">
                             {% for activity in module.activities_page %}
-                                <article class="activity-card">
-                                    <div class="activity-head">
-                                        <strong><a href="{% url 'agora:course_item_detail' activity.id %}">{{ activity.title }}</a></strong>
-                                        {% if activity.is_published %}
-                                            <span class="status-pill accent">Publicado</span>
-                                        {% else %}
-                                            <span class="status-pill neutral">Rascunho</span>
-                                        {% endif %}
-                                    </div>
-                                    <p>{{ activity.description|truncatechars:100 }}</p>
-                                    <div class="activity-meta">
-                                        <span>Tipo: {{ activity.activity_type }}</span>
-                                        {% if activity.due_date %}
-                                            <span>Prazo: {{ activity.due_date|date:"d/m/Y H:i" }}</span>
-                                        {% endif %}
-                                        {% if activity.activity_type_value == 'assignment' and activity.max_score|default_if_none:"" != "" %}
-                                            <span>Nota Máxima: {{ activity.max_score }}</span>
-                                        {% endif %}
-                                    </div>
-                                </article>
+                                <a class="activity-card-link" href="{% url 'agora:course_item_detail' activity.id %}" aria-label="Abrir item {{ activity.title }}">
+                                    <article class="activity-card">
+                                        <div class="activity-head">
+                                            <strong>{{ activity.title }}</strong>
+                                            {% if activity.is_published %}
+                                                <span class="status-pill accent">Publicado</span>
+                                            {% else %}
+                                                <span class="status-pill neutral">Rascunho</span>
+                                            {% endif %}
+                                        </div>
+                                        <p>{{ activity.description|truncatechars:100 }}</p>
+                                        <div class="activity-meta">
+                                            <span>Tipo: {{ activity.activity_type }}</span>
+                                            {% if activity.due_date %}
+                                                <span>Prazo: {{ activity.due_date|date:"d/m/Y H:i" }}</span>
+                                            {% endif %}
+                                            {% if activity.activity_type_value == 'assignment' and activity.max_score|default_if_none:"" != "" %}
+                                                <span>Nota Máxima: {{ activity.max_score }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </article>
+                                </a>
                             {% endfor %}
                         </div>
                         {% if module.activities_page.has_other_pages %}
