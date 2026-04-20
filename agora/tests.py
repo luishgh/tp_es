@@ -3,7 +3,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Activity, Course, Enrollment, Module, Submission, UserProfile
+from .models import AssignmentItem, Course, Enrollment, Module, ResourceItem, Submission, UserProfile
 
 
 class CourseDetailViewTests(TestCase):
@@ -68,7 +68,7 @@ class CourseDetailViewTests(TestCase):
         )
 
     def test_course_detail_renders_professor_and_active_students_from_database(self):
-        self.client.force_login(self.viewer)
+        self.client.force_login(self.student)
 
         response = self.client.get(reverse('agora:course_detail', args=[self.course.id]))
 
@@ -143,10 +143,11 @@ class ActivityCreateViewTests(TestCase):
         response = self.client.post(
             reverse('agora:activity_create', args=[self.course.id]),
             data={
-                'activity_kind': Activity.Type.ASSIGNMENT,
+                'activity_kind': 'assignment',
                 'module': str(self.module.id),
                 'title': 'Lista 1',
                 'description': 'Exercícios da semana.',
+                'statement_url': 'https://example.com/enunciado',
                 'due_date': '2026-04-30T23:59',
                 'max_score': '10',
                 'is_published': 'on',
@@ -154,7 +155,7 @@ class ActivityCreateViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
-        activity = Activity.objects.get(title='Lista 1')
+        activity = AssignmentItem.objects.get(title='Lista 1')
         self.assertEqual(activity.course_id, self.course.id)
         self.assertEqual(activity.module_id, self.module.id)
 
@@ -164,10 +165,11 @@ class ActivityCreateViewTests(TestCase):
         response = self.client.post(
             reverse('agora:activity_create', args=[self.course.id]),
             data={
-                'activity_kind': Activity.Type.ASSIGNMENT,
+                'activity_kind': 'assignment',
                 'module': str(self.other_module.id),
                 'title': 'Lista X',
                 'description': 'Teste.',
+                'statement_url': 'https://example.com/enunciado',
                 'due_date': '2026-04-30T23:59',
                 'max_score': '10',
                 'is_published': 'on',
@@ -184,7 +186,7 @@ class ActivityCreateViewTests(TestCase):
         response = self.client.post(
             reverse('agora:activity_create', args=[self.course.id]),
             data={
-                'activity_kind': Activity.Type.RESOURCE,
+                'activity_kind': 'resource',
                 'module': str(self.module.id),
                 'title': 'Slides 1',
                 'description': 'Material de apoio.',
@@ -194,10 +196,8 @@ class ActivityCreateViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
-        activity = Activity.objects.get(title='Slides 1')
-        self.assertEqual(activity.activity_type, Activity.Type.RESOURCE)
-        self.assertIsNone(activity.due_date)
-        self.assertIsNone(activity.max_score)
+        activity = ResourceItem.objects.get(title='Slides 1')
+        self.assertEqual(activity.attachment_url, 'https://example.com/slides')
 
     def test_teacher_can_create_material_with_uploaded_file(self):
         self.client.force_login(self.teacher)
@@ -211,7 +211,7 @@ class ActivityCreateViewTests(TestCase):
         response = self.client.post(
             reverse('agora:activity_create', args=[self.course.id]),
             data={
-                'activity_kind': Activity.Type.RESOURCE,
+                'activity_kind': 'resource',
                 'module': str(self.module.id),
                 'title': 'Arquivo 1',
                 'description': 'Material com upload.',
@@ -221,7 +221,7 @@ class ActivityCreateViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
-        activity = Activity.objects.get(title='Arquivo 1')
+        activity = ResourceItem.objects.get(title='Arquivo 1')
         self.assertTrue(bool(activity.attachment_file))
         self.assertEqual(activity.attachment_url, '')
 
@@ -231,10 +231,11 @@ class ActivityCreateViewTests(TestCase):
         response = self.client.post(
             reverse('agora:activity_create', args=[self.course.id]),
             data={
-                'activity_kind': Activity.Type.ASSIGNMENT,
+                'activity_kind': 'assignment',
                 'module': str(self.module.id),
                 'title': 'Lista sem nota',
                 'description': 'Teste.',
+                'statement_url': 'https://example.com/enunciado',
                 'due_date': '2026-04-30T23:59',
                 'is_published': 'on',
             },
@@ -289,38 +290,32 @@ class ResourceDetailViewTests(TestCase):
 
         Enrollment.objects.create(student=self.student, course=self.course, status=Enrollment.Status.ACTIVE)
 
-        self.assignment = Activity.objects.create(
+        self.assignment = AssignmentItem.objects.create(
             course=self.course,
             module=self.module,
             title='Trabalho 1',
             description='SQL exercises.',
-            activity_type=Activity.Type.ASSIGNMENT,
-            attachment_url='https://example.com/spec',
-            due_date=None,
+            statement_url='https://example.com/spec',
+            due_date='2026-04-30T23:59Z',
             max_score=10,
             is_published=True,
             created_by=self.teacher,
         )
-        self.material = Activity.objects.create(
+        self.material = ResourceItem.objects.create(
             course=self.course,
             module=self.module,
             title='Leitura 1',
             description='Slides.',
-            activity_type=Activity.Type.RESOURCE,
             attachment_url='https://example.com/slides',
-            due_date=None,
-            max_score=None,
             is_published=True,
             created_by=self.teacher,
         )
-        self.draft_assignment = Activity.objects.create(
+        self.draft_assignment = AssignmentItem.objects.create(
             course=self.course,
             module=self.module,
             title='Rascunho',
             description='Draft.',
-            activity_type=Activity.Type.ASSIGNMENT,
-            attachment_url='',
-            due_date=None,
+            due_date='2026-05-10T23:59Z',
             max_score=10,
             is_published=False,
             created_by=self.teacher,
@@ -352,7 +347,7 @@ class ResourceDetailViewTests(TestCase):
 
     def test_teacher_sees_submissions_for_assignment(self):
         Submission.objects.create(
-            activity=self.assignment,
+            assignment=self.assignment,
             student=self.student,
             status=Submission.Status.SUBMITTED,
         )

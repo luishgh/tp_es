@@ -6,12 +6,18 @@ from decimal import Decimal
 from random import choice, randint
 
 from agora.models import (
-    UserProfile,
+    Answer,
+    AssignmentItem,
     Course,
+    ForumItem,
     Enrollment,
     Module,
-    Activity,
+    QuizItem,
+    QuizOption,
+    QuizQuestion,
+    ResourceItem,
     Submission,
+    UserProfile,
 )
 
 User = get_user_model()
@@ -114,10 +120,10 @@ class Command(BaseCommand):
         # ACTIVITIES
         # =========================
         activity_templates = [
-            ('Tarefa', Activity.Type.ASSIGNMENT, 100),
-            ('Quiz', Activity.Type.QUIZ, 20),
-            ('Fórum', Activity.Type.FORUM, None),
-            ('Material', Activity.Type.RESOURCE, None),
+            ('Tarefa', 'assignment', 100),
+            ('Quiz', 'quiz', None),
+            ('Fórum', 'forum', None),
+            ('Material', 'resource', None),
         ]
 
         all_activities = []
@@ -138,20 +144,72 @@ class Command(BaseCommand):
                 else:
                     due_date = now + timedelta(days=randint(5, 15))
 
-                activity, _ = Activity.objects.get_or_create(
-                    course=course,
-                    title=f'{name} {i}',
-                    defaults={
-                        'module': module,
-                        'description': f'{name} {i} do curso {course.title}',
-                        'activity_type': activity_type,
-                        'due_date': due_date,
-                        'max_score': Decimal(max_score) if max_score else None,
-                        'attachment_url': 'https://example.com/material.pdf' if activity_type == Activity.Type.RESOURCE else '',
-                        'is_published': True,
-                        'created_by': course.teacher,
-                    }
-                )
+                title = f'{name} {i}'
+
+                if activity_type == 'assignment':
+                    activity, _ = AssignmentItem.objects.get_or_create(
+                        course=course,
+                        title=title,
+                        defaults={
+                            'module': module,
+                            'description': f'{name} {i} do curso {course.title}',
+                            'due_date': due_date,
+                            'max_score': Decimal(max_score),
+                            'statement_url': 'https://example.com/enunciado.pdf',
+                            'is_published': True,
+                            'created_by': course.teacher,
+                        }
+                    )
+                elif activity_type == 'quiz':
+                    activity, created = QuizItem.objects.get_or_create(
+                        course=course,
+                        title=title,
+                        defaults={
+                            'module': module,
+                            'description': f'{name} {i} do curso {course.title}',
+                            'due_date': due_date,
+                            'max_score': Decimal('20'),
+                            'is_published': True,
+                            'created_by': course.teacher,
+                        }
+                    )
+                    if created and not activity.questions.exists():
+                        for question_order in range(1, 3):
+                            question = QuizQuestion.objects.create(
+                                quiz=activity,
+                                statement=f'Pergunta {question_order} do {title}',
+                                order=question_order,
+                            )
+                            for option_order in range(1, 5):
+                                QuizOption.objects.create(
+                                    question=question,
+                                    text=f'Alternativa {option_order}',
+                                    order=option_order,
+                                    is_correct=option_order == 1,
+                                )
+                elif activity_type == 'forum':
+                    activity, _ = ForumItem.objects.get_or_create(
+                        course=course,
+                        title=title,
+                        defaults={
+                            'module': module,
+                            'description': f'{name} {i} do curso {course.title}',
+                            'is_published': True,
+                            'created_by': course.teacher,
+                        }
+                    )
+                else:
+                    activity, _ = ResourceItem.objects.get_or_create(
+                        course=course,
+                        title=title,
+                        defaults={
+                            'module': module,
+                            'description': f'{name} {i} do curso {course.title}',
+                            'attachment_url': 'https://example.com/material.pdf',
+                            'is_published': True,
+                            'created_by': course.teacher,
+                        }
+                    )
 
                 all_activities.append(activity)
 
@@ -159,42 +217,52 @@ class Command(BaseCommand):
         # SUBMISSIONS
         # =========================
         for activity in all_activities:
-            if activity.activity_type == Activity.Type.RESOURCE:
-                continue  # recurso não tem submissão
+            if isinstance(activity, ResourceItem) or isinstance(activity, ForumItem):
+                continue
 
             for student in students:
                 if randint(0, 1) == 0:
                     continue
 
-                status = choice([
-                    Submission.Status.SUBMITTED,
-                    Submission.Status.REVIEWED,
-                    Submission.Status.LATE,
-                ])
+                if isinstance(activity, AssignmentItem):
+                    status = choice([
+                        Submission.Status.SUBMITTED,
+                        Submission.Status.REVIEWED,
+                        Submission.Status.LATE,
+                    ])
 
-                score = None
-                graded_by = None
-                graded_at = None
+                    score = None
+                    graded_by = None
+                    graded_at = None
 
-                if status == Submission.Status.REVIEWED and activity.max_score:
-                    max_score = int(activity.max_score)
-                    score = Decimal(randint(int(max_score * 0.5), max_score))
-                    graded_by = activity.created_by
-                    graded_at = now - timedelta(hours=randint(1, 48))
+                    if status == Submission.Status.REVIEWED and activity.max_score:
+                        max_score = int(activity.max_score)
+                        score = Decimal(randint(int(max_score * 0.5), max_score))
+                        graded_by = activity.created_by
+                        graded_at = now - timedelta(hours=randint(1, 48))
 
-                Submission.objects.get_or_create(
-                    activity=activity,
-                    student=student,
-                    defaults={
-                        'content': f'Resposta de {student.username}',
-                        'attachment_url': '',
-                        'status': status,
-                        'submitted_at': now - timedelta(days=randint(0, 5)),
-                        'score': score,
-                        'feedback': 'Bom trabalho!' if score else '',
-                        'graded_by': graded_by,
-                        'graded_at': graded_at,
-                    }
-                )
+                    Submission.objects.get_or_create(
+                        assignment=activity,
+                        student=student,
+                        defaults={
+                            'content': f'Resposta de {student.username}',
+                            'status': status,
+                            'submitted_at': now - timedelta(days=randint(0, 5)),
+                            'score': score,
+                            'feedback': 'Bom trabalho!' if score else '',
+                            'graded_by': graded_by,
+                            'graded_at': graded_at,
+                        }
+                    )
+                elif isinstance(activity, QuizItem) and not Answer.objects.filter(quiz=activity, student=student).exists():
+                    for question in activity.questions.all():
+                        selected = question.options.order_by('?').first()
+                        if selected:
+                            Answer.objects.create(
+                                quiz=activity,
+                                question=question,
+                                selected_option=selected,
+                                student=student,
+                            )
 
         self.stdout.write(self.style.SUCCESS("Dados criados com sucesso!"))

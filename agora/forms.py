@@ -2,7 +2,15 @@ from django import forms
 from django.contrib.auth import get_user_model
 import re
 
-from .models import Activity, Course, Module, UserProfile
+from .models import (
+    AssignmentItem,
+    Course,
+    ForumItem,
+    Module,
+    QuizItem,
+    ResourceItem,
+    UserProfile,
+)
 
 
 class SuperuserCreateUserForm(forms.Form):
@@ -193,7 +201,7 @@ class ResourceCreateForm(BaseCourseActivityForm):
         })
 
     class Meta:
-        model = Activity
+        model = ResourceItem
         fields = ['module', 'title', 'description', 'attachment_url', 'attachment_file', 'is_published']
         labels = {
             'module': 'Módulo (opcional)',
@@ -223,13 +231,31 @@ class AssignmentCreateForm(BaseCourseActivityForm):
     title_placeholder = 'Ex.: Lista 1'
     description_placeholder = 'Descreva a proposta da tarefa, critérios e orientações de entrega.'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['statement_url'].widget.attrs.update({'placeholder': 'https://...'})
+        self.fields['statement_file'].widget.attrs.update({
+            'accept': '.pdf,.doc,.docx,.ppt,.pptx,.txt,.zip,.png,.jpg,.jpeg',
+        })
+
     class Meta:
-        model = Activity
-        fields = ['module', 'title', 'description', 'due_date', 'max_score', 'is_published']
+        model = AssignmentItem
+        fields = [
+            'module',
+            'title',
+            'description',
+            'statement_url',
+            'statement_file',
+            'due_date',
+            'max_score',
+            'is_published',
+        ]
         labels = {
             'module': 'Módulo (opcional)',
             'title': 'Título da tarefa',
             'description': 'Descrição',
+            'statement_url': 'Link do enunciado',
+            'statement_file': 'Arquivo do enunciado',
             'due_date': 'Data de entrega',
             'max_score': 'Nota máxima',
             'is_published': 'Publicar agora',
@@ -241,6 +267,7 @@ class AssignmentCreateForm(BaseCourseActivityForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        cleaned_data['statement_url'] = (cleaned_data.get('statement_url') or '').strip()
         if not cleaned_data.get('due_date'):
             self.add_error('due_date', 'Informe a data de entrega da tarefa.')
         if cleaned_data.get('max_score') is None:
@@ -253,7 +280,7 @@ class QuizCreateForm(BaseCourseActivityForm):
     description_placeholder = 'Descreva o objetivo do quiz e as orientações principais.'
 
     class Meta:
-        model = Activity
+        model = QuizItem
         fields = ['module', 'title', 'description', 'due_date', 'max_score', 'is_published']
         labels = {
             'module': 'Módulo (opcional)',
@@ -282,7 +309,7 @@ class ForumCreateForm(BaseCourseActivityForm):
     description_placeholder = 'Apresente o tema do debate e indique como os estudantes devem participar.'
 
     class Meta:
-        model = Activity
+        model = ForumItem
         fields = ['module', 'title', 'description', 'is_published']
         labels = {
             'module': 'Módulo (opcional)',

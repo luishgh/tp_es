@@ -9,7 +9,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 
-from ..models import Activity, Enrollment, Submission, UserProfile
+from ..models import Answer, AssignmentItem, CourseItem, Enrollment, QuizItem, Submission, UserProfile
 from .common import _user_role
 
 
@@ -48,15 +48,15 @@ def _build_teacher_dashboard_context(user):
         .annotate(total=Count('id'))
     }
 
-    course_published_activities = {
+    course_published_items = {
         item['course_id']: item['total']
-        for item in Activity.objects.filter(course_id__in=course_ids, is_published=True)
+        for item in CourseItem.objects.filter(course_id__in=course_ids, is_published=True)
         .values('course_id')
         .annotate(total=Count('id'))
     }
 
     activities_pending_review = list(
-        Activity.objects.select_related('course')
+        AssignmentItem.objects.select_related('course')
         .filter(
             course__teacher=user,
             is_published=True,
@@ -68,14 +68,14 @@ def _build_teacher_dashboard_context(user):
     )
 
     pending_review_counts = {
-        item['activity_id']: item['total']
+        item['assignment_id']: item['total']
         for item in Submission.objects.filter(
-            activity__course__teacher=user,
-            activity__is_published=True,
-            activity__due_date__lt=now,
+            assignment__course__teacher=user,
+            assignment__is_published=True,
+            assignment__due_date__lt=now,
             status__in=[Submission.Status.SUBMITTED, Submission.Status.LATE],
         )
-        .values('activity_id')
+        .values('assignment_id')
         .annotate(total=Count('id'))
     }
 
@@ -93,7 +93,7 @@ def _build_teacher_dashboard_context(user):
             'title': activity.title,
             'course_title': course.title,
             'course_code': course.code,
-            'activity_type': activity.get_activity_type_display(),
+            'activity_type': activity.kind_label,
             'status_label': 'Correção pendente',
             'status_tone': 'danger',
             'meta_label': f'{pending_reviews} envio{"s" if pending_reviews != 1 else ""} aguardando avaliação',
@@ -101,7 +101,7 @@ def _build_teacher_dashboard_context(user):
 
     course_cards = []
     for index_number, course in enumerate(courses):
-        total_activities = course_published_activities.get(course.id, 0)
+        total_activities = course_published_items.get(course.id, 0)
         total_students = course_student_counts.get(course.id, 0)
         pending = pending_count_by_course.get(course.id, 0)
         progress = int((1 - pending / total_activities) * 100) if total_activities else 0
@@ -132,33 +132,47 @@ def _build_student_dashboard_context(user):
     )
     course_ids = [enrollment.course_id for enrollment in enrollments]
 
-    course_published_activities = {
+    course_published_items = {
         item['course_id']: item['total']
-        for item in Activity.objects.filter(course_id__in=course_ids, is_published=True)
+        for item in CourseItem.objects.filter(course_id__in=course_ids, is_published=True)
         .values('course_id')
         .annotate(total=Count('id'))
     }
 
-    activities_pending_submission = list(
-        Activity.objects.select_related('course')
-        .filter(course_id__in=course_ids, is_published=True)
-        .exclude(
-            submissions__student=user,
-            submissions__status__in=[
+    answered_quiz_ids = set(
+        Answer.objects.filter(student=user, quiz__course_id__in=course_ids).values_list('quiz_id', flat=True)
+    )
+    submitted_assignment_ids = set(
+        Submission.objects.filter(
+            student=user,
+            assignment__course_id__in=course_ids,
+            status__in=[
                 Submission.Status.SUBMITTED,
                 Submission.Status.REVIEWED,
                 Submission.Status.LATE,
             ],
+        ).values_list('assignment_id', flat=True)
+    )
+
+    pending_items = sorted(
+        list(
+            AssignmentItem.objects.select_related('course')
+            .filter(course_id__in=course_ids, is_published=True)
+            .exclude(id__in=submitted_assignment_ids)
         )
-        .distinct()
-        .order_by('due_date', 'title')
+        + list(
+            QuizItem.objects.select_related('course')
+            .filter(course_id__in=course_ids, is_published=True)
+            .exclude(id__in=answered_quiz_ids)
+        ),
+        key=lambda item: (item.due_date is None, item.due_date or now, item.title.lower()),
     )
 
     pending_count_by_course = defaultdict(int)
     pending_cards = []
     overdue_activities = 0
 
-    for activity in activities_pending_submission:
+    for activity in pending_items:
         due_date = timezone.localtime(activity.due_date) if activity.due_date else None
         is_overdue = bool(due_date and due_date < now)
         is_due_today = bool(due_date and due_date.date() == now.date())
@@ -185,7 +199,7 @@ def _build_student_dashboard_context(user):
             'title': activity.title,
             'course_title': activity.course.title,
             'course_code': activity.course.code,
-            'activity_type': activity.get_activity_type_display(),
+            'activity_type': activity.kind_label,
             'status_label': status_label,
             'status_tone': status_tone,
             'meta_label': f'Prazo de entrega: {due_date.strftime("%d/%m, %H:%M") if due_date else "Sem data definida"}',
@@ -194,7 +208,7 @@ def _build_student_dashboard_context(user):
     course_cards = []
     for index_number, enrollment in enumerate(enrollments):
         course = enrollment.course
-        total_activities = course_published_activities.get(course.id, 0)
+        total_activities = course_published_items.get(course.id, 0)
         pending = pending_count_by_course.get(course.id, 0)
         progress = int((1 - pending / total_activities) * 100) if total_activities else 0
 
@@ -237,24 +251,43 @@ def calendar_view(request):
     )
     course_ids = [enrollment.course_id for enrollment in enrollments]
 
-    activities = list(
-        Activity.objects.select_related('course')
-        .filter(
-            course_id__in=course_ids,
-            is_published=True,
-            due_date__year=current_year,
-            due_date__month=current_month,
-        )
-        .exclude(
-            submissions__student=request.user,
-            submissions__status__in=[
+    answered_quiz_ids = set(
+        Answer.objects.filter(student=request.user, quiz__course_id__in=course_ids).values_list('quiz_id', flat=True)
+    )
+    submitted_assignment_ids = set(
+        Submission.objects.filter(
+            student=request.user,
+            assignment__course_id__in=course_ids,
+            status__in=[
                 Submission.Status.SUBMITTED,
                 Submission.Status.REVIEWED,
                 Submission.Status.LATE,
             ],
+        ).values_list('assignment_id', flat=True)
+    )
+
+    activities = sorted(
+        list(
+            AssignmentItem.objects.select_related('course')
+            .filter(
+                course_id__in=course_ids,
+                is_published=True,
+                due_date__year=current_year,
+                due_date__month=current_month,
+            )
+            .exclude(id__in=submitted_assignment_ids)
         )
-        .distinct()
-        .order_by('due_date', 'title')
+        + list(
+            QuizItem.objects.select_related('course')
+            .filter(
+                course_id__in=course_ids,
+                is_published=True,
+                due_date__year=current_year,
+                due_date__month=current_month,
+            )
+            .exclude(id__in=answered_quiz_ids)
+        ),
+        key=lambda item: (item.due_date is None, item.due_date or now, item.title.lower()),
     )
 
     activities_by_day = defaultdict(list)
@@ -307,10 +340,10 @@ def calendar_view(request):
         calendar_weeks.append(cells)
 
     reviewed_submissions = list(
-        Submission.objects.select_related('activity', 'activity__course', 'activity__course__teacher')
+        Submission.objects.select_related('assignment', 'assignment__course', 'assignment__course__teacher')
         .filter(
             student=request.user,
-            activity__course_id__in=course_ids,
+            assignment__course_id__in=course_ids,
             status=Submission.Status.REVIEWED,
             score__isnull=False,
         )
@@ -319,10 +352,10 @@ def calendar_view(request):
 
     grade_cards = [
         {
-            'course_code': submission.activity.course.code,
-            'course_title': submission.activity.course.title,
-            'teacher_name': submission.activity.course.teacher.get_full_name() or submission.activity.course.teacher.username,
-            'activity_title': submission.activity.title,
+            'course_code': submission.assignment.course.code,
+            'course_title': submission.assignment.course.title,
+            'teacher_name': submission.assignment.course.teacher.get_full_name() or submission.assignment.course.teacher.username,
+            'activity_title': submission.assignment.title,
             'score': submission.score,
             'graded_at': submission.graded_at or submission.updated_at,
             'feedback': submission.feedback,

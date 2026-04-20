@@ -1,6 +1,21 @@
 from django.contrib import admin
 
-from .models import Activity, Course, Enrollment, Module, Submission, UserProfile
+from .models import (
+    Answer,
+    AssignmentItem,
+    Course,
+    CourseItem,
+    Enrollment,
+    ForumItem,
+    ForumMessage,
+    Module,
+    QuizItem,
+    QuizOption,
+    QuizQuestion,
+    ResourceItem,
+    Submission,
+    UserProfile,
+)
 
 
 @admin.register(UserProfile)
@@ -31,15 +46,63 @@ class EnrollmentAdmin(admin.ModelAdmin):
     search_fields = ('student__username', 'course__code', 'course__title')
 
 
-@admin.register(Activity)
-class ActivityAdmin(admin.ModelAdmin):
-    list_display = ('title', 'course', 'module', 'activity_type', 'due_date', 'is_published')
-    list_filter = ('activity_type', 'is_published', 'course', 'module')
+@admin.register(CourseItem)
+class CourseItemAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'module', 'kind_label', 'is_published')
+    list_filter = ('is_published', 'course', 'module')
     search_fields = ('title', 'course__code', 'course__title', 'module__title')
+
+
+@admin.register(ResourceItem)
+class ResourceItemAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'module', 'is_published')
+    list_filter = ('is_published', 'course', 'module')
+
+
+@admin.register(AssignmentItem)
+class AssignmentItemAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'module', 'due_date', 'max_score', 'is_published')
+    list_filter = ('is_published', 'course', 'module')
+
+
+@admin.register(QuizItem)
+class QuizItemAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'module', 'due_date', 'is_published')
+    list_filter = ('is_published', 'course', 'module')
+
+
+@admin.register(ForumItem)
+class ForumItemAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'module', 'is_published')
+    list_filter = ('is_published', 'course', 'module')
+
+
+@admin.register(QuizQuestion)
+class QuizQuestionAdmin(admin.ModelAdmin):
+    list_display = ('quiz', 'order', 'weight')
+    list_filter = ('quiz__course',)
+
+
+@admin.register(QuizOption)
+class QuizOptionAdmin(admin.ModelAdmin):
+    list_display = ('question', 'order', 'is_correct')
+    list_filter = ('question__quiz__course',)
+
+
+@admin.register(ForumMessage)
+class ForumMessageAdmin(admin.ModelAdmin):
+    list_display = ('forum', 'author', 'created_at')
+    list_filter = ('forum__course',)
 
 
 @admin.register(Submission)
 class SubmissionAdmin(admin.ModelAdmin):
-    list_display = ('activity', 'student', 'status', 'score', 'submitted_at', 'graded_at')
-    list_filter = ('status', 'activity__course')
-    search_fields = ('student__username', 'activity__title', 'activity__course__code')
+    list_display = ('assignment', 'student', 'status', 'score', 'submitted_at', 'graded_at')
+    list_filter = ('status', 'assignment__course')
+    search_fields = ('student__username', 'assignment__title', 'assignment__course__code')
+
+
+@admin.register(Answer)
+class AnswerAdmin(admin.ModelAdmin):
+    list_display = ('quiz', 'question', 'student', 'answered_at')
+    list_filter = ('quiz__course',)

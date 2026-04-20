@@ -23,16 +23,19 @@
                 </div>
             </div>
             <div class="activity-info">
-                <p><strong>Tipo:</strong> {{ activity.get_activity_type_display }}</p>
+                <p><strong>Tipo:</strong> {{ activity.kind_label }}</p>
                 <p><strong>Descrição:</strong> {{ activity.description }}</p>
-                {% if activity.due_date %}
-                    <p><strong>Prazo:</strong> {{ activity.due_date|date:"d/m/Y H:i" }}</p>
+                {% if detail.due_date %}
+                    <p><strong>Prazo:</strong> {{ detail.due_date|date:"d/m/Y H:i" }}</p>
                 {% endif %}
-                {% if activity.activity_type == 'assignment' and activity.max_score|default_if_none:"" != "" %}
-                    <p><strong>Nota Máxima:</strong> {{ activity.max_score }}</p>
+                {% if detail.max_score|default_if_none:"" != "" %}
+                    <p><strong>Nota Máxima:</strong> {{ detail.max_score }}</p>
                 {% endif %}
-                {% if activity.attachment_url %}
-                    <p><strong>Anexo:</strong> <a href="{{ activity.attachment_url }}" target="_blank">{{ activity.attachment_url }}</a></p>
+                {% if detail.statement_url %}
+                    <p><strong>Link do enunciado:</strong> <a href="{{ detail.statement_url }}" target="_blank">{{ detail.statement_url }}</a></p>
+                {% endif %}
+                {% if detail.statement_file %}
+                    <p><strong>Arquivo do enunciado:</strong> <a href="{{ detail.statement_file.url }}" target="_blank">Baixar enunciado</a></p>
                 {% endif %}
             </div>
         </div>
@@ -65,8 +68,8 @@
                                 {% if submission.content %}
                                     <p>{{ submission.content|truncatechars:150 }}</p>
                                 {% endif %}
-                                {% if submission.attachment_url %}
-                                    <p><a href="{{ submission.attachment_url }}" target="_blank">Anexo</a></p>
+                                {% if submission.attachment_file %}
+                                    <p><a href="{{ submission.attachment_file.url }}" target="_blank">Arquivo enviado</a></p>
                                 {% endif %}
                             </div>
                             <div class="submission-grade">

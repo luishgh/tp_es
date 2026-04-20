@@ -11,34 +11,48 @@ from ..forms import (
     QuizCreateForm,
     ResourceCreateForm,
 )
-from ..models import Activity, Course, Enrollment, Submission, UserProfile
+from ..models import (
+    AssignmentItem,
+    Course,
+    CourseItem,
+    Enrollment,
+    ForumItem,
+    QuizItem,
+    ResourceItem,
+    Submission,
+    UserProfile,
+)
 from .common import _user_role
 
 
 ACTIVITY_CREATE_CONFIG = {
-    Activity.Type.RESOURCE: {
+    'resource': {
         'form_class': ResourceCreateForm,
+        'model_class': ResourceItem,
         'title': 'Criar Novo Material',
         'submit_label': 'Criar Material',
         'button_label': 'Material',
         'description': 'Publique links, leituras, slides e materiais de apoio.',
     },
-    Activity.Type.ASSIGNMENT: {
+    'assignment': {
         'form_class': AssignmentCreateForm,
+        'model_class': AssignmentItem,
         'title': 'Criar Nova Tarefa',
         'submit_label': 'Criar Tarefa',
         'button_label': 'Tarefa',
         'description': 'Defina uma entrega com prazo e nota máxima.',
     },
-    Activity.Type.QUIZ: {
+    'quiz': {
         'form_class': QuizCreateForm,
+        'model_class': QuizItem,
         'title': 'Criar Novo Quiz',
         'submit_label': 'Criar Quiz',
         'button_label': 'Quiz',
-        'description': 'Cadastre um quiz com prazo e pontuação.',
+        'description': 'Cadastre um quiz com prazo e questões objetivas.',
     },
-    Activity.Type.FORUM: {
+    'forum': {
         'form_class': ForumCreateForm,
+        'model_class': ForumItem,
         'title': 'Criar Novo Fórum',
         'submit_label': 'Criar Fórum',
         'button_label': 'Fórum',
@@ -83,9 +97,9 @@ def activity_create_view(request, course_id):
         messages.error(request, 'Você não tem permissão para criar atividades neste curso.')
         return redirect('agora:course_detail', course_id=course.id)
 
-    selected_type = request.POST.get('activity_kind') or request.GET.get('type') or Activity.Type.RESOURCE
+    selected_type = request.POST.get('activity_kind') or request.GET.get('type') or 'resource'
     if selected_type not in ACTIVITY_CREATE_CONFIG:
-        selected_type = Activity.Type.RESOURCE
+        selected_type = 'resource'
 
     selected_config = ACTIVITY_CREATE_CONFIG[selected_type]
     form_class = selected_config['form_class']
@@ -94,20 +108,17 @@ def activity_create_view(request, course_id):
         form = form_class(request.POST, request.FILES, course=course)
         form.instance.created_by = request.user
         form.instance.course = course
-        form.instance.activity_type = selected_type
         if form.is_valid():
-            activity = form.save(commit=False)
-            activity.activity_type = selected_type
-            activity.created_by = request.user
-            activity.course = course
-            activity.save()
-            messages.success(request, f'{activity.get_activity_type_display()} "{activity.title}" criado com sucesso.')
+            course_item = form.save(commit=False)
+            course_item.created_by = request.user
+            course_item.course = course
+            course_item.save()
+            messages.success(request, f'{course_item.kind_label} "{course_item.title}" criado com sucesso.')
             return redirect('agora:course_detail', course_id=course.id)
     else:
         form = form_class(course=course)
         form.instance.created_by = request.user
         form.instance.course = course
-        form.instance.activity_type = selected_type
 
     context = {
         'form': form,
@@ -132,15 +143,19 @@ def activity_create_view(request, course_id):
 @never_cache
 @login_required(login_url='agora:login')
 def submission_list_view(request, activity_id):
-    activity = get_object_or_404(Activity.objects.select_related('course'), pk=activity_id)
-    if activity.course.teacher != request.user:
+    assignment = get_object_or_404(
+        AssignmentItem.objects.select_related('course'),
+        pk=activity_id,
+    )
+    if assignment.course.teacher != request.user:
         messages.error(request, 'Você não tem permissão para visualizar as submissões desta atividade.')
-        return redirect('agora:course_detail', course_id=activity.course.id)
+        return redirect('agora:course_detail', course_id=assignment.course.id)
 
-    submissions = Submission.objects.filter(activity=activity).select_related('student').order_by('-submitted_at')
+    submissions = Submission.objects.filter(assignment=assignment).select_related('student').order_by('-submitted_at')
 
     context = {
-        'activity': activity,
+        'activity': assignment,
+        'detail': assignment,
         'submissions': submissions,
     }
     return render(request, 'agora/submission_list.html', context)
@@ -149,15 +164,16 @@ def submission_list_view(request, activity_id):
 @never_cache
 @login_required(login_url='agora:login')
 def resource_detail_view(request, activity_id):
-    activity = get_object_or_404(
-        Activity.objects.select_related('course', 'module', 'created_by', 'course__teacher'),
+    course_item = get_object_or_404(
+        CourseItem.objects.select_related('course', 'module', 'created_by', 'course__teacher'),
         pk=activity_id,
     )
+    detail = course_item.detail_object
 
     role = _user_role(request.user)
-    is_teacher = role == UserProfile.Role.TEACHER and activity.course.teacher_id == request.user.id
+    is_teacher = role == UserProfile.Role.TEACHER and course_item.course.teacher_id == request.user.id
     is_enrolled_student = Enrollment.objects.filter(
-        course=activity.course,
+        course=course_item.course,
         student=request.user,
         status=Enrollment.Status.ACTIVE,
     ).exists()
@@ -166,29 +182,30 @@ def resource_detail_view(request, activity_id):
         if role != UserProfile.Role.STUDENT or not is_enrolled_student:
             messages.error(request, 'Você não tem permissão para acessar esta atividade.')
             return redirect('agora:courses_hub')
-        if not activity.is_published:
+        if not course_item.is_published:
             messages.error(request, 'Você não tem permissão para acessar esta atividade.')
             return redirect('agora:courses_hub')
 
     submission_status = None
     if role == UserProfile.Role.STUDENT and is_enrolled_student:
-        submission = Submission.objects.filter(activity=activity, student=request.user).first()
-        if submission:
-            submission_status = {
-                'label': submission.get_status_display(),
-                'tone': 'accent' if submission.status in (Submission.Status.SUBMITTED, Submission.Status.REVIEWED) else 'neutral',
-                'submitted_at': submission.submitted_at,
-            }
-        else:
-            submission_status = {
-                'label': 'Não iniciado',
-                'tone': 'neutral',
-                'submitted_at': None,
-            }
+        if isinstance(detail, AssignmentItem):
+            submission = Submission.objects.filter(assignment=detail, student=request.user).first()
+            if submission:
+                submission_status = {
+                    'label': submission.get_status_display(),
+                    'tone': 'accent' if submission.status in (Submission.Status.SUBMITTED, Submission.Status.REVIEWED) else 'neutral',
+                    'submitted_at': submission.submitted_at,
+                }
+            else:
+                submission_status = {
+                    'label': 'Não iniciado',
+                    'tone': 'neutral',
+                    'submitted_at': None,
+                }
 
     submissions = []
-    if is_teacher and activity.activity_type == Activity.Type.ASSIGNMENT:
-        submissions_qs = Submission.objects.filter(activity=activity).select_related('student').order_by('-submitted_at', '-updated_at')
+    if is_teacher and isinstance(detail, AssignmentItem):
+        submissions_qs = Submission.objects.filter(assignment=detail).select_related('student').order_by('-submitted_at', '-updated_at')
         for submission in submissions_qs:
             if submission.status == Submission.Status.REVIEWED:
                 tone = 'accent'
@@ -207,9 +224,10 @@ def resource_detail_view(request, activity_id):
             })
 
     context = {
-        'activity': activity,
-        'course': activity.course,
-        'module': activity.module,
+        'activity': course_item,
+        'detail': detail,
+        'course': course_item.course,
+        'module': course_item.module,
         'is_teacher': is_teacher,
         'is_student': role == UserProfile.Role.STUDENT,
         'submission_status': submission_status,
@@ -224,16 +242,16 @@ def publish_activity_view(request, activity_id):
     if request.method != 'POST':
         return redirect('agora:resource_detail', activity_id=activity_id)
 
-    activity = get_object_or_404(Activity.objects.select_related('course'), pk=activity_id)
-    if activity.course.teacher_id != request.user.id:
+    course_item = get_object_or_404(CourseItem.objects.select_related('course'), pk=activity_id)
+    if course_item.course.teacher_id != request.user.id:
         messages.error(request, 'Você não tem permissão para publicar esta atividade.')
-        return redirect('agora:resource_detail', activity_id=activity.id)
+        return redirect('agora:resource_detail', activity_id=course_item.id)
 
-    if activity.is_published:
+    if course_item.is_published:
         messages.info(request, 'Esta atividade já está publicada.')
-        return redirect('agora:resource_detail', activity_id=activity.id)
+        return redirect('agora:resource_detail', activity_id=course_item.id)
 
-    activity.is_published = True
-    activity.save(update_fields=['is_published'])
+    course_item.is_published = True
+    course_item.save(update_fields=['is_published'])
     messages.success(request, 'Atividade publicada com sucesso.')
-    return redirect('agora:resource_detail', activity_id=activity.id)
+    return redirect('agora:resource_detail', activity_id=course_item.id)

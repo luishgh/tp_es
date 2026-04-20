@@ -8,8 +8,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import never_cache
 
 from ..forms import CourseCreateForm
-from ..models import Activity, Course, Enrollment, Submission, UserProfile
+from ..models import AssignmentItem, Course, CourseItem, Enrollment, Submission, UserProfile
 from .common import _user_role
+
+
+def _detail_due_date(course_item):
+    detail = course_item.detail_object
+    return getattr(detail, 'due_date', None)
 
 
 @never_cache
@@ -132,37 +137,51 @@ def course_detail_view(request, course_id):
         return redirect('agora:courses_hub')
 
     modules = course.modules.all().order_by('order')
-    activities_by_module = defaultdict(list)
-    activities_without_module = []
+    items_by_module = defaultdict(list)
+    items_without_module = []
 
-    activities_query = Activity.objects.filter(course=course)
+    course_items_query = CourseItem.objects.filter(course=course).select_related('course', 'module', 'created_by')
+    if not is_teacher:
+        course_items_query = course_items_query.filter(is_published=True)
+
+    assignment_submission_counts = {}
     if is_teacher:
-        activities_query = activities_query.annotate(submission_count=Count('submissions'))
-    else:
-        activities_query = activities_query.filter(is_published=True).annotate(
-            submission_count=Count('submissions', filter=Q(submissions__student=request.user))
-        )
-
-    activities_with_submission_counts = activities_query.order_by('due_date', 'title')
-
-    for activity in activities_with_submission_counts:
-        activity_data = {
-            'id': activity.id,
-            'title': activity.title,
-            'description': activity.description,
-            'activity_type': activity.get_activity_type_display(),
-            'activity_type_value': activity.activity_type,
-            'attachment_url': activity.attachment_url,
-            'attachment_file_url': activity.attachment_file.url if activity.attachment_file else '',
-            'due_date': activity.due_date,
-            'max_score': activity.max_score,
-            'is_published': activity.is_published,
-            'submission_count': activity.submission_count,
+        assignment_submission_counts = {
+            item['id']: item['submission_count']
+            for item in AssignmentItem.objects.filter(course=course)
+            .annotate(submission_count=Count('submissions'))
+            .values('id', 'submission_count')
         }
-        if activity.module:
-            activities_by_module[activity.module.id].append(activity_data)
+    else:
+        assignment_submission_counts = {
+            item['id']: item['submission_count']
+            for item in AssignmentItem.objects.filter(course=course, is_published=True)
+            .annotate(submission_count=Count('submissions', filter=Q(submissions__student=request.user)))
+            .values('id', 'submission_count')
+        }
+
+    course_items = sorted(
+        list(course_items_query),
+        key=lambda item: (_detail_due_date(item) is None, _detail_due_date(item) or item.created_at, item.title.lower()),
+    )
+
+    for course_item in course_items:
+        detail = course_item.detail_object
+        activity_data = {
+            'id': course_item.id,
+            'title': course_item.title,
+            'description': course_item.description,
+            'activity_type': course_item.kind_label,
+            'activity_type_value': course_item.kind,
+            'due_date': getattr(detail, 'due_date', None),
+            'max_score': getattr(detail, 'max_score', None),
+            'is_published': course_item.is_published,
+            'submission_count': assignment_submission_counts.get(course_item.id, 0),
+        }
+        if course_item.module:
+            items_by_module[course_item.module.id].append(activity_data)
         else:
-            activities_without_module.append(activity_data)
+            items_without_module.append(activity_data)
 
     modules_data = []
     for module in modules:
@@ -171,7 +190,16 @@ def course_detail_view(request, course_id):
             'order': module.order,
             'title': module.title,
             'description': module.description,
-            'activities': activities_by_module[module.id],
+            'activities': items_by_module[module.id],
+        })
+
+    if items_without_module:
+        modules_data.append({
+            'id': 'no-module',
+            'order': None,
+            'title': 'Itens sem módulo',
+            'description': '',
+            'activities': items_without_module,
         })
 
     modules_page = Paginator(modules_data, 1).get_page(request.GET.get('module_page'))
@@ -194,7 +222,6 @@ def course_detail_view(request, course_id):
         'is_enrolled_student': is_enrolled_student,
         'modules_page': modules_page,
         'modules_count': len(modules_data),
-        'activities_without_module': activities_without_module,
     }
     return render(request, 'agora/course_detail.html', context)
 

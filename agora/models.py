@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models.signals import post_save
@@ -212,17 +212,11 @@ class Module(models.Model):
         return f'{self.course.code} - {self.title}'
 
 
-class Activity(models.Model):
-    class Type(models.TextChoices):
-        ASSIGNMENT = 'assignment', 'Tarefa'
-        QUIZ = 'quiz', 'Quiz'
-        FORUM = 'forum', 'Fórum'
-        RESOURCE = 'resource', 'Material'
-
+class CourseItem(models.Model):
     course = models.ForeignKey(
         Course,
         on_delete=models.CASCADE,
-        related_name='activities',
+        related_name='course_items',
         verbose_name='curso',
     )
     module = models.ForeignKey(
@@ -230,7 +224,7 @@ class Activity(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='activities',
+        related_name='course_items',
         verbose_name='modulo',
     )
     title = models.CharField(
@@ -240,22 +234,148 @@ class Activity(models.Model):
     description = models.TextField(
         verbose_name='descricao',
     )
-    activity_type = models.CharField(
-        max_length=20,
-        choices=Type.choices,
-        default=Type.ASSIGNMENT,
-        verbose_name='tipo',
+    is_published = models.BooleanField(
+        default=False,
+        verbose_name='publicado',
     )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='course_items_created',
+        verbose_name='criado por',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='criado em',
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='atualizado em',
+    )
+
+    class Meta:
+        verbose_name = 'item do curso'
+        verbose_name_plural = 'itens do curso'
+        ordering = ['title', 'id']
+
+    def __str__(self):
+        return f'{self.title} ({self.course.code})'
+
+    @property
+    def kind(self):
+        if isinstance(self, ResourceItem):
+            return 'resource'
+        if isinstance(self, AssignmentItem):
+            return 'assignment'
+        if isinstance(self, QuizItem):
+            return 'quiz'
+        if isinstance(self, ForumItem):
+            return 'forum'
+
+        for attr, value in (
+            ('resourceitem', 'resource'),
+            ('assignmentitem', 'assignment'),
+            ('quizitem', 'quiz'),
+            ('forumitem', 'forum'),
+        ):
+            try:
+                getattr(self, attr)
+                return value
+            except ObjectDoesNotExist:
+                continue
+        return 'course_item'
+
+    @property
+    def kind_label(self):
+        return {
+            'resource': 'Material',
+            'assignment': 'Tarefa',
+            'quiz': 'Quiz',
+            'forum': 'Fórum',
+        }.get(self.kind, 'Item')
+
+    @property
+    def detail_object(self):
+        if isinstance(self, (ResourceItem, AssignmentItem, QuizItem, ForumItem)):
+            return self
+
+        for attr in ('resourceitem', 'assignmentitem', 'quizitem', 'forumitem'):
+            try:
+                return getattr(self, attr)
+            except ObjectDoesNotExist:
+                continue
+        return self
+
+    def clean(self):
+        super().clean()
+        errors = {}
+
+        if not self.created_by_id:
+            errors['created_by'] = 'O item do curso deve ser associado ao usuário criador.'
+        elif _user_role(self.created_by) != UserProfile.Role.TEACHER:
+            errors['created_by'] = 'O item do curso deve ser criado por um professor.'
+
+        if self.module and self.module.course_id != self.course_id:
+            errors['module'] = 'O modulo precisa pertencer ao mesmo curso do item.'
+
+        if errors:
+            raise ValidationError(errors)
+
+
+class ResourceItem(CourseItem):
     attachment_url = models.URLField(
         blank=True,
-        verbose_name='link de anexo',
+        verbose_name='link do material',
     )
     attachment_file = models.FileField(
-        upload_to='activity_materials/',
+        upload_to='course_item_resources/',
         blank=True,
         null=True,
-        verbose_name='arquivo de anexo',
+        verbose_name='arquivo do material',
     )
+
+    class Meta:
+        verbose_name = 'material'
+        verbose_name_plural = 'materiais'
+
+    def clean(self):
+        super().clean()
+        if not (self.attachment_url or self.attachment_file):
+            raise ValidationError('Informe um link ou envie um arquivo para o material.')
+
+
+class AssignmentItem(CourseItem):
+    due_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='data limite',
+    )
+    max_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        verbose_name='nota maxima',
+    )
+    statement_url = models.URLField(
+        blank=True,
+        verbose_name='link do enunciado',
+    )
+    statement_file = models.FileField(
+        upload_to='assignment_statements/',
+        blank=True,
+        null=True,
+        verbose_name='arquivo do enunciado',
+    )
+
+    class Meta:
+        verbose_name = 'tarefa'
+        verbose_name_plural = 'tarefas'
+        ordering = ['due_date', 'title']
+
+
+class QuizItem(CourseItem):
     due_date = models.DateTimeField(
         null=True,
         blank=True,
@@ -269,15 +389,108 @@ class Activity(models.Model):
         validators=[MinValueValidator(0)],
         verbose_name='nota maxima',
     )
-    is_published = models.BooleanField(
-        default=False,
-        verbose_name='publicada',
+
+    class Meta:
+        verbose_name = 'quiz'
+        verbose_name_plural = 'quizzes'
+        ordering = ['due_date', 'title']
+
+
+class ForumItem(CourseItem):
+    class Meta:
+        verbose_name = 'forum'
+        verbose_name_plural = 'foruns'
+
+
+class QuizQuestion(models.Model):
+    quiz = models.ForeignKey(
+        QuizItem,
+        on_delete=models.CASCADE,
+        related_name='questions',
+        verbose_name='quiz',
     )
-    created_by = models.ForeignKey(
+    statement = models.TextField(
+        verbose_name='enunciado',
+    )
+    order = models.PositiveIntegerField(
+        default=1,
+        verbose_name='ordem',
+    )
+    weight = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=1,
+        validators=[MinValueValidator(0)],
+        verbose_name='peso',
+    )
+
+    class Meta:
+        verbose_name = 'questao de quiz'
+        verbose_name_plural = 'questoes de quiz'
+        ordering = ['order', 'id']
+        constraints = [
+            models.UniqueConstraint(fields=['quiz', 'order'], name='unique_quiz_question_order'),
+        ]
+
+    def __str__(self):
+        return f'{self.quiz.title} · Questão {self.order}'
+
+
+class QuizOption(models.Model):
+    question = models.ForeignKey(
+        QuizQuestion,
+        on_delete=models.CASCADE,
+        related_name='options',
+        verbose_name='questao',
+    )
+    text = models.CharField(
+        max_length=255,
+        verbose_name='texto',
+    )
+    is_correct = models.BooleanField(
+        default=False,
+        verbose_name='correta',
+    )
+    order = models.PositiveIntegerField(
+        default=1,
+        verbose_name='ordem',
+    )
+
+    class Meta:
+        verbose_name = 'alternativa'
+        verbose_name_plural = 'alternativas'
+        ordering = ['order', 'id']
+        constraints = [
+            models.UniqueConstraint(fields=['question', 'order'], name='unique_quiz_option_order'),
+        ]
+
+    def __str__(self):
+        return f'{self.question} · Alternativa {self.order}'
+
+
+class ForumMessage(models.Model):
+    forum = models.ForeignKey(
+        ForumItem,
+        on_delete=models.CASCADE,
+        related_name='messages',
+        verbose_name='forum',
+    )
+    author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='activities_created',
-        verbose_name='criada por',
+        on_delete=models.CASCADE,
+        related_name='forum_messages',
+        verbose_name='autor',
+    )
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='replies',
+        verbose_name='resposta a',
+    )
+    content = models.TextField(
+        verbose_name='mensagem',
     )
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -289,28 +502,25 @@ class Activity(models.Model):
     )
 
     class Meta:
-        verbose_name = 'atividade'
-        verbose_name_plural = 'atividades'
-        ordering = ['due_date', 'title']
+        verbose_name = 'mensagem do forum'
+        verbose_name_plural = 'mensagens do forum'
+        ordering = ['created_at', 'id']
 
     def __str__(self):
-        return f'{self.title} ({self.course.code})'
+        return f'{self.author} em {self.forum.title}'
 
     def clean(self):
         super().clean()
         errors = {}
 
-        if not self.created_by_id:
-            errors['created_by'] = 'A atividade deve ser associada ao usuário criador.'
-        elif _user_role(self.created_by) != UserProfile.Role.TEACHER:
-            errors['created_by'] = 'A atividade deve ser criada por um professor.'
+        if self.parent and self.parent.forum_id != self.forum_id:
+            errors['parent'] = 'A resposta precisa pertencer ao mesmo fórum.'
 
-        if self.module and self.module.course_id != self.course_id:
-            errors['module'] = 'O modulo precisa pertencer ao mesmo curso da atividade.'
+        if self.author_id and _user_role(self.author) not in (UserProfile.Role.STUDENT, UserProfile.Role.TEACHER):
+            errors['author'] = 'A mensagem precisa estar vinculada a um usuário válido.'
 
         if errors:
             raise ValidationError(errors)
-
 
 
 class Submission(models.Model):
@@ -320,11 +530,11 @@ class Submission(models.Model):
         REVIEWED = 'reviewed', 'Avaliada'
         LATE = 'late', 'Enviada com atraso'
 
-    activity = models.ForeignKey(
-        Activity,
+    assignment = models.ForeignKey(
+        AssignmentItem,
         on_delete=models.CASCADE,
         related_name='submissions',
-        verbose_name='atividade',
+        verbose_name='tarefa',
     )
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -336,9 +546,11 @@ class Submission(models.Model):
         blank=True,
         verbose_name='conteudo',
     )
-    attachment_url = models.URLField(
+    attachment_file = models.FileField(
+        upload_to='assignment_submissions/',
         blank=True,
-        verbose_name='link do anexo',
+        null=True,
+        verbose_name='arquivo enviado',
     )
     status = models.CharField(
         max_length=20,
@@ -386,11 +598,11 @@ class Submission(models.Model):
         verbose_name_plural = 'entregas'
         ordering = ['-updated_at']
         constraints = [
-            models.UniqueConstraint(fields=['activity', 'student'], name='unique_submission_per_activity_student'),
+            models.UniqueConstraint(fields=['assignment', 'student'], name='unique_submission_per_assignment_student'),
         ]
 
     def __str__(self):
-        return f'{self.student} - {self.activity}'
+        return f'{self.student} - {self.assignment}'
 
     def clean(self):
         super().clean()
@@ -404,10 +616,71 @@ class Submission(models.Model):
 
         if (
             self.score is not None
-            and self.activity.max_score is not None
-            and self.score > self.activity.max_score
+            and self.assignment.max_score is not None
+            and self.score > self.assignment.max_score
         ):
-            errors['score'] = 'A nota nao pode ser maior que a nota maxima da atividade.'
+            errors['score'] = 'A nota nao pode ser maior que a nota maxima da tarefa.'
+
+        if not self.content and not self.attachment_file:
+            errors['content'] = 'Envie um arquivo ou preencha uma descrição da entrega.'
+
+        if errors:
+            raise ValidationError(errors)
+
+
+class Answer(models.Model):
+    quiz = models.ForeignKey(
+        QuizItem,
+        on_delete=models.CASCADE,
+        related_name='answers',
+        verbose_name='quiz',
+    )
+    question = models.ForeignKey(
+        QuizQuestion,
+        on_delete=models.CASCADE,
+        related_name='answers',
+        verbose_name='questao',
+    )
+    selected_option = models.ForeignKey(
+        QuizOption,
+        on_delete=models.CASCADE,
+        related_name='answers',
+        verbose_name='alternativa marcada',
+    )
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='quiz_answers',
+        verbose_name='estudante',
+    )
+    answered_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='respondida em',
+    )
+
+    class Meta:
+        verbose_name = 'resposta de quiz'
+        verbose_name_plural = 'respostas de quiz'
+        ordering = ['-answered_at']
+        constraints = [
+            models.UniqueConstraint(fields=['question', 'student'], name='unique_answer_per_question_student'),
+        ]
+
+    def __str__(self):
+        return f'{self.student} · {self.question}'
+
+    def clean(self):
+        super().clean()
+        errors = {}
+
+        if _user_role(self.student) != UserProfile.Role.STUDENT:
+            errors['student'] = 'A resposta do quiz deve estar vinculada a um estudante.'
+
+        if self.question_id and self.quiz_id and self.question.quiz_id != self.quiz_id:
+            errors['question'] = 'A questão precisa pertencer ao quiz informado.'
+
+        if self.selected_option_id and self.question_id and self.selected_option.question_id != self.question_id:
+            errors['selected_option'] = 'A alternativa precisa pertencer à questão informada.'
 
         if errors:
             raise ValidationError(errors)

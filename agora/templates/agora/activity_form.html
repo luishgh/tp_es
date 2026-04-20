@@ -88,6 +88,26 @@
                     </div>
                 {% endif %}
 
+                {% if form.statement_url %}
+                    <div class="form-field">
+                        <label for="{{ form.statement_url.id_for_label }}">{{ form.statement_url.label }}</label>
+                        {{ form.statement_url }}
+                        {% for error in form.statement_url.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if form.statement_file %}
+                    <div class="form-field">
+                        <label for="{{ form.statement_file.id_for_label }}">{{ form.statement_file.label }}</label>
+                        {{ form.statement_file }}
+                        {% for error in form.statement_file.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
                 {% if form.description %}
                     <div class="form-field">
                         <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
