@@ -1,0 +1,343 @@
+{% extends 'agora/layout.html' %}
+{% load static %}
+
+{% block title %}{{ activity.title }} | {{ course.title }} | Ágora{% endblock %}
+{% block stylesheet %}
+    <link rel="stylesheet" href="{% static 'agora/css/course_detail.css' %}">
+    <link rel="stylesheet" href="{% static 'agora/css/course_item_detail.css' %}">
+{% endblock %}
+
+{% block page_eyebrow %}{{ course.code }} · {{ course.title }}{% endblock %}
+{% block page_title %}{{ activity.title }}{% endblock %}
+{% block page_lead %}
+    {% if module %}
+        {{ module.title }} · {{ activity.kind_label }}
+    {% else %}
+        {{ activity.kind_label }}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <section class="content-grid course-item-detail-grid">
+        <section class="panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Visão Geral</p>
+                    <h2>Detalhes do item</h2>
+                </div>
+                {% if is_teacher and not activity.is_published %}
+                    <form method="post" action="{% url 'agora:publish_course_item' activity.id %}" onsubmit="return confirm('Deseja publicar esta atividade?');">
+                        {% csrf_token %}
+                        <button class="ghost-button compact" type="submit">Publicar item</button>
+                    </form>
+                {% else %}
+                    {% if activity.is_published %}
+                        <span class="status-pill accent">Publicado</span>
+                    {% else %}
+                        <span class="status-pill neutral">Rascunho</span>
+                    {% endif %}
+                {% endif %}
+            </div>
+
+            <div class="course-info">
+                {% if module %}
+                    <p><strong>Módulo:</strong> {{ module.order }}. {{ module.title }}</p>
+                {% endif %}
+                <p><strong>Tipo:</strong> {{ activity.kind_label }}</p>
+                <p><strong>Descrição:</strong> {{ activity.description }}</p>
+                {% if detail.due_date %}
+                    <p><strong>Prazo:</strong> {{ detail.due_date|date:"d/m/Y H:i" }}</p>
+                {% endif %}
+                {% if activity.kind == 'assignment' or activity.kind == 'quiz' %}
+                    <p><strong>Nota Máxima:</strong> {{ detail.max_score }}</p>
+                {% endif %}
+                {% if activity.kind == 'quiz' %}
+                    <p><strong>Questões:</strong> {{ quiz_questions|length }}</p>
+                {% endif %}
+                {% if activity.kind == 'forum' %}
+                    <p><strong>Mensagens:</strong> {{ forum_messages|length }}</p>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if activity.kind == 'resource' %}
+            <section class="panel item-focus-panel">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Material</p>
+                        <h2>Acesse o conteúdo</h2>
+                    </div>
+                </div>
+
+                {% if material_actions %}
+                    <div class="resource-highlight">
+                        <p>O conteúdo principal deste material está disponível logo abaixo.</p>
+                        <div class="resource-actions">
+                            {% for action in material_actions %}
+                                <a
+                                    class="{% if action.tone == 'primary' %}primary-button{% else %}ghost-button{% endif %}"
+                                    href="{{ action.url }}"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    {{ action.label }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <h3>Nenhum material anexado.</h3>
+                        <p>Este item ainda não possui arquivo nem link associado.</p>
+                    </div>
+                {% endif %}
+            </section>
+        {% endif %}
+
+        {% if activity.kind == 'assignment' %}
+            {% if is_student %}
+                <section class="panel item-focus-panel">
+                    <div class="section-head">
+                        <div>
+                            <p class="eyebrow">Entrega</p>
+                            <h2>Enviar tarefa</h2>
+                        </div>
+                        {% if submission_status %}
+                            <span class="status-pill {{ submission_status.tone }}">{{ submission_status.label }}</span>
+                        {% endif %}
+                    </div>
+
+                    {% if detail.statement_file or detail.statement_url %}
+                        <div class="resource-highlight assignment-brief">
+                            <p>Consulte o enunciado antes de enviar sua solução.</p>
+                            <div class="resource-actions">
+                                {% if detail.statement_file %}
+                                    <a class="primary-button" href="{{ detail.statement_file.url }}" target="_blank" rel="noreferrer">Baixar enunciado</a>
+                                {% endif %}
+                                {% if detail.statement_url %}
+                                    <a class="ghost-button" href="{{ detail.statement_url }}" target="_blank" rel="noreferrer">Abrir link do enunciado</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <form class="agora-form detail-form" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="submit_assignment">
+
+                        {% for error in assignment_form.non_field_errors %}
+                            <span class="field-error form-error-banner">{{ error }}</span>
+                        {% endfor %}
+
+                        <div class="form-field">
+                            <label for="{{ assignment_form.attachment_file.id_for_label }}">{{ assignment_form.attachment_file.label }}</label>
+                            {{ assignment_form.attachment_file }}
+                            {% for error in assignment_form.attachment_file.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-field">
+                            <label for="{{ assignment_form.content.id_for_label }}">{{ assignment_form.content.label }}</label>
+                            {{ assignment_form.content }}
+                            {% for error in assignment_form.content.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="primary-button" type="submit">Registrar entrega</button>
+                        </div>
+                    </form>
+
+                    {% if current_submission %}
+                        <div class="submission-summary">
+                            <h3>Última entrega</h3>
+                            <p><strong>Enviada em:</strong> {{ current_submission.submitted_at|date:"d/m/Y H:i"|default:"Ainda não enviada" }}</p>
+                            {% if current_submission.attachment_file %}
+                                <p><strong>Arquivo:</strong> <a href="{{ current_submission.attachment_file.url }}" target="_blank" rel="noreferrer">Abrir entrega</a></p>
+                            {% endif %}
+                            {% if current_submission.feedback %}
+                                <p><strong>Feedback:</strong> {{ current_submission.feedback }}</p>
+                            {% endif %}
+                            {% if current_submission.score|default_if_none:"" != "" %}
+                                <p><strong>Nota:</strong> {{ current_submission.score }}</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </section>
+            {% endif %}
+
+            {% if is_teacher %}
+                <section class="panel modules-panel item-focus-panel">
+                    <div class="section-head">
+                        <div>
+                            <p class="eyebrow">Submissões</p>
+                            <h2>Entregas dos alunos</h2>
+                        </div>
+                        <span>{{ submissions|length }} entrega{{ submissions|length|pluralize }}</span>
+                    </div>
+
+                    {% if submissions %}
+                        <div class="activity-list">
+                            {% for submission in submissions %}
+                                <article class="activity-card">
+                                    <div class="activity-head">
+                                        <strong>{{ submission.student_name }}</strong>
+                                        <span class="status-pill {{ submission.status_tone }}">{{ submission.status_label }}</span>
+                                    </div>
+                                    <div class="activity-meta">
+                                        {% if submission.submitted_at %}
+                                            <span>Enviado em: {{ submission.submitted_at|date:"d/m/Y H:i" }}</span>
+                                        {% endif %}
+                                        {% if submission.score %}
+                                            <span>Nota: {{ submission.score }}</span>
+                                        {% endif %}
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <h3>Nenhuma submissão ainda.</h3>
+                            <p>Os alunos ainda não fizeram entregas para esta tarefa.</p>
+                        </div>
+                    {% endif %}
+                </section>
+            {% endif %}
+        {% endif %}
+
+        {% if activity.kind == 'quiz' %}
+            <section class="panel item-focus-panel">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Quiz</p>
+                        <h2>{% if is_teacher %}Questões e panorama{% else %}Resolva o quiz{% endif %}</h2>
+                    </div>
+                    {% if quiz_score != None %}
+                        <span class="status-pill accent">Pontuação atual: {{ quiz_score }}</span>
+                    {% elif quiz_feedback %}
+                        <span class="status-pill neutral">{{ quiz_feedback }}</span>
+                    {% endif %}
+                </div>
+
+                {% if is_student %}
+                    <form class="quiz-sheet" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="submit_quiz">
+                        {% for question in quiz_questions %}
+                            <article class="quiz-question-card">
+                                <div class="quiz-question-head">
+                                    <strong>Questão {{ question.order }}</strong>
+                                    <span>Peso {{ question.weight }}</span>
+                                </div>
+                                <p>{{ question.statement }}</p>
+                                <div class="quiz-options">
+                                    {% for option in question.options %}
+                                        <label class="quiz-option">
+                                            <input type="radio" name="question_{{ question.id }}" value="{{ option.id }}" {% if option.is_selected %}checked{% endif %}>
+                                            <span>{{ option.text }}</span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </article>
+                        {% endfor %}
+                        {% if quiz_questions %}
+                            <div class="form-actions">
+                                <button class="primary-button" type="submit">Salvar respostas</button>
+                            </div>
+                        {% else %}
+                            <div class="empty-state">
+                                <h3>Quiz sem questões.</h3>
+                                <p>Este quiz ainda não recebeu questões fechadas.</p>
+                            </div>
+                        {% endif %}
+                    </form>
+                {% endif %}
+
+                {% if is_teacher %}
+                    {% if quiz_questions %}
+                        <div class="quiz-sheet">
+                            {% for question in quiz_questions %}
+                                <article class="quiz-question-card">
+                                    <div class="quiz-question-head">
+                                        <strong>Questão {{ question.order }}</strong>
+                                        <span>Peso {{ question.weight }}</span>
+                                    </div>
+                                    <p>{{ question.statement }}</p>
+                                    <div class="quiz-options is-readonly">
+                                        {% for option in question.options %}
+                                            <div class="quiz-option teacher-option {% if option.is_correct %}is-correct{% endif %}">
+                                                <span>{{ option.text }}</span>
+                                                <strong>{{ option.answer_count }} resposta{{ option.answer_count|pluralize }}</strong>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <h3>Quiz sem questões.</h3>
+                            <p>Cadastre as questões objetivas para disponibilizar este quiz aos estudantes.</p>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </section>
+        {% endif %}
+
+        {% if activity.kind == 'forum' %}
+            <section class="panel item-focus-panel forum-panel">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Discussão</p>
+                        <h2>Chat do fórum</h2>
+                    </div>
+                    <span>{{ forum_messages|length }} mensagem{{ forum_messages|pluralize:"ens" }}</span>
+                </div>
+
+                {% if forum_messages %}
+                    <div class="forum-thread">
+                        {% for message in forum_messages %}
+                            <article class="forum-message">
+                                <div class="forum-message-head">
+                                    <strong>{{ message.author.get_full_name|default:message.author.username }}</strong>
+                                    <span>{{ message.created_at|date:"d/m/Y H:i" }}</span>
+                                </div>
+                                <p>{{ message.content }}</p>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <h3>Nenhuma mensagem ainda.</h3>
+                        <p>Seja a primeira pessoa a iniciar a discussão.</p>
+                    </div>
+                {% endif %}
+
+                {% if forum_form %}
+                    <form class="agora-form detail-form forum-form" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="post_forum_message">
+
+                        {% for error in forum_form.non_field_errors %}
+                            <span class="field-error form-error-banner">{{ error }}</span>
+                        {% endfor %}
+
+                        <div class="form-field">
+                            <label for="{{ forum_form.content.id_for_label }}">{{ forum_form.content.label }}</label>
+                            {{ forum_form.content }}
+                            {% for error in forum_form.content.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="primary-button" type="submit">Enviar mensagem</button>
+                        </div>
+                    </form>
+                {% endif %}
+            </section>
+        {% endif %}
+    </section>
+{% endblock %}

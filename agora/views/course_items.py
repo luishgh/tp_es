@@ -2,21 +2,28 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.cache import never_cache
 
 from ..forms import (
+    AssignmentSubmissionForm,
     AssignmentCreateForm,
+    ForumMessageForm,
     ForumCreateForm,
     ModuleCreateForm,
     QuizCreateForm,
     ResourceCreateForm,
 )
 from ..models import (
+    Answer,
     AssignmentItem,
     Course,
     CourseItem,
     Enrollment,
     ForumItem,
+    ForumMessage,
+    QuizOption,
+    QuizQuestion,
     QuizItem,
     ResourceItem,
     Submission,
@@ -91,7 +98,7 @@ def module_create_view(request, course_id):
 
 @never_cache
 @login_required(login_url='agora:login')
-def activity_create_view(request, course_id):
+def course_item_create_view(request, course_id):
     course = get_object_or_404(Course, pk=course_id)
     if course.teacher != request.user:
         messages.error(request, 'Você não tem permissão para criar atividades neste curso.')
@@ -137,15 +144,15 @@ def activity_create_view(request, course_id):
             for activity_type, config in ACTIVITY_CREATE_CONFIG.items()
         ],
     }
-    return render(request, 'agora/activity_form.html', context)
+    return render(request, 'agora/course_item_form.html', context)
 
 
 @never_cache
 @login_required(login_url='agora:login')
-def submission_list_view(request, activity_id):
+def course_item_submission_list_view(request, course_item_id):
     assignment = get_object_or_404(
         AssignmentItem.objects.select_related('course'),
-        pk=activity_id,
+        pk=course_item_id,
     )
     if assignment.course.teacher != request.user:
         messages.error(request, 'Você não tem permissão para visualizar as submissões desta atividade.')
@@ -163,10 +170,10 @@ def submission_list_view(request, activity_id):
 
 @never_cache
 @login_required(login_url='agora:login')
-def resource_detail_view(request, activity_id):
+def course_item_detail_view(request, course_item_id):
     course_item = get_object_or_404(
         CourseItem.objects.select_related('course', 'module', 'created_by', 'course__teacher'),
-        pk=activity_id,
+        pk=course_item_id,
     )
     detail = course_item.detail_object
 
@@ -186,15 +193,53 @@ def resource_detail_view(request, activity_id):
             messages.error(request, 'Você não tem permissão para acessar esta atividade.')
             return redirect('agora:courses_hub')
 
+    assignment_form = None
+    forum_form = None
+    quiz_questions = []
+    quiz_feedback = None
+    quiz_student_answers = {}
+    quiz_score = None
+    forum_messages = []
+    material_actions = []
     submission_status = None
+    current_submission = None
+
+    if isinstance(detail, ResourceItem):
+        if detail.attachment_file:
+            material_actions.append({
+                'label': 'Baixar arquivo',
+                'url': detail.attachment_file.url,
+                'tone': 'primary',
+            })
+        if detail.attachment_url:
+            material_actions.append({
+                'label': 'Abrir link',
+                'url': detail.attachment_url,
+                'tone': 'ghost',
+            })
+
     if role == UserProfile.Role.STUDENT and is_enrolled_student:
         if isinstance(detail, AssignmentItem):
-            submission = Submission.objects.filter(assignment=detail, student=request.user).first()
-            if submission:
+            current_submission = Submission.objects.filter(assignment=detail, student=request.user).first()
+            if request.method == 'POST' and request.POST.get('action') == 'submit_assignment':
+                assignment_form = AssignmentSubmissionForm(request.POST, request.FILES, instance=current_submission)
+                if assignment_form.is_valid():
+                    submission = assignment_form.save(commit=False)
+                    submission.assignment = detail
+                    submission.student = request.user
+                    submission.status = Submission.Status.SUBMITTED
+                    submission.submitted_at = timezone.now()
+                    submission.save()
+                    messages.success(request, 'Sua entrega foi registrada com sucesso.')
+                    return redirect('agora:course_item_detail', course_item_id=course_item.id)
+            else:
+                assignment_form = AssignmentSubmissionForm(instance=current_submission)
+
+            if current_submission:
                 submission_status = {
-                    'label': submission.get_status_display(),
-                    'tone': 'accent' if submission.status in (Submission.Status.SUBMITTED, Submission.Status.REVIEWED) else 'neutral',
-                    'submitted_at': submission.submitted_at,
+                    'label': current_submission.get_status_display(),
+                    'tone': 'accent' if current_submission.status in (Submission.Status.SUBMITTED, Submission.Status.REVIEWED) else 'neutral',
+                    'submitted_at': current_submission.submitted_at,
                 }
             else:
                 submission_status = {
@@ -202,6 +247,61 @@ def resource_detail_view(request, activity_id):
                     'tone': 'neutral',
                     'submitted_at': None,
                 }
+        elif isinstance(detail, ForumItem):
+            if request.method == 'POST' and request.POST.get('action') == 'post_forum_message':
+                forum_form = ForumMessageForm(request.POST)
+                if forum_form.is_valid():
+                    forum_message = forum_form.save(commit=False)
+                    forum_message.forum = detail
+                    forum_message.author = request.user
+                    forum_message.save()
+                    messages.success(request, 'Mensagem enviada no fórum.')
+                    return redirect('agora:course_item_detail', course_item_id=course_item.id)
+            else:
+                forum_form = ForumMessageForm()
+        elif isinstance(detail, QuizItem):
+            if request.method == 'POST' and request.POST.get('action') == 'submit_quiz':
+                missing_answers = []
+                for question in detail.questions.prefetch_related('options').all():
+                    selected_option_id = request.POST.get(f'question_{question.id}')
+                    if not selected_option_id:
+                        missing_answers.append(question.order)
+                        continue
+                    selected_option = question.options.filter(pk=selected_option_id).first()
+                    if not selected_option:
+                        missing_answers.append(question.order)
+                        continue
+                    Answer.objects.update_or_create(
+                        quiz=detail,
+                        question=question,
+                        student=request.user,
+                        defaults={'selected_option': selected_option},
+                    )
+
+                if missing_answers:
+                    messages.error(
+                        request,
+                        'Responda todas as questões antes de enviar o quiz.'
+                    )
+                else:
+                    messages.success(request, 'Suas respostas do quiz foram registradas.')
+                    return redirect('agora:course_item_detail', course_item_id=course_item.id)
+
+            student_answers_qs = Answer.objects.filter(quiz=detail, student=request.user).select_related('selected_option', 'question')
+            quiz_student_answers = {
+                answer.question_id: answer.selected_option_id
+                for answer in student_answers_qs
+            }
+            if student_answers_qs:
+                total_weight = sum(float(question.weight) for question in detail.questions.all()) or 1
+                earned_weight = sum(
+                    float(answer.question.weight)
+                    for answer in student_answers_qs
+                    if answer.selected_option.is_correct
+                )
+                if detail.max_score is not None:
+                    quiz_score = round((earned_weight / total_weight) * float(detail.max_score), 2)
+                quiz_feedback = f'{len(student_answers_qs)}/{detail.questions.count()} questões respondidas'
 
     submissions = []
     if is_teacher and isinstance(detail, AssignmentItem):
@@ -222,6 +322,46 @@ def resource_detail_view(request, activity_id):
                 'submitted_at': submission.submitted_at,
                 'score': submission.score,
             })
+    if isinstance(detail, ForumItem):
+        forum_messages = list(
+            detail.messages.select_related('author').order_by('created_at', 'id')
+        )
+        if is_teacher and request.method == 'POST' and request.POST.get('action') == 'post_forum_message':
+            forum_form = ForumMessageForm(request.POST)
+            if forum_form.is_valid():
+                forum_message = forum_form.save(commit=False)
+                forum_message.forum = detail
+                forum_message.author = request.user
+                forum_message.save()
+                messages.success(request, 'Mensagem enviada no fórum.')
+                return redirect('agora:course_item_detail', course_item_id=course_item.id)
+        elif is_teacher and forum_form is None:
+            forum_form = ForumMessageForm()
+
+    if isinstance(detail, QuizItem):
+        questions_qs = detail.questions.prefetch_related('options').all()
+        teacher_answer_counts = {}
+        if is_teacher:
+            for option in QuizOption.objects.filter(question__quiz=detail).annotate(total_answers=Count('answers')):
+                teacher_answer_counts[option.id] = option.total_answers
+
+        for question in questions_qs:
+            quiz_questions.append({
+                'id': question.id,
+                'order': question.order,
+                'statement': question.statement,
+                'weight': question.weight,
+                'options': [
+                    {
+                        'id': option.id,
+                        'text': option.text,
+                        'is_correct': option.is_correct,
+                        'answer_count': teacher_answer_counts.get(option.id, 0),
+                        'is_selected': quiz_student_answers.get(question.id) == option.id,
+                    }
+                    for option in question.options.all()
+                ],
+            })
 
     context = {
         'activity': course_item,
@@ -232,26 +372,34 @@ def resource_detail_view(request, activity_id):
         'is_student': role == UserProfile.Role.STUDENT,
         'submission_status': submission_status,
         'submissions': submissions,
+        'assignment_form': assignment_form,
+        'current_submission': current_submission,
+        'forum_form': forum_form,
+        'forum_messages': forum_messages,
+        'quiz_questions': quiz_questions,
+        'quiz_feedback': quiz_feedback,
+        'quiz_score': quiz_score,
+        'material_actions': material_actions,
     }
     return render(request, 'agora/resource_detail.html', context)
 
 
 @never_cache
 @login_required(login_url='agora:login')
-def publish_activity_view(request, activity_id):
+def publish_course_item_view(request, course_item_id):
     if request.method != 'POST':
-        return redirect('agora:resource_detail', activity_id=activity_id)
+        return redirect('agora:course_item_detail', course_item_id=course_item_id)
 
-    course_item = get_object_or_404(CourseItem.objects.select_related('course'), pk=activity_id)
+    course_item = get_object_or_404(CourseItem.objects.select_related('course'), pk=course_item_id)
     if course_item.course.teacher_id != request.user.id:
         messages.error(request, 'Você não tem permissão para publicar esta atividade.')
-        return redirect('agora:resource_detail', activity_id=course_item.id)
+        return redirect('agora:course_item_detail', course_item_id=course_item.id)
 
     if course_item.is_published:
         messages.info(request, 'Esta atividade já está publicada.')
-        return redirect('agora:resource_detail', activity_id=course_item.id)
+        return redirect('agora:course_item_detail', course_item_id=course_item.id)
 
     course_item.is_published = True
     course_item.save(update_fields=['is_published'])
     messages.success(request, 'Atividade publicada com sucesso.')
-    return redirect('agora:resource_detail', activity_id=course_item.id)
+    return redirect('agora:course_item_detail', course_item_id=course_item.id)

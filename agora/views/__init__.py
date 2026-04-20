@@ -2,12 +2,12 @@ from .common import _configure_time_locale
 
 _configure_time_locale()
 
-from .activities import (  # noqa: E402,F401
-    activity_create_view,
+from .course_items import (  # noqa: E402,F401
+    course_item_create_view,
+    course_item_detail_view,
+    course_item_submission_list_view,
     module_create_view,
-    publish_activity_view,
-    resource_detail_view,
-    submission_list_view,
+    publish_course_item_view,
 )
 from .admin_views import create_user_view  # noqa: E402,F401
 from .auth import login_view, logout_view  # noqa: E402,F401

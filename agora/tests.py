@@ -141,7 +141,7 @@ class ActivityCreateViewTests(TestCase):
         self.client.force_login(self.teacher)
 
         response = self.client.post(
-            reverse('agora:activity_create', args=[self.course.id]),
+            reverse('agora:course_item_create', args=[self.course.id]),
             data={
                 'activity_kind': 'assignment',
                 'module': str(self.module.id),
@@ -163,7 +163,7 @@ class ActivityCreateViewTests(TestCase):
         self.client.force_login(self.teacher)
 
         response = self.client.post(
-            reverse('agora:activity_create', args=[self.course.id]),
+            reverse('agora:course_item_create', args=[self.course.id]),
             data={
                 'activity_kind': 'assignment',
                 'module': str(self.other_module.id),
@@ -184,7 +184,7 @@ class ActivityCreateViewTests(TestCase):
         self.client.force_login(self.teacher)
 
         response = self.client.post(
-            reverse('agora:activity_create', args=[self.course.id]),
+            reverse('agora:course_item_create', args=[self.course.id]),
             data={
                 'activity_kind': 'resource',
                 'module': str(self.module.id),
@@ -209,7 +209,7 @@ class ActivityCreateViewTests(TestCase):
         )
 
         response = self.client.post(
-            reverse('agora:activity_create', args=[self.course.id]),
+            reverse('agora:course_item_create', args=[self.course.id]),
             data={
                 'activity_kind': 'resource',
                 'module': str(self.module.id),
@@ -229,7 +229,7 @@ class ActivityCreateViewTests(TestCase):
         self.client.force_login(self.teacher)
 
         response = self.client.post(
-            reverse('agora:activity_create', args=[self.course.id]),
+            reverse('agora:course_item_create', args=[self.course.id]),
             data={
                 'activity_kind': 'assignment',
                 'module': str(self.module.id),
@@ -324,24 +324,24 @@ class ResourceDetailViewTests(TestCase):
     def test_student_can_view_published_activity_detail(self):
         self.client.force_login(self.student)
 
-        response = self.client.get(reverse('agora:resource_detail', args=[self.material.id]))
+        response = self.client.get(reverse('agora:course_item_detail', args=[self.material.id]))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Leitura 1')
         self.assertContains(response, 'Abrir link')
-        self.assertContains(response, 'Situação de Envio')
+        self.assertContains(response, 'Acesse o conteúdo')
 
     def test_student_cannot_view_unpublished_activity_detail(self):
         self.client.force_login(self.student)
 
-        response = self.client.get(reverse('agora:resource_detail', args=[self.draft_assignment.id]))
+        response = self.client.get(reverse('agora:course_item_detail', args=[self.draft_assignment.id]))
 
         self.assertEqual(response.status_code, 302)
 
     def test_non_enrolled_student_is_blocked(self):
         self.client.force_login(self.other_student)
 
-        response = self.client.get(reverse('agora:resource_detail', args=[self.assignment.id]))
+        response = self.client.get(reverse('agora:course_item_detail', args=[self.assignment.id]))
 
         self.assertEqual(response.status_code, 302)
 
@@ -354,10 +354,10 @@ class ResourceDetailViewTests(TestCase):
 
         self.client.force_login(self.teacher)
 
-        response = self.client.get(reverse('agora:resource_detail', args=[self.assignment.id]))
+        response = self.client.get(reverse('agora:course_item_detail', args=[self.assignment.id]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Entregas dos Alunos')
+        self.assertContains(response, 'Entregas dos alunos')
         self.assertContains(response, 'Grace Hopper')
 
     def test_teacher_can_publish_activity(self):
@@ -366,7 +366,7 @@ class ResourceDetailViewTests(TestCase):
 
         self.client.force_login(self.teacher)
 
-        response = self.client.post(reverse('agora:publish_activity', args=[self.assignment.id]))
+        response = self.client.post(reverse('agora:publish_course_item', args=[self.assignment.id]))
 
         self.assertEqual(response.status_code, 302)
         self.assignment.refresh_from_db()
@@ -375,8 +375,8 @@ class ResourceDetailViewTests(TestCase):
     def test_publish_activity_is_idempotent(self):
         self.client.force_login(self.teacher)
 
-        first = self.client.post(reverse('agora:publish_activity', args=[self.assignment.id]))
-        second = self.client.post(reverse('agora:publish_activity', args=[self.assignment.id]))
+        first = self.client.post(reverse('agora:publish_course_item', args=[self.assignment.id]))
+        second = self.client.post(reverse('agora:publish_course_item', args=[self.assignment.id]))
 
         self.assertEqual(first.status_code, 302)
         self.assertEqual(second.status_code, 302)

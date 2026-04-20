@@ -5,10 +5,12 @@ import re
 from .models import (
     AssignmentItem,
     Course,
+    ForumMessage,
     ForumItem,
     Module,
     QuizItem,
     ResourceItem,
+    Submission,
     UserProfile,
 )
 
@@ -320,3 +322,46 @@ class ForumCreateForm(BaseCourseActivityForm):
         widgets = {
             'description': forms.Textarea(attrs={'rows': 6}),
         }
+
+
+class AssignmentSubmissionForm(forms.ModelForm):
+    class Meta:
+        model = Submission
+        fields = ['content', 'attachment_file']
+        labels = {
+            'content': 'Observações da entrega',
+            'attachment_file': 'Arquivo da entrega',
+        }
+        widgets = {
+            'content': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Se quiser, adicione um comentário para o professor.'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['attachment_file'].widget.attrs.update({
+            'accept': '.pdf,.doc,.docx,.ppt,.pptx,.txt,.zip,.png,.jpg,.jpeg',
+        })
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get('content') and not cleaned_data.get('attachment_file') and not getattr(self.instance, 'attachment_file', None):
+            raise forms.ValidationError('Envie um arquivo ou escreva uma observação para registrar a entrega.')
+        return cleaned_data
+
+
+class ForumMessageForm(forms.ModelForm):
+    class Meta:
+        model = ForumMessage
+        fields = ['content']
+        labels = {
+            'content': 'Nova mensagem',
+        }
+        widgets = {
+            'content': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Escreva sua mensagem para iniciar ou continuar a discussão.'}),
+        }
+
+    def clean_content(self):
+        content = (self.cleaned_data.get('content') or '').strip()
+        if not content:
+            raise forms.ValidationError('Escreva uma mensagem antes de enviar.')
+        return content
