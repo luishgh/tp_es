@@ -7,6 +7,22 @@
     gap: var(--size-5);
 }
 
+.teacher-item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--size-3);
+}
+
+.danger-action {
+    color: #fff;
+    background: linear-gradient(135deg, #a12626, #7f1717);
+}
+
+.danger-action:hover {
+    background: linear-gradient(135deg, #7f1717, #a12626);
+}
+
 .resource-highlight {
     padding: var(--size-6);
     border-radius: var(--radius-2);
@@ -235,7 +251,8 @@
     .resource-actions,
     .quiz-question-head,
     .forum-message-head,
-    .quiz-wizard-actions {
+    .quiz-wizard-actions,
+    .teacher-item-actions {
         flex-direction: column;
         align-items: flex-start;
     }

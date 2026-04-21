@@ -318,6 +318,8 @@ class QuizCreateForm(BaseCourseActivityForm):
         raw_count = None
         if self.data:
             raw_count = self.data.get('question_count')
+        elif self.instance.pk:
+            raw_count = self.instance.questions.count() or 1
         elif self.initial:
             raw_count = self.initial.get('question_count')
 
@@ -333,9 +335,19 @@ class QuizCreateForm(BaseCourseActivityForm):
         image_name = f'{question_prefix}_image'
         type_name = f'{question_prefix}_type'
         score_name = f'{question_prefix}_score'
+        existing_question = None
+        if self.instance.pk and not self.data:
+            existing_question = self.instance.questions.order_by('order', 'id')[question_index - 1]
+
+        statement_initial = existing_question.statement if existing_question else None
+        question_type_initial = (
+            existing_question.question_type if existing_question else QuizQuestion.QuestionType.SINGLE_CHOICE
+        )
+        score_initial = existing_question.weight if existing_question else None
 
         self.fields[statement_name] = forms.CharField(
             label=f'Pergunta {question_index}',
+            initial=statement_initial,
             widget=forms.Textarea(
                 attrs={
                     'rows': 4,
@@ -351,13 +363,14 @@ class QuizCreateForm(BaseCourseActivityForm):
         self.fields[type_name] = forms.ChoiceField(
             label='Tipo de questão',
             choices=QuizQuestion.QuestionType.choices,
-            initial=QuizQuestion.QuestionType.SINGLE_CHOICE,
+            initial=question_type_initial,
         )
         self.fields[score_name] = forms.DecimalField(
             label='Pontuação da questão',
             min_value=Decimal('0.01'),
             decimal_places=2,
             max_digits=5,
+            initial=score_initial,
             widget=forms.NumberInput(attrs={'min': '0.01', 'step': '0.01'}),
         )
 
@@ -365,27 +378,34 @@ class QuizCreateForm(BaseCourseActivityForm):
         for option_index, option_label in enumerate(('A', 'B', 'C', 'D'), start=1):
             option_name = f'{question_prefix}_option_{option_index}'
             option_correct_name = f'{question_prefix}_option_{option_index}_is_correct'
-            self.fields[option_name] = forms.CharField(label=f'Alternativa {option_label}')
+            existing_option = None
+            if existing_question:
+                existing_option = existing_question.options.order_by('order', 'id')[option_index - 1]
+            self.fields[option_name] = forms.CharField(
+                label=f'Alternativa {option_label}',
+                initial=existing_option.text if existing_option else None,
+            )
             self.fields[option_correct_name] = forms.BooleanField(
                 label=f'Alternativa {option_label} é correta',
                 required=False,
+                initial=existing_option.is_correct if existing_option else False,
             )
-            option_fields.append(self[option_name])
+            option_fields.append(
+                {
+                    'text': self[option_name],
+                    'is_correct': self[option_correct_name],
+                }
+            )
 
         self.question_blocks.append(
             {
                 'index': question_index,
                 'statement': self[statement_name],
                 'image': self[image_name],
+                'existing_image_url': existing_question.image.url if existing_question and existing_question.image else None,
                 'question_type': self[type_name],
                 'score': self[score_name],
-                'options': [
-                    {
-                        'text': self[f'{question_prefix}_option_{option_index}'],
-                        'is_correct': self[f'{question_prefix}_option_{option_index}_is_correct'],
-                    }
-                    for option_index in range(1, self.quiz_option_count + 1)
-                ],
+                'options': option_fields,
             }
         )
 
@@ -468,6 +488,9 @@ class QuizCreateForm(BaseCourseActivityForm):
         quiz = super().save(commit=commit)
         if not commit:
             return quiz
+
+        if quiz.pk:
+            quiz.questions.all().delete()
 
         total_score = Decimal('0')
         for question_order, question_data in enumerate(self.cleaned_data['quiz_questions'], start=1):

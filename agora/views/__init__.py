@@ -7,6 +7,8 @@ from .course_items import (  # noqa: E402,F401
     course_item_detail_view,
     module_create_view,
     publish_course_item_view,
+    quiz_delete_view,
+    quiz_edit_view,
     submission_review_view,
 )
 from .admin_views import create_user_view  # noqa: E402,F401

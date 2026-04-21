@@ -602,6 +602,78 @@ class ResourceDetailViewTests(TestCase):
             {self.quiz_question_2_option_1, self.quiz_question_2_option_3},
         )
 
+    def test_teacher_can_edit_published_quiz_and_clear_student_answers(self):
+        Answer.objects.create(
+            quiz=self.quiz,
+            question=self.quiz_question,
+            selected_option=self.correct_quiz_option,
+            student=self.student,
+        )
+        Answer.objects.create(
+            quiz=self.quiz,
+            question=self.quiz_question_2,
+            selected_option=self.quiz_question_2_option_1,
+            student=self.student,
+        )
+
+        self.client.force_login(self.teacher)
+
+        response = self.client.post(
+            reverse('agora:quiz_edit', args=[self.quiz.id]),
+            data={
+                'activity_kind': 'quiz',
+                'module': str(self.module.id),
+                'title': 'Quiz atualizado',
+                'description': 'Versão revisada.',
+                'question_count': '1',
+                'question_1_statement': 'Pergunta revisada?',
+                'question_1_type': 'single_choice',
+                'question_1_score': '8',
+                'question_1_option_1': 'Resposta A',
+                'question_1_option_1_is_correct': 'on',
+                'question_1_option_2': 'Resposta B',
+                'question_1_option_3': 'Resposta C',
+                'question_1_option_4': 'Resposta D',
+                'due_date': '2026-05-10T23:59',
+                'allow_resubmissions': 'on',
+                'is_published': 'on',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.quiz.refresh_from_db()
+        self.assertEqual(self.quiz.title, 'Quiz atualizado')
+        self.assertEqual(self.quiz.questions.count(), 1)
+        self.assertEqual(Answer.objects.filter(quiz=self.quiz).count(), 0)
+
+    def test_teacher_can_delete_published_quiz(self):
+        self.client.force_login(self.teacher)
+
+        response = self.client.post(reverse('agora:quiz_delete', args=[self.quiz.id]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(QuizItem.objects.filter(pk=self.quiz.id).exists())
+
+    def test_teacher_can_delete_unpublished_quiz(self):
+        draft_quiz = QuizItem.objects.create(
+            course=self.course,
+            module=self.module,
+            title='Quiz rascunho',
+            description='Ainda não publicado.',
+            due_date='2026-05-20T23:59Z',
+            max_score=5,
+            allow_resubmissions=False,
+            is_published=False,
+            created_by=self.teacher,
+        )
+
+        self.client.force_login(self.teacher)
+
+        response = self.client.post(reverse('agora:quiz_delete', args=[draft_quiz.id]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(QuizItem.objects.filter(pk=draft_quiz.id).exists())
+
     def test_course_page_shows_quiz_entry_button_for_students(self):
         self.client.force_login(self.student)
 

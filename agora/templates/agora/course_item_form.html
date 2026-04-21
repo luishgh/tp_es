@@ -87,6 +87,72 @@
                 }
             };
 
+            const renumberQuizQuestions = function () {
+                if (!quizQuestionList || !questionCountField) {
+                    return;
+                }
+
+                const cards = Array.from(quizQuestionList.querySelectorAll('.quiz-builder-card'));
+                questionCountField.value = String(cards.length);
+
+                cards.forEach(function (card, index) {
+                    const questionNumber = index + 1;
+                    const headTitle = card.querySelector('[data-question-title]');
+                    if (headTitle) {
+                        headTitle.textContent = `Questão ${questionNumber}`;
+                    }
+
+                    card.querySelectorAll('[name], [id], label[for]').forEach(function (element) {
+                        if (element.hasAttribute('name')) {
+                            element.name = element.name.replace(/question_\d+_/g, `question_${questionNumber}_`);
+                        }
+                        if (element.id) {
+                            element.id = element.id.replace(/question_\d+_/g, `question_${questionNumber}_`);
+                        }
+                        if (element.tagName === 'LABEL' && element.htmlFor) {
+                            element.htmlFor = element.htmlFor.replace(/question_\d+_/g, `question_${questionNumber}_`);
+                        }
+                    });
+
+                    const statementLabel = card.querySelector('[data-field-label="statement"]');
+                    if (statementLabel) {
+                        statementLabel.innerHTML = `Pergunta ${questionNumber} <span class="field-required">*</span>`;
+                    }
+
+                    const imageLabel = card.querySelector('[data-field-label="image"]');
+                    if (imageLabel) {
+                        imageLabel.textContent = 'Imagem da questão (PNG ou JPEG, opcional)';
+                    }
+
+                    const preview = card.querySelector('[data-question-image-preview]');
+                    if (preview) {
+                        preview.alt = `Prévia da imagem da questão ${questionNumber}`;
+                    }
+                });
+            };
+
+            const bindQuestionRemoval = function (card) {
+                if (!card) {
+                    return;
+                }
+
+                const removeButton = card.querySelector('[data-remove-question]');
+                if (!removeButton) {
+                    return;
+                }
+
+                removeButton.addEventListener('click', function () {
+                    const cards = quizQuestionList ? quizQuestionList.querySelectorAll('.quiz-builder-card') : [];
+                    if (cards.length <= 1) {
+                        return;
+                    }
+
+                    card.remove();
+                    renumberQuizQuestions();
+                    syncSubmitAvailability();
+                });
+            };
+
             const bindQuestionImagePreview = function (input) {
                 if (!input) {
                     return;
@@ -166,14 +232,15 @@
                     wrapper.className = 'quiz-builder-card';
                     wrapper.innerHTML = `
                         <div class="quiz-builder-head">
-                            <strong>Questão ${nextIndex}</strong>
+                            <strong data-question-title>Questão ${nextIndex}</strong>
+                            <button class="ghost-button compact" data-remove-question type="button">Excluir questão</button>
                         </div>
                         <div class="form-field">
-                            <label for="id_question_${nextIndex}_statement">Pergunta ${nextIndex} <span class="field-required">*</span></label>
+                            <label data-field-label="statement" for="id_question_${nextIndex}_statement">Pergunta ${nextIndex} <span class="field-required">*</span></label>
                             <textarea name="question_${nextIndex}_statement" id="id_question_${nextIndex}_statement" rows="4" placeholder="Digite a pergunta de múltipla escolha." required></textarea>
                         </div>
                         <div class="form-field">
-                            <label for="id_question_${nextIndex}_image">Imagem da questão (PNG ou JPEG, opcional)</label>
+                            <label data-field-label="image" for="id_question_${nextIndex}_image">Imagem da questão (PNG ou JPEG, opcional)</label>
                             <input type="file" name="question_${nextIndex}_image" id="id_question_${nextIndex}_image" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
                             <img class="quiz-question-upload-preview" data-question-image-preview hidden alt="Prévia da imagem da questão ${nextIndex}">
                         </div>
@@ -227,11 +294,15 @@
                     `;
                     quizQuestionList.appendChild(wrapper);
                     bindQuestionImagePreview(wrapper.querySelector('input[type="file"]'));
+                    bindQuestionRemoval(wrapper);
+                    renumberQuizQuestions();
                     syncSubmitAvailability();
                 });
             }
             if (quizQuestionList) {
                 quizQuestionList.querySelectorAll('input[type="file"]').forEach(bindQuestionImagePreview);
+                quizQuestionList.querySelectorAll('.quiz-builder-card').forEach(bindQuestionRemoval);
+                renumberQuizQuestions();
             }
             syncSubmitAvailability();
 
@@ -392,11 +463,12 @@
                             {% for question in form.question_blocks %}
                                 <article class="quiz-builder-card">
                                     <div class="quiz-builder-head">
-                                        <strong>Questão {{ question.index }}</strong>
+                                        <strong data-question-title>Questão {{ question.index }}</strong>
+                                        <button class="ghost-button compact" data-remove-question type="button">Excluir questão</button>
                                     </div>
 
                                     <div class="form-field">
-                                        <label for="{{ question.statement.id_for_label }}">{{ question.statement.label }} <span class="field-required">*</span></label>
+                                        <label data-field-label="statement" for="{{ question.statement.id_for_label }}">{{ question.statement.label }} <span class="field-required">*</span></label>
                                         {{ question.statement }}
                                         {% for error in question.statement.errors %}
                                             <span class="field-error">{{ error }}</span>
@@ -404,7 +476,7 @@
                                     </div>
 
                                     <div class="form-field">
-                                        <label for="{{ question.image.id_for_label }}">{{ question.image.label }}</label>
+                                        <label data-field-label="image" for="{{ question.image.id_for_label }}">{{ question.image.label }}</label>
                                         {{ question.image }}
                                         <img class="quiz-question-upload-preview" data-question-image-preview hidden alt="Prévia da imagem da questão {{ question.index }}">
                                         {% for error in question.image.errors %}

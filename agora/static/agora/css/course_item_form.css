@@ -182,6 +182,7 @@
     justify-content: space-between;
     align-items: center;
     color: var(--text);
+    gap: 12px;
 }
 
 .quiz-question-upload-preview {

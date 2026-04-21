@@ -169,6 +169,70 @@ def course_item_create_view(request, course_id):
 
 @never_cache
 @login_required(login_url='agora:login')
+def quiz_edit_view(request, course_item_id):
+    quiz = get_object_or_404(
+        QuizItem.objects.select_related('course', 'module', 'created_by', 'course__teacher'),
+        pk=course_item_id,
+    )
+    if quiz.course.teacher_id != request.user.id:
+        messages.error(request, 'Você não tem permissão para editar este quiz.')
+        return redirect('agora:course_item_detail', course_item_id=quiz.id)
+
+    was_published = quiz.is_published
+    if request.method == 'POST':
+        form = QuizCreateForm(request.POST, request.FILES, course=quiz.course, instance=quiz)
+        if form.is_valid():
+            updated_quiz = form.save()
+            if was_published:
+                Answer.objects.filter(quiz=updated_quiz).delete()
+                messages.success(request, 'Quiz atualizado com sucesso. As respostas anteriores dos estudantes foram removidas.')
+            else:
+                messages.success(request, 'Quiz atualizado com sucesso.')
+            return redirect('agora:course_item_detail', course_item_id=updated_quiz.id)
+    else:
+        form = QuizCreateForm(course=quiz.course, instance=quiz)
+
+    context = {
+        'form': form,
+        'course': quiz.course,
+        'form_title': 'Editar Quiz',
+        'submit_button_text': 'Salvar alterações',
+        'selected_type': 'quiz',
+        'activity_type_options': [
+            {
+                'value': 'quiz',
+                'label': ACTIVITY_CREATE_CONFIG['quiz']['button_label'],
+                'description': ACTIVITY_CREATE_CONFIG['quiz']['description'],
+                'url': '?type=quiz',
+                'is_selected': True,
+            }
+        ],
+        'is_edit_mode': True,
+        'edited_quiz': quiz,
+    }
+    return render(request, 'agora/course_item_form.html', context)
+
+
+@never_cache
+@login_required(login_url='agora:login')
+def quiz_delete_view(request, course_item_id):
+    if request.method != 'POST':
+        return redirect('agora:course_item_detail', course_item_id=course_item_id)
+
+    quiz = get_object_or_404(QuizItem.objects.select_related('course'), pk=course_item_id)
+    if quiz.course.teacher_id != request.user.id:
+        messages.error(request, 'Você não tem permissão para excluir este quiz.')
+        return redirect('agora:course_item_detail', course_item_id=quiz.id)
+
+    course_id = quiz.course_id
+    quiz_title = quiz.title
+    quiz.delete()
+    messages.success(request, f'Quiz "{quiz_title}" excluído com sucesso.')
+    return redirect('agora:course_detail', course_id=course_id)
+
+
+@never_cache
+@login_required(login_url='agora:login')
 def course_item_detail_view(request, course_item_id):
     course_item = get_object_or_404(
         CourseItem.objects.select_related('course', 'module', 'created_by', 'course__teacher'),

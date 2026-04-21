@@ -85,11 +85,22 @@
                     <p class="eyebrow">Visão Geral</p>
                     <h2>Detalhes do item</h2>
                 </div>
-                {% if is_teacher and not activity.is_published %}
-                    <form method="post" action="{% url 'agora:publish_course_item' activity.id %}" onsubmit="return confirm('Deseja publicar esta atividade?');">
-                        {% csrf_token %}
-                        <button class="ghost-button compact" type="submit">Publicar item</button>
-                    </form>
+                {% if is_teacher %}
+                    <div class="teacher-item-actions">
+                        {% if activity.kind == 'quiz' %}
+                            <a class="ghost-button compact" href="{% url 'agora:quiz_edit' activity.id %}">Editar quiz</a>
+                            <form method="post" action="{% url 'agora:quiz_delete' activity.id %}" onsubmit="return confirm('Deseja excluir este quiz? Esta ação não poderá ser desfeita.');">
+                                {% csrf_token %}
+                                <button class="ghost-button compact danger-action" type="submit">Excluir quiz</button>
+                            </form>
+                        {% endif %}
+                        {% if not activity.is_published %}
+                            <form method="post" action="{% url 'agora:publish_course_item' activity.id %}" onsubmit="return confirm('Deseja publicar esta atividade?');">
+                                {% csrf_token %}
+                                <button class="ghost-button compact" type="submit">Publicar item</button>
+                            </form>
+                        {% endif %}
+                    </div>
                 {% else %}
                     {% if activity.is_published %}
                         <span class="status-pill accent">Publicado</span>
