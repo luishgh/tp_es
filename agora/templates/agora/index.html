@@ -10,14 +10,14 @@
 {% block page_eyebrow %}Painel principal{% endblock %}
 {% block page_title %}
     {% if request.user.profile.role == 'teacher' %}
-        Cursos sob sua responsabilidade e atividades para corrigir
+        Cursos sob sua responsabilidade e avaliações para corrigir
     {% else %}
         Meus cursos e atividades a entregar.
     {% endif %}
 {% endblock %}
 {% block page_lead %}
     {% if request.user.profile.role == 'teacher' %}
-        Gerencie seus cursos e mantenha o controle das correções pendentes.
+        Gerencie seus cursos e mantenha o controle das avaliações com submissões a corrigir.
     {% else %}
         Acesse seus cursos e acompanhe suas atividades e prazos.
     {% endif %}
@@ -37,7 +37,7 @@
                     </p>
                     <h2>
                         {% if request.user.profile.role == 'teacher' %}
-                            Cursos lecionados
+                            Cursos sob sua responsabilidade
                         {% else %}
                             Meus cursos
                         {% endif %}
@@ -112,7 +112,7 @@
                     </p>
                     <h2>
                         {% if request.user.profile.role == 'teacher' %}
-                            Atividades para corrigir
+                            Submissões para corrigir
                         {% else %}
                             Atividades a entregar
                         {% endif %}
@@ -120,7 +120,7 @@
                 </div>
                 <span>
                     {% if request.user.profile.role == 'teacher' %}
-                        {{ pending_count }} atividade{{ pending_count|pluralize }} aguardando retorno
+                        {{ pending_count }} submissão{{ pending_count|pluralize }} aguardando correção
                     {% else %}
                         {{ pending_count }} aberta{{ pending_count|pluralize:"s" }}
                     {% endif %}
@@ -164,8 +164,8 @@
             {% else %}
                 <div class="empty-state">
                     {% if request.user.profile.role == 'teacher' %}
-                        <h3>Nenhuma atividade vencida aguardando correção.</h3>
-                        <p>No momento, não há atividades com prazo encerrado esperando sua avaliação.</p>
+                        <h3>Nenhuma avaliação vencida aguardando correção.</h3>
+                        <p>No momento, não há submissões com prazo encerrado esperando sua avaliação.</p>
                     {% else %}
                         <h3>Nenhuma atividade pendente agora.</h3>
                         <p>Todas as atividades publicadas para seus cursos ativos já foram entregues ou ainda não existem pendências cadastradas.</p>
