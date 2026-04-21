@@ -46,11 +46,6 @@ class UserProfile(models.Model):
         default='',
         verbose_name='telefone',
     )
-    bio = models.TextField(
-        blank=True,
-        default='',
-        verbose_name='biografia',
-    )
 
     class Meta:
         verbose_name = 'perfil de usuario'

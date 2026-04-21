@@ -24,7 +24,6 @@ def login_view(request):
         'initial_register_cpf': '',
         'initial_register_birth_date': '',
         'initial_register_phone': '',
-        'initial_register_bio': '',
         'csrf_token_value': get_token(request),
     }
 
@@ -40,7 +39,6 @@ def login_view(request):
             cpf = request.POST.get('register_cpf', '').strip()
             birth_date_raw = request.POST.get('register_birth_date', '').strip()
             phone = request.POST.get('register_phone', '').strip()
-            bio = request.POST.get('register_bio', '').strip()
             password = request.POST.get('register_password', '')
             password_confirm = request.POST.get('register_password_confirm', '')
             birth_date = None
@@ -54,7 +52,6 @@ def login_view(request):
             context['initial_register_cpf'] = cpf
             context['initial_register_birth_date'] = birth_date_raw
             context['initial_register_phone'] = phone
-            context['initial_register_bio'] = bio
 
             if not username or not password:
                 context['error_message'] = 'Preencha usuário e senha para criar a conta.'
@@ -95,9 +92,8 @@ def login_view(request):
                 user.profile.cpf = cpf_digits
                 user.profile.birth_date = birth_date
                 user.profile.phone = phone
-                user.profile.bio = bio
                 user.profile.ensure_academic_id(user.date_joined)
-                user.profile.save(update_fields=['role', 'cpf', 'birth_date', 'phone', 'bio', 'academic_id'])
+                user.profile.save(update_fields=['role', 'cpf', 'birth_date', 'phone', 'academic_id'])
                 login(request, user)
                 return redirect('agora:index')
         else:

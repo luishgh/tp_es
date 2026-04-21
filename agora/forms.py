@@ -30,7 +30,6 @@ class SuperuserCreateUserForm(forms.Form):
         widget=forms.DateInput(attrs={'type': 'date'}),
     )
     phone = forms.CharField(max_length=20, label='Telefone')
-    bio = forms.CharField(widget=forms.Textarea, required=False, label='Biografia')
 
     def clean_username(self):
         username = self.cleaned_data['username'].strip()
@@ -95,8 +94,7 @@ class SuperuserCreateUserForm(forms.Form):
         profile.cpf = self.cleaned_data['cpf']
         profile.birth_date = self.cleaned_data['birth_date']
         profile.phone = self.cleaned_data['phone']
-        profile.bio = self.cleaned_data['bio']
-        profile.save(update_fields=['role', 'academic_id', 'cpf', 'birth_date', 'phone', 'bio'])
+        profile.save(update_fields=['role', 'academic_id', 'cpf', 'birth_date', 'phone'])
         return user
 
 
