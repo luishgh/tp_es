@@ -273,7 +273,8 @@ button {
 }
 
 .calendar-badge-link,
-.agenda-item-link {
+.agenda-item-link,
+.grade-card-link {
     display: block;
     text-decoration: none;
     color: inherit;
@@ -281,11 +282,13 @@ button {
 }
 
 .calendar-badge-link:hover,
-.agenda-item-link:hover {
+.agenda-item-link:hover,
+.grade-card-link:hover {
     text-decoration: none;
 }
 
-.agenda-item-link:hover .agenda-head strong {
+.agenda-item-link:hover .agenda-head strong,
+.grade-card-link:hover .grade-head strong {
     text-decoration: underline;
 }
 
@@ -373,18 +376,21 @@ button {
     padding: 18px;
 }
 
-.agenda-item {
+.agenda-item,
+.grade-card {
     transition: all 0.2s ease-in-out;
 }
 
 .calendar-badge-link:hover .calendar-badge,
-.agenda-item-link:hover .agenda-item {
+.agenda-item-link:hover .agenda-item,
+.grade-card-link:hover .grade-card {
     transform: translateY(-2px);
     box-shadow: 0 30px 70px rgba(24, 56, 36, 0.15);
 }
 
 .calendar-badge-link:active .calendar-badge,
-.agenda-item-link:active .agenda-item {
+.agenda-item-link:active .agenda-item,
+.grade-card-link:active .grade-card {
     transform: translateY(-1px);
 }
 

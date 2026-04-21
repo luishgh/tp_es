@@ -121,46 +121,49 @@
                         </div>
                     {% endif %}
 
-                    <form class="agora-form detail-form submission-upload-form" method="post" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="submit_assignment">
+                    {% if not current_submission %}
+                        <form class="agora-form detail-form submission-upload-form" method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="submit_assignment">
 
-                        {% for error in assignment_form.non_field_errors %}
-                            <span class="field-error form-error-banner">{{ error }}</span>
-                        {% endfor %}
+                            {% for error in assignment_form.non_field_errors %}
+                                <span class="field-error form-error-banner">{{ error }}</span>
+                            {% endfor %}
 
-                        <div class="submission-upload-grid">
-                            <div class="submission-upload-side">
-                                <div class="form-field submission-file-field">
-                                    <label for="{{ assignment_form.attachment_file.id_for_label }}">{{ assignment_form.attachment_file.label }}</label>
-                                    {{ assignment_form.attachment_file }}
-                                    {% for error in assignment_form.attachment_file.errors %}
+                            <div class="submission-upload-grid">
+                                <div class="submission-upload-side">
+                                    <div class="form-field submission-file-field">
+                                        <label for="{{ assignment_form.attachment_file.id_for_label }}">{{ assignment_form.attachment_file.label }}</label>
+                                        {{ assignment_form.attachment_file }}
+                                        {% for error in assignment_form.attachment_file.errors %}
+                                            <span class="field-error">{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+
+                                    <div class="form-actions submission-inline-actions">
+                                        <button class="primary-button" type="submit">Registrar entrega</button>
+                                    </div>
+                                </div>
+
+                                <div class="form-field submission-notes-field">
+                                    <label for="{{ assignment_form.content.id_for_label }}">{{ assignment_form.content.label }}</label>
+                                    {{ assignment_form.content }}
+                                    {% for error in assignment_form.content.errors %}
                                         <span class="field-error">{{ error }}</span>
                                     {% endfor %}
                                 </div>
-
-                                <div class="form-actions submission-inline-actions">
-                                    <button class="primary-button" type="submit">{% if current_submission %}Atualizar entrega{% else %}Registrar entrega{% endif %}</button>
-                                </div>
                             </div>
 
-                            <div class="form-field submission-notes-field">
-                                <label for="{{ assignment_form.content.id_for_label }}">{{ assignment_form.content.label }}</label>
-                                {{ assignment_form.content }}
-                                {% for error in assignment_form.content.errors %}
-                                    <span class="field-error">{{ error }}</span>
-                                {% endfor %}
-                            </div>
-                        </div>
-
-                    </form>
-
-                    {% if current_submission %}
+                        </form>
+                    {% else %}
                         <div class="submission-summary">
-                            <h3>Última entrega</h3>
+                            <h3>Tarefa enviada</h3>
                             <p><strong>Enviada em:</strong> {{ current_submission.submitted_at|date:"d/m/Y H:i"|default:"Ainda não enviada" }}</p>
                             {% if current_submission.attachment_file %}
                                 <p><strong>Arquivo:</strong> <a href="{{ current_submission.attachment_file.url }}" target="_blank" rel="noreferrer">Abrir entrega</a></p>
+                            {% endif %}
+                            {% if current_submission.content %}
+                                <p><strong>Observações:</strong> {{ current_submission.content }}</p>
                             {% endif %}
                             {% if current_submission.feedback %}
                                 <p><strong>Feedback:</strong> {{ current_submission.feedback }}</p>

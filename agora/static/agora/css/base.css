@@ -171,6 +171,9 @@ button {
     font-size: 0.82rem; /* From courses_hub.css */
     font-weight: var(--font-weight-7); /* From courses_hub.css (bold) */
     text-transform: uppercase;
+    text-align: center;
+    line-height: 1.25;
+    white-space: normal;
 }
 
 .status-pill.accent {

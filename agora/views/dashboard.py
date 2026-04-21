@@ -353,6 +353,7 @@ def calendar_view(request):
 
     grade_cards = [
         {
+            'id': submission.assignment.id,
             'course_code': submission.assignment.course.code,
             'course_title': submission.assignment.course.title,
             'teacher_name': submission.assignment.course.teacher.get_full_name() or submission.assignment.course.teacher.username,

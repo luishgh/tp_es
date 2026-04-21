@@ -85,17 +85,15 @@ class Command(BaseCommand):
         # =========================
         for course in courses:
             for student in students:
-                Enrollment.objects.get_or_create(
-                    student=student,
-                    course=course,
-                    defaults={
-                        'status': choice([
-                            Enrollment.Status.ACTIVE,
-                            Enrollment.Status.COMPLETED,
-                        ]),
-                        'final_grade': Decimal(randint(60, 100)) / 10,
-                    }
-                )
+                if choice([0, 1]):
+                    Enrollment.objects.get_or_create(
+                        student=student,
+                        course=course,
+                        defaults={
+                            'status': Enrollment.Status.ACTIVE,
+                            'final_grade': Decimal(randint(60, 100)) / 10,
+                        }
+                    )
 
         # =========================
         # MODULES
