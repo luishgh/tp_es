@@ -47,10 +47,27 @@ def _build_teacher_dashboard_context(user):
         .annotate(total=Count('id'))
     }
 
-    course_published_items = {
-        item['course_id']: item['total']
-        for item in CourseItem.objects.filter(course_id__in=course_ids, is_published=True)
-        .values('course_id')
+    pending_by_course = {
+        item['assignment__course_id']: item['total']
+        for item in Submission.objects.filter(
+            assignment__course_id__in=course_ids,
+            assignment__is_published=True,
+            assignment__due_date__lt=now,
+            status__in=[Submission.Status.SUBMITTED, Submission.Status.LATE],
+        )
+        .values('assignment__course_id')
+        .annotate(total=Count('id'))
+    }
+
+    reviewed_by_course = {
+        item['assignment__course_id']: item['total']
+        for item in Submission.objects.filter(
+            assignment__course_id__in=course_ids,
+            assignment__is_published=True,
+            assignment__due_date__lt=now,
+            status=Submission.Status.REVIEWED,
+        )
+        .values('assignment__course_id')
         .annotate(total=Count('id'))
     }
 
@@ -78,14 +95,11 @@ def _build_teacher_dashboard_context(user):
         .annotate(total=Count('id'))
     }
 
-    pending_count_by_course = defaultdict(int)
     pending_cards = []
 
     for activity in activities_pending_review:
         course = activity.course
         pending_reviews = pending_review_counts.get(activity.id, 0)
-
-        pending_count_by_course[course.id] += 1
 
         pending_cards.append({
             'id': activity.id,
@@ -95,15 +109,17 @@ def _build_teacher_dashboard_context(user):
             'activity_type': activity.kind_label,
             'status_label': 'Correção pendente',
             'status_tone': 'danger',
-            'meta_label': f'{pending_reviews} envio{"s" if pending_reviews != 1 else ""} aguardando avaliação',
+            'meta_label': f'{pending_reviews} submissão{"s" if pending_reviews != 1 else ""} pendente de correção',
         })
 
     course_cards = []
     for index_number, course in enumerate(courses):
-        total_activities = course_published_items.get(course.id, 0)
         total_students = course_student_counts.get(course.id, 0)
-        pending = pending_count_by_course.get(course.id, 0)
-        progress = int((1 - pending / total_activities) * 100) if total_activities else 0
+        pending = pending_by_course.get(course.id, 0)
+        reviewed = reviewed_by_course.get(course.id, 0)
+        total = pending + reviewed
+
+        progress = int((reviewed / total) * 100) if total else 0
 
         course_cards.append({
             'id': course.id,
@@ -112,14 +128,14 @@ def _build_teacher_dashboard_context(user):
             'progress': progress,
             'accent': ['forest', 'sand', 'sage'][index_number % 3],
             'meta_label': f'{total_students} aluno{"s" if total_students != 1 else ""} ativo{"s" if total_students != 1 else ""}',
-            'progress_label': f'{total_activities - pending}/{total_activities} atividades avaliadas',
+            'progress_label': f'{reviewed}/{total} submissões corrigidas',
         })
 
     return {
         'course_cards': course_cards,
         'pending_cards': pending_cards,
         'courses_count': len(course_cards),
-        'pending_count': len(pending_cards),
+        'pending_count': sum(pending_by_course.values()),
     }
 
 
