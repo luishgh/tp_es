@@ -130,6 +130,17 @@
     color: var(--text-2);
 }
 
+.quiz-question-image {
+    display: block;
+    max-width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    margin: var(--size-3) 0;
+    border-radius: 16px;
+    border: 1px solid rgba(31, 42, 31, 0.12);
+    background: rgba(255, 255, 255, 0.9);
+}
+
 .quiz-question-head {
     display: flex;
     justify-content: space-between;

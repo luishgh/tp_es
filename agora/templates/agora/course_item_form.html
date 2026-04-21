@@ -128,6 +128,10 @@
                             <label for="id_question_${nextIndex}_statement">Pergunta ${nextIndex} <span class="field-required">*</span></label>
                             <textarea name="question_${nextIndex}_statement" id="id_question_${nextIndex}_statement" rows="4" placeholder="Digite a pergunta de múltipla escolha." required></textarea>
                         </div>
+                        <div class="form-field">
+                            <label for="id_question_${nextIndex}_image">Imagem da questão (PNG, opcional)</label>
+                            <input type="file" name="question_${nextIndex}_image" id="id_question_${nextIndex}_image" accept=".png,image/png">
+                        </div>
                         <div class="activity-form-grid">
                             <div class="form-field">
                                 <label for="id_question_${nextIndex}_type">Tipo de questão <span class="field-required">*</span></label>
@@ -346,6 +350,14 @@
                                         <label for="{{ question.statement.id_for_label }}">{{ question.statement.label }} <span class="field-required">*</span></label>
                                         {{ question.statement }}
                                         {% for error in question.statement.errors %}
+                                            <span class="field-error">{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+
+                                    <div class="form-field">
+                                        <label for="{{ question.image.id_for_label }}">{{ question.image.label }}</label>
+                                        {{ question.image }}
+                                        {% for error in question.image.errors %}
                                             <span class="field-error">{{ error }}</span>
                                         {% endfor %}
                                     </div>

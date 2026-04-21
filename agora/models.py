@@ -420,6 +420,12 @@ class QuizQuestion(models.Model):
     statement = models.TextField(
         verbose_name='enunciado',
     )
+    image = models.FileField(
+        upload_to='quiz_question_images/',
+        blank=True,
+        null=True,
+        verbose_name='imagem da questao',
+    )
     question_type = models.CharField(
         max_length=30,
         choices=QuestionType.choices,

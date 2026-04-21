@@ -248,6 +248,12 @@ class ActivityCreateViewTests(TestCase):
     def test_teacher_can_create_quiz_with_single_multiple_choice_question(self):
         self.client.force_login(self.teacher)
 
+        question_image = SimpleUploadedFile(
+            'question.png',
+            b'\x89PNG\r\n\x1a\nfakepng',
+            content_type='image/png',
+        )
+
         response = self.client.post(
             reverse('agora:course_item_create', args=[self.course.id]),
             data={
@@ -257,6 +263,7 @@ class ActivityCreateViewTests(TestCase):
                 'description': 'Quiz de revisão.',
                 'question_count': '2',
                 'question_1_statement': 'Qual linguagem o Django usa principalmente?',
+                'question_1_image': question_image,
                 'question_1_type': 'single_choice',
                 'question_1_score': '4',
                 'question_1_option_1': 'Python',
@@ -287,6 +294,7 @@ class ActivityCreateViewTests(TestCase):
         self.assertEqual(len(questions), 2)
         self.assertEqual(questions[0].statement, 'Qual linguagem o Django usa principalmente?')
         self.assertEqual(questions[0].question_type, QuizQuestion.QuestionType.SINGLE_CHOICE)
+        self.assertTrue(bool(questions[0].image))
         self.assertEqual(float(questions[0].weight), 4.0)
         self.assertEqual(questions[0].options.count(), 4)
         self.assertEqual(questions[0].options.get(is_correct=True).text, 'Python')

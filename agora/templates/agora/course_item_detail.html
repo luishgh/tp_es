@@ -304,6 +304,9 @@
                                     <strong>Questão {{ question.order }}</strong>
                                     <span>{{ question.weight }} ponto{{ question.weight|pluralize }}</span>
                                 </div>
+                                {% if question.image_url %}
+                                    <img class="quiz-question-image" src="{{ question.image_url }}" alt="Imagem da questão {{ question.order }}">
+                                {% endif %}
                                 <p>{{ question.statement }}</p>
                                 <p class="field-help">
                                     {% if question.question_type == 'multiple_choice' %}
@@ -351,6 +354,9 @@
                                         <strong>Questão {{ question.order }}</strong>
                                         <span>{{ question.weight }} ponto{{ question.weight|pluralize }}</span>
                                     </div>
+                                    {% if question.image_url %}
+                                        <img class="quiz-question-image" src="{{ question.image_url }}" alt="Imagem da questão {{ question.order }}">
+                                    {% endif %}
                                     <p>{{ question.statement }}</p>
                                     <p class="field-help">
                                         {% if question.question_type == 'multiple_choice' %}

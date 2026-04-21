@@ -330,6 +330,7 @@ class QuizCreateForm(BaseCourseActivityForm):
     def _add_question_fields(self, question_index):
         question_prefix = f'question_{question_index}'
         statement_name = f'{question_prefix}_statement'
+        image_name = f'{question_prefix}_image'
         type_name = f'{question_prefix}_type'
         score_name = f'{question_prefix}_score'
 
@@ -342,6 +343,11 @@ class QuizCreateForm(BaseCourseActivityForm):
                 }
             ),
         )
+        self.fields[image_name] = forms.FileField(
+            label='Imagem da questão (PNG, opcional)',
+            required=False,
+        )
+        self.fields[image_name].widget.attrs.update({'accept': '.png,image/png'})
         self.fields[type_name] = forms.ChoiceField(
             label='Tipo de questão',
             choices=QuizQuestion.QuestionType.choices,
@@ -370,6 +376,7 @@ class QuizCreateForm(BaseCourseActivityForm):
             {
                 'index': question_index,
                 'statement': self[statement_name],
+                'image': self[image_name],
                 'question_type': self[type_name],
                 'score': self[score_name],
                 'options': [
@@ -391,6 +398,7 @@ class QuizCreateForm(BaseCourseActivityForm):
         for question_index in range(1, self.question_count + 1):
             question_prefix = f'question_{question_index}'
             statement_key = f'{question_prefix}_statement'
+            image_key = f'{question_prefix}_image'
             type_key = f'{question_prefix}_type'
             score_key = f'{question_prefix}_score'
 
@@ -406,6 +414,12 @@ class QuizCreateForm(BaseCourseActivityForm):
             score = cleaned_data.get(score_key)
             if score is None:
                 self.add_error(score_key, 'Informe a pontuação desta questão.')
+
+            image = cleaned_data.get(image_key)
+            if image:
+                file_name = image.name.lower()
+                if not file_name.endswith('.png'):
+                    self.add_error(image_key, 'Envie uma imagem PNG para esta questão.')
 
             options = []
             seen_options = set()
@@ -436,6 +450,7 @@ class QuizCreateForm(BaseCourseActivityForm):
                 quiz_questions.append(
                     {
                         'statement': statement,
+                        'image': image,
                         'question_type': question_type,
                         'score': score,
                         'correct_options': correct_options,
@@ -459,6 +474,7 @@ class QuizCreateForm(BaseCourseActivityForm):
             question = QuizQuestion.objects.create(
                 quiz=quiz,
                 statement=question_data['statement'],
+                image=question_data['image'],
                 question_type=question_data['question_type'],
                 order=question_order,
                 weight=question_data['score'],

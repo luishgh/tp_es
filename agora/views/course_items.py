@@ -376,6 +376,7 @@ def course_item_detail_view(request, course_item_id):
                 'id': question.id,
                 'order': question.order,
                 'statement': question.statement,
+                'image_url': question.image.url if question.image else None,
                 'question_type': question.question_type,
                 'weight': question.weight,
                 'options': [
