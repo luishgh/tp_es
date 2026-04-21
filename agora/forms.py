@@ -330,8 +330,8 @@ class QuizCreateForm(BaseCourseActivityForm):
     def _add_question_fields(self, question_index):
         question_prefix = f'question_{question_index}'
         statement_name = f'{question_prefix}_statement'
+        type_name = f'{question_prefix}_type'
         score_name = f'{question_prefix}_score'
-        correct_option_name = f'{question_prefix}_correct_option'
 
         self.fields[statement_name] = forms.CharField(
             label=f'Pergunta {question_index}',
@@ -342,6 +342,11 @@ class QuizCreateForm(BaseCourseActivityForm):
                 }
             ),
         )
+        self.fields[type_name] = forms.ChoiceField(
+            label='Tipo de questão',
+            choices=QuizQuestion.QuestionType.choices,
+            initial=QuizQuestion.QuestionType.SINGLE_CHOICE,
+        )
         self.fields[score_name] = forms.DecimalField(
             label='Pontuação da questão',
             min_value=Decimal('0.01'),
@@ -349,29 +354,31 @@ class QuizCreateForm(BaseCourseActivityForm):
             max_digits=5,
             widget=forms.NumberInput(attrs={'min': '0.01', 'step': '0.01'}),
         )
-        self.fields[correct_option_name] = forms.ChoiceField(
-            label='Alternativa correta',
-            choices=[
-                ('1', 'Alternativa A'),
-                ('2', 'Alternativa B'),
-                ('3', 'Alternativa C'),
-                ('4', 'Alternativa D'),
-            ],
-        )
 
         option_fields = []
         for option_index, option_label in enumerate(('A', 'B', 'C', 'D'), start=1):
             option_name = f'{question_prefix}_option_{option_index}'
+            option_correct_name = f'{question_prefix}_option_{option_index}_is_correct'
             self.fields[option_name] = forms.CharField(label=f'Alternativa {option_label}')
+            self.fields[option_correct_name] = forms.BooleanField(
+                label=f'Alternativa {option_label} é correta',
+                required=False,
+            )
             option_fields.append(self[option_name])
 
         self.question_blocks.append(
             {
                 'index': question_index,
                 'statement': self[statement_name],
+                'question_type': self[type_name],
                 'score': self[score_name],
-                'correct_option': self[correct_option_name],
-                'options': option_fields,
+                'options': [
+                    {
+                        'text': self[f'{question_prefix}_option_{option_index}'],
+                        'is_correct': self[f'{question_prefix}_option_{option_index}_is_correct'],
+                    }
+                    for option_index in range(1, self.quiz_option_count + 1)
+                ],
             }
         )
 
@@ -384,13 +391,17 @@ class QuizCreateForm(BaseCourseActivityForm):
         for question_index in range(1, self.question_count + 1):
             question_prefix = f'question_{question_index}'
             statement_key = f'{question_prefix}_statement'
+            type_key = f'{question_prefix}_type'
             score_key = f'{question_prefix}_score'
-            correct_option_key = f'{question_prefix}_correct_option'
 
             statement = (cleaned_data.get(statement_key) or '').strip()
             if not statement:
                 self.add_error(statement_key, 'Informe a pergunta desta questão.')
             cleaned_data[statement_key] = statement
+
+            question_type = cleaned_data.get(type_key)
+            if not question_type:
+                self.add_error(type_key, 'Selecione o tipo desta questão.')
 
             score = cleaned_data.get(score_key)
             if score is None:
@@ -398,8 +409,10 @@ class QuizCreateForm(BaseCourseActivityForm):
 
             options = []
             seen_options = set()
+            correct_options = []
             for option_index in range(1, self.quiz_option_count + 1):
                 option_key = f'{question_prefix}_option_{option_index}'
+                option_correct_key = f'{question_prefix}_option_{option_index}_is_correct'
                 option_text = (cleaned_data.get(option_key) or '').strip()
                 if not option_text:
                     self.add_error(option_key, 'Preencha esta alternativa.')
@@ -411,13 +424,21 @@ class QuizCreateForm(BaseCourseActivityForm):
                 seen_options.add(normalized)
                 cleaned_data[option_key] = option_text
                 options.append(option_text)
+                if cleaned_data.get(option_correct_key):
+                    correct_options.append(option_index)
 
-            if statement and score is not None and len(options) == self.quiz_option_count:
+            if question_type == QuizQuestion.QuestionType.SINGLE_CHOICE and len(correct_options) != 1:
+                self.add_error(type_key, 'Questões de uma resposta devem ter exatamente uma alternativa correta.')
+            elif question_type == QuizQuestion.QuestionType.MULTIPLE_CHOICE and not correct_options:
+                self.add_error(type_key, 'Marque pelo menos uma alternativa correta para esta questão.')
+
+            if statement and question_type and score is not None and len(options) == self.quiz_option_count and correct_options:
                 quiz_questions.append(
                     {
                         'statement': statement,
+                        'question_type': question_type,
                         'score': score,
-                        'correct_option': int(cleaned_data[correct_option_key]),
+                        'correct_options': correct_options,
                         'options': options,
                     }
                 )
@@ -438,6 +459,7 @@ class QuizCreateForm(BaseCourseActivityForm):
             question = QuizQuestion.objects.create(
                 quiz=quiz,
                 statement=question_data['statement'],
+                question_type=question_data['question_type'],
                 order=question_order,
                 weight=question_data['score'],
             )
@@ -446,7 +468,7 @@ class QuizCreateForm(BaseCourseActivityForm):
                 QuizOption.objects.create(
                     question=question,
                     text=option_text,
-                    is_correct=option_order == question_data['correct_option'],
+                    is_correct=option_order in question_data['correct_options'],
                     order=option_order,
                 )
 

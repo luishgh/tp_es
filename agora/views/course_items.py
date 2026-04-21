@@ -34,12 +34,22 @@ from ..models import (
 from .common import _user_role
 
 
-def _calculate_quiz_score(answers):
+def _question_is_correct(question, selected_option_ids):
+    selected_ids = set(selected_option_ids)
+    correct_ids = set(question.options.filter(is_correct=True).values_list('id', flat=True))
+    return selected_ids == correct_ids
+
+
+def _calculate_quiz_score(questions, answers):
+    answers_by_question = {}
+    for answer in answers:
+        answers_by_question.setdefault(answer.question_id, set()).add(answer.selected_option_id)
+
     return round(
         sum(
-            float(answer.question.weight)
-            for answer in answers
-            if answer.selected_option.is_correct
+            float(question.weight)
+            for question in questions
+            if _question_is_correct(question, answers_by_question.get(question.id, set()))
         ),
         2,
     )
@@ -256,16 +266,25 @@ def course_item_detail_view(request, course_item_id):
 
                 missing_answers = []
                 selected_answers = []
-                for question in detail.questions.prefetch_related('options').all():
-                    selected_option_id = request.POST.get(f'question_{question.id}')
-                    if not selected_option_id:
+                questions = list(detail.questions.prefetch_related('options').all())
+                for question in questions:
+                    if question.question_type == QuizQuestion.QuestionType.MULTIPLE_CHOICE:
+                        selected_option_ids = request.POST.getlist(f'question_{question.id}')
+                        selected_options = list(question.options.filter(pk__in=selected_option_ids))
+                        if len(selected_options) != len(set(selected_option_ids)) or not selected_options:
+                            missing_answers.append(question.order)
+                            continue
+                    else:
+                        selected_option_id = request.POST.get(f'question_{question.id}')
+                        if not selected_option_id:
+                            missing_answers.append(question.order)
+                            continue
+                        selected_options = list(question.options.filter(pk=selected_option_id))
+
+                    if not selected_options:
                         missing_answers.append(question.order)
                         continue
-                    selected_option = question.options.filter(pk=selected_option_id).first()
-                    if not selected_option:
-                        missing_answers.append(question.order)
-                        continue
-                    selected_answers.append((question, selected_option))
+                    selected_answers.append((question, selected_options))
 
                 if missing_answers:
                     messages.error(
@@ -274,24 +293,31 @@ def course_item_detail_view(request, course_item_id):
                     )
                 else:
                     with transaction.atomic():
-                        for question, selected_option in selected_answers:
-                            Answer.objects.update_or_create(
-                                quiz=detail,
-                                question=question,
-                                student=request.user,
-                                defaults={'selected_option': selected_option},
-                            )
+                        Answer.objects.filter(quiz=detail, student=request.user).delete()
+                        Answer.objects.bulk_create(
+                            [
+                                Answer(
+                                    quiz=detail,
+                                    question=question,
+                                    student=request.user,
+                                    selected_option=selected_option,
+                                )
+                                for question, selected_options in selected_answers
+                                for selected_option in selected_options
+                            ]
+                        )
                     messages.success(request, 'Suas respostas do quiz foram registradas.')
                     return redirect('agora:course_item_detail', course_item_id=course_item.id)
 
-            student_answers_qs = Answer.objects.filter(quiz=detail, student=request.user).select_related('selected_option', 'question')
-            quiz_student_answers = {
-                answer.question_id: answer.selected_option_id
-                for answer in student_answers_qs
-            }
+            question_list = list(detail.questions.prefetch_related('options').all())
+            student_answers_qs = list(
+                Answer.objects.filter(quiz=detail, student=request.user).select_related('selected_option', 'question')
+            )
+            for answer in student_answers_qs:
+                quiz_student_answers.setdefault(answer.question_id, set()).add(answer.selected_option_id)
             if student_answers_qs:
-                quiz_score = _calculate_quiz_score(student_answers_qs)
-                quiz_feedback = f'{len(student_answers_qs)}/{detail.questions.count()} questões respondidas'
+                quiz_score = _calculate_quiz_score(question_list, student_answers_qs)
+                quiz_feedback = f'{len(quiz_student_answers)}/{detail.questions.count()} questões respondidas'
             elif not detail.allow_resubmissions:
                 quiz_feedback = 'Este quiz aceita apenas uma tentativa.'
 
@@ -350,6 +376,7 @@ def course_item_detail_view(request, course_item_id):
                 'id': question.id,
                 'order': question.order,
                 'statement': question.statement,
+                'question_type': question.question_type,
                 'weight': question.weight,
                 'options': [
                     {
@@ -357,7 +384,7 @@ def course_item_detail_view(request, course_item_id):
                         'text': option.text,
                         'is_correct': option.is_correct,
                         'answer_count': teacher_answer_counts.get(option.id, 0),
-                        'is_selected': quiz_student_answers.get(question.id) == option.id,
+                        'is_selected': option.id in quiz_student_answers.get(question.id, set()),
                     }
                     for option in question.options.all()
                 ],

@@ -257,19 +257,22 @@ class ActivityCreateViewTests(TestCase):
                 'description': 'Quiz de revisão.',
                 'question_count': '2',
                 'question_1_statement': 'Qual linguagem o Django usa principalmente?',
+                'question_1_type': 'single_choice',
                 'question_1_score': '4',
                 'question_1_option_1': 'Python',
+                'question_1_option_1_is_correct': 'on',
                 'question_1_option_2': 'Ruby',
                 'question_1_option_3': 'PHP',
                 'question_1_option_4': 'Go',
-                'question_1_correct_option': '1',
                 'question_2_statement': 'Qual comando inicia o servidor de desenvolvimento?',
+                'question_2_type': 'multiple_choice',
                 'question_2_score': '6',
                 'question_2_option_1': 'python manage.py migrate',
+                'question_2_option_1_is_correct': 'on',
                 'question_2_option_2': 'python manage.py runserver',
+                'question_2_option_2_is_correct': 'on',
                 'question_2_option_3': 'python manage.py test',
                 'question_2_option_4': 'python manage.py shell',
-                'question_2_correct_option': '2',
                 'due_date': '2026-04-30T23:59',
                 'allow_resubmissions': 'on',
                 'is_published': 'on',
@@ -283,11 +286,16 @@ class ActivityCreateViewTests(TestCase):
         questions = list(QuizQuestion.objects.filter(quiz=quiz).order_by('order'))
         self.assertEqual(len(questions), 2)
         self.assertEqual(questions[0].statement, 'Qual linguagem o Django usa principalmente?')
+        self.assertEqual(questions[0].question_type, QuizQuestion.QuestionType.SINGLE_CHOICE)
         self.assertEqual(float(questions[0].weight), 4.0)
         self.assertEqual(questions[0].options.count(), 4)
         self.assertEqual(questions[0].options.get(is_correct=True).text, 'Python')
+        self.assertEqual(questions[1].question_type, QuizQuestion.QuestionType.MULTIPLE_CHOICE)
         self.assertEqual(float(questions[1].weight), 6.0)
-        self.assertEqual(questions[1].options.get(is_correct=True).text, 'python manage.py runserver')
+        self.assertEqual(
+            set(questions[1].options.filter(is_correct=True).values_list('text', flat=True)),
+            {'python manage.py migrate', 'python manage.py runserver'},
+        )
 
     def test_teacher_can_disable_quiz_resubmissions(self):
         self.client.force_login(self.teacher)
@@ -301,12 +309,13 @@ class ActivityCreateViewTests(TestCase):
                 'description': 'Teste.',
                 'question_count': '1',
                 'question_1_statement': 'Pergunta única?',
+                'question_1_type': 'single_choice',
                 'question_1_score': '5',
                 'question_1_option_1': 'A',
+                'question_1_option_1_is_correct': 'on',
                 'question_1_option_2': 'B',
                 'question_1_option_3': 'C',
                 'question_1_option_4': 'D',
-                'question_1_correct_option': '1',
                 'due_date': '2026-04-30T23:59',
                 'is_published': 'on',
             },
@@ -423,6 +432,7 @@ class ResourceDetailViewTests(TestCase):
         self.quiz_question_2 = QuizQuestion.objects.create(
             quiz=self.quiz,
             statement='Qual comando aplica migrations?',
+            question_type=QuizQuestion.QuestionType.MULTIPLE_CHOICE,
             order=2,
             weight=6,
         )
@@ -437,6 +447,12 @@ class ResourceDetailViewTests(TestCase):
             text='python manage.py collectstatic',
             is_correct=False,
             order=2,
+        )
+        self.quiz_question_2_option_3 = QuizOption.objects.create(
+            question=self.quiz_question_2,
+            text='python manage.py runserver',
+            is_correct=True,
+            order=3,
         )
 
     def test_student_can_view_published_activity_detail(self):
@@ -561,17 +577,22 @@ class ResourceDetailViewTests(TestCase):
             reverse('agora:course_item_detail', args=[self.quiz.id]),
             data={
                 'action': 'submit_quiz',
-                f'quiz_{self.quiz.id}_question_{self.quiz_question.id}': str(self.correct_quiz_option.id),
                 f'question_{self.quiz_question.id}': str(self.correct_quiz_option.id),
-                f'question_{self.quiz_question_2.id}': str(self.quiz_question_2_option_1.id),
+                f'question_{self.quiz_question_2.id}': [
+                    str(self.quiz_question_2_option_1.id),
+                    str(self.quiz_question_2_option_3.id),
+                ],
             },
         )
 
         self.assertEqual(response.status_code, 302)
         answers = list(Answer.objects.filter(quiz=self.quiz, student=self.student).order_by('question__order'))
-        self.assertEqual(len(answers), 2)
+        self.assertEqual(len(answers), 3)
         self.assertEqual(answers[0].selected_option, self.correct_quiz_option)
-        self.assertEqual(answers[1].selected_option, self.quiz_question_2_option_1)
+        self.assertEqual(
+            set(answer.selected_option for answer in answers[1:]),
+            {self.quiz_question_2_option_1, self.quiz_question_2_option_3},
+        )
 
     def test_course_page_shows_quiz_entry_button_for_students(self):
         self.client.force_login(self.student)
@@ -592,6 +613,7 @@ class ResourceDetailViewTests(TestCase):
         self.assertContains(response, 'Questão 1 de 2')
         self.assertContains(response, 'Próxima questão')
         self.assertContains(response, 'Enviar respostas')
+        self.assertContains(response, 'Selecione todas as alternativas corretas.')
     def test_quiz_score_is_sum_of_correct_question_scores(self):
         Answer.objects.create(
             quiz=self.quiz,
@@ -602,7 +624,13 @@ class ResourceDetailViewTests(TestCase):
         Answer.objects.create(
             quiz=self.quiz,
             question=self.quiz_question_2,
-            selected_option=self.quiz_question_2_option_2,
+            selected_option=self.quiz_question_2_option_1,
+            student=self.student,
+        )
+        Answer.objects.create(
+            quiz=self.quiz,
+            question=self.quiz_question_2,
+            selected_option=self.quiz_question_2_option_3,
             student=self.student,
         )
 
@@ -611,7 +639,22 @@ class ResourceDetailViewTests(TestCase):
         response = self.client.get(reverse('agora:course_item_detail', args=[self.quiz.id]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Pontuação atual: 4.0')
+        self.assertContains(response, 'Pontuação atual: 10.0')
+
+    def test_multi_select_question_requires_exact_set_for_full_marks(self):
+        Answer.objects.create(
+            quiz=self.quiz,
+            question=self.quiz_question_2,
+            selected_option=self.quiz_question_2_option_1,
+            student=self.student,
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse('agora:course_item_detail', args=[self.quiz.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Pontuação atual: 6.0')
 
     def test_student_cannot_resubmit_when_quiz_disallows_resubmissions(self):
         self.quiz.allow_resubmissions = False
@@ -636,7 +679,9 @@ class ResourceDetailViewTests(TestCase):
             data={
                 'action': 'submit_quiz',
                 f'question_{self.quiz_question.id}': str(self.quiz_option_2.id),
-                f'question_{self.quiz_question_2.id}': str(self.quiz_question_2_option_2.id),
+                f'question_{self.quiz_question_2.id}': [
+                    str(self.quiz_question_2_option_2.id),
+                ],
             },
             follow=True,
         )

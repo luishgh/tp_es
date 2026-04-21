@@ -407,6 +407,10 @@ class ForumItem(CourseItem):
 
 
 class QuizQuestion(models.Model):
+    class QuestionType(models.TextChoices):
+        SINGLE_CHOICE = 'single_choice', 'Uma resposta'
+        MULTIPLE_CHOICE = 'multiple_choice', 'Múltiplas respostas'
+
     quiz = models.ForeignKey(
         QuizItem,
         on_delete=models.CASCADE,
@@ -415,6 +419,12 @@ class QuizQuestion(models.Model):
     )
     statement = models.TextField(
         verbose_name='enunciado',
+    )
+    question_type = models.CharField(
+        max_length=30,
+        choices=QuestionType.choices,
+        default=QuestionType.SINGLE_CHOICE,
+        verbose_name='tipo de questao',
     )
     order = models.PositiveIntegerField(
         default=1,
@@ -667,7 +677,10 @@ class Answer(models.Model):
         verbose_name_plural = 'respostas de quiz'
         ordering = ['-answered_at']
         constraints = [
-            models.UniqueConstraint(fields=['question', 'student'], name='unique_answer_per_question_student'),
+            models.UniqueConstraint(
+                fields=['question', 'student', 'selected_option'],
+                name='unique_answer_per_question_student_option',
+            ),
         ]
 
     def __str__(self):

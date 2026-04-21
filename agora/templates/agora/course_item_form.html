@@ -130,35 +130,49 @@
                         </div>
                         <div class="activity-form-grid">
                             <div class="form-field">
-                                <label for="id_question_${nextIndex}_score">Pontuação da questão <span class="field-required">*</span></label>
-                                <input type="number" name="question_${nextIndex}_score" id="id_question_${nextIndex}_score" min="0.01" step="0.01" required>
+                                <label for="id_question_${nextIndex}_type">Tipo de questão <span class="field-required">*</span></label>
+                                <select name="question_${nextIndex}_type" id="id_question_${nextIndex}_type">
+                                    <option value="single_choice">Uma resposta</option>
+                                    <option value="multiple_choice">Múltiplas respostas</option>
+                                </select>
                             </div>
                             <div class="form-field">
-                                <label for="id_question_${nextIndex}_correct_option">Alternativa correta <span class="field-required">*</span></label>
-                                <select name="question_${nextIndex}_correct_option" id="id_question_${nextIndex}_correct_option">
-                                    <option value="1">Alternativa A</option>
-                                    <option value="2">Alternativa B</option>
-                                    <option value="3">Alternativa C</option>
-                                    <option value="4">Alternativa D</option>
-                                </select>
+                                <label for="id_question_${nextIndex}_score">Pontuação da questão <span class="field-required">*</span></label>
+                                <input type="number" name="question_${nextIndex}_score" id="id_question_${nextIndex}_score" min="0.01" step="0.01" required>
                             </div>
                         </div>
                         <div class="activity-form-grid">
                             <div class="form-field">
                                 <label for="id_question_${nextIndex}_option_1">Alternativa A <span class="field-required">*</span></label>
                                 <input type="text" name="question_${nextIndex}_option_1" id="id_question_${nextIndex}_option_1" required>
+                                <label class="checkbox-field activity-checkbox" for="id_question_${nextIndex}_option_1_is_correct">
+                                    <input type="checkbox" name="question_${nextIndex}_option_1_is_correct" id="id_question_${nextIndex}_option_1_is_correct">
+                                    <span>Alternativa correta</span>
+                                </label>
                             </div>
                             <div class="form-field">
                                 <label for="id_question_${nextIndex}_option_2">Alternativa B <span class="field-required">*</span></label>
                                 <input type="text" name="question_${nextIndex}_option_2" id="id_question_${nextIndex}_option_2" required>
+                                <label class="checkbox-field activity-checkbox" for="id_question_${nextIndex}_option_2_is_correct">
+                                    <input type="checkbox" name="question_${nextIndex}_option_2_is_correct" id="id_question_${nextIndex}_option_2_is_correct">
+                                    <span>Alternativa correta</span>
+                                </label>
                             </div>
                             <div class="form-field">
                                 <label for="id_question_${nextIndex}_option_3">Alternativa C <span class="field-required">*</span></label>
                                 <input type="text" name="question_${nextIndex}_option_3" id="id_question_${nextIndex}_option_3" required>
+                                <label class="checkbox-field activity-checkbox" for="id_question_${nextIndex}_option_3_is_correct">
+                                    <input type="checkbox" name="question_${nextIndex}_option_3_is_correct" id="id_question_${nextIndex}_option_3_is_correct">
+                                    <span>Alternativa correta</span>
+                                </label>
                             </div>
                             <div class="form-field">
                                 <label for="id_question_${nextIndex}_option_4">Alternativa D <span class="field-required">*</span></label>
                                 <input type="text" name="question_${nextIndex}_option_4" id="id_question_${nextIndex}_option_4" required>
+                                <label class="checkbox-field activity-checkbox" for="id_question_${nextIndex}_option_4_is_correct">
+                                    <input type="checkbox" name="question_${nextIndex}_option_4_is_correct" id="id_question_${nextIndex}_option_4_is_correct">
+                                    <span>Alternativa correta</span>
+                                </label>
                             </div>
                         </div>
                     `;
@@ -338,16 +352,16 @@
 
                                     <div class="activity-form-grid">
                                         <div class="form-field">
-                                            <label for="{{ question.score.id_for_label }}">{{ question.score.label }} <span class="field-required">*</span></label>
-                                            {{ question.score }}
-                                            {% for error in question.score.errors %}
+                                            <label for="{{ question.question_type.id_for_label }}">{{ question.question_type.label }} <span class="field-required">*</span></label>
+                                            {{ question.question_type }}
+                                            {% for error in question.question_type.errors %}
                                                 <span class="field-error">{{ error }}</span>
                                             {% endfor %}
                                         </div>
                                         <div class="form-field">
-                                            <label for="{{ question.correct_option.id_for_label }}">{{ question.correct_option.label }} <span class="field-required">*</span></label>
-                                            {{ question.correct_option }}
-                                            {% for error in question.correct_option.errors %}
+                                            <label for="{{ question.score.id_for_label }}">{{ question.score.label }} <span class="field-required">*</span></label>
+                                            {{ question.score }}
+                                            {% for error in question.score.errors %}
                                                 <span class="field-error">{{ error }}</span>
                                             {% endfor %}
                                         </div>
@@ -356,11 +370,15 @@
                                     <div class="activity-form-grid">
                                         {% for option in question.options %}
                                             <div class="form-field">
-                                                <label for="{{ option.id_for_label }}">{{ option.label }} <span class="field-required">*</span></label>
-                                                {{ option }}
-                                                {% for error in option.errors %}
+                                                <label for="{{ option.text.id_for_label }}">{{ option.text.label }} <span class="field-required">*</span></label>
+                                                {{ option.text }}
+                                                {% for error in option.text.errors %}
                                                     <span class="field-error">{{ error }}</span>
                                                 {% endfor %}
+                                                <label class="checkbox-field activity-checkbox" for="{{ option.is_correct.id_for_label }}">
+                                                    {{ option.is_correct }}
+                                                    <span>{{ option.is_correct.label }}</span>
+                                                </label>
                                             </div>
                                         {% endfor %}
                                     </div>

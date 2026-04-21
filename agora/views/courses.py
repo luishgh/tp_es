@@ -32,12 +32,22 @@ def _course_detail_redirect(course_id, module_page=None, activity_page=None):
     return f"{base_url}?{'&'.join(params)}"
 
 
-def _calculate_quiz_score(quiz, answers):
+def _question_is_correct(question, selected_option_ids):
+    selected_ids = set(selected_option_ids)
+    correct_ids = set(question.options.filter(is_correct=True).values_list('id', flat=True))
+    return selected_ids == correct_ids
+
+
+def _calculate_quiz_score(questions, answers):
+    answers_by_question = {}
+    for answer in answers:
+        answers_by_question.setdefault(answer.question_id, set()).add(answer.selected_option_id)
+
     return round(
         sum(
-            float(answer.question.weight)
-            for answer in answers
-            if answer.selected_option.is_correct
+            float(question.weight)
+            for question in questions
+            if _question_is_correct(question, answers_by_question.get(question.id, set()))
         ),
         2,
     )
@@ -237,7 +247,7 @@ def course_detail_view(request, course_id):
     quiz_answer_counts = {}
     if is_enrolled_student and role == UserProfile.Role.STUDENT:
         for answer in Answer.objects.filter(quiz__course=course, student=request.user).select_related('selected_option'):
-            student_quiz_answers[answer.question_id] = answer.selected_option_id
+            student_quiz_answers.setdefault(answer.question_id, set()).add(answer.selected_option_id)
     if is_teacher:
         quiz_answer_counts = {
             row['selected_option_id']: row['total']
@@ -265,15 +275,17 @@ def course_detail_view(request, course_id):
             if questions:
                 answer_qs = Answer.objects.filter(quiz=detail, student=request.user).select_related('selected_option', 'question') if is_enrolled_student and role == UserProfile.Role.STUDENT else Answer.objects.none()
                 answer_list = list(answer_qs)
+                answered_questions = len({answer.question_id for answer in answer_list})
                 activity_data['quiz'] = {
-                    'score': _calculate_quiz_score(detail, answer_list) if answer_list else None,
-                    'answered_count': len(answer_list),
+                    'score': _calculate_quiz_score(questions, answer_list) if answer_list else None,
+                    'answered_count': answered_questions,
                     'question_count': len(questions),
                     'has_answer': bool(answer_list),
                     'questions': [
                         {
                             'id': question.id,
                             'statement': question.statement,
+                            'question_type': question.question_type,
                             'score': question.weight,
                             'options': [
                                 {
@@ -281,7 +293,7 @@ def course_detail_view(request, course_id):
                                     'text': option.text,
                                     'is_correct': option.is_correct,
                                     'answer_count': quiz_answer_counts.get(option.id, 0),
-                                    'is_selected': option.id == student_quiz_answers.get(question.id),
+                                    'is_selected': option.id in student_quiz_answers.get(question.id, set()),
                                 }
                                 for option in question.options.all()
                             ],
