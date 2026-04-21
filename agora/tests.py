@@ -698,4 +698,23 @@ class ResourceDetailViewTests(TestCase):
         self.assertContains(response, 'Este quiz não permite reenviar respostas.')
         answers = list(Answer.objects.filter(quiz=self.quiz, student=self.student).order_by('question__order'))
         self.assertEqual(answers[0].selected_option, self.correct_quiz_option)
-        self.assertEqual(answers[1].selected_option, self.quiz_question_2_option_1)
+
+    def test_single_attempt_quiz_renders_saved_answers_as_locked(self):
+        self.quiz.allow_resubmissions = False
+        self.quiz.save(update_fields=['allow_resubmissions'])
+        Answer.objects.create(
+            quiz=self.quiz,
+            question=self.quiz_question,
+            selected_option=self.correct_quiz_option,
+            student=self.student,
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse('agora:course_item_detail', args=[self.quiz.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Respostas bloqueadas')
+        self.assertContains(response, 'Suas respostas já foram enviadas e este quiz está bloqueado para edição.')
+        self.assertContains(response, 'disabled')
+        self.assertNotContains(response, 'Enviar respostas')

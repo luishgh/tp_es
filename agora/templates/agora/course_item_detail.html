@@ -294,9 +294,15 @@
                             {% if not detail.allow_resubmissions %}
                                 <p>Depois de enviar, você não poderá alterar as respostas.</p>
                             {% endif %}
+                            {% if quiz_locked %}
+                                <p>Suas respostas já foram enviadas e este quiz está bloqueado para edição.</p>
+                            {% endif %}
                         </div>
                         <div class="quiz-wizard-head">
                             <span class="status-pill neutral" data-quiz-progress>Questão 1 de {{ quiz_questions|length }}</span>
+                            {% if quiz_locked %}
+                                <span class="status-pill neutral">Respostas bloqueadas</span>
+                            {% endif %}
                         </div>
                         {% for question in quiz_questions %}
                             <article class="quiz-question-card" data-quiz-step {% if not forloop.first %}hidden{% endif %}>
@@ -317,12 +323,13 @@
                                 </p>
                                 <div class="quiz-options">
                                     {% for option in question.options %}
-                                        <label class="quiz-option">
+                                        <label class="quiz-option {% if quiz_locked and option.is_selected %}is-locked-selected{% endif %} {% if quiz_locked and not option.is_selected %}is-locked{% endif %}">
                                             <input
                                                 type="{% if question.question_type == 'multiple_choice' %}checkbox{% else %}radio{% endif %}"
                                                 name="question_{{ question.id }}"
                                                 value="{{ option.id }}"
                                                 {% if option.is_selected %}checked{% endif %}
+                                                {% if quiz_locked %}disabled{% endif %}
                                             >
                                             <span>{{ option.text }}</span>
                                         </label>
@@ -334,7 +341,9 @@
                             <div class="quiz-wizard-actions">
                                 <button class="ghost-button" data-quiz-previous type="button" hidden>Questão anterior</button>
                                 <button class="ghost-button" data-quiz-next type="button">Próxima questão</button>
-                                <button class="primary-button" data-quiz-submit type="submit" hidden>Enviar respostas</button>
+                                {% if not quiz_locked %}
+                                    <button class="primary-button" data-quiz-submit type="submit" hidden>Enviar respostas</button>
+                                {% endif %}
                             </div>
                         {% else %}
                             <div class="empty-state">

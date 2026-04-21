@@ -167,6 +167,20 @@
     margin: 0;
 }
 
+.quiz-option.is-locked {
+    opacity: 0.65;
+    background: rgba(228, 232, 229, 0.8);
+}
+
+.quiz-option.is-locked-selected {
+    background: rgba(214, 219, 216, 0.95);
+    border-color: rgba(92, 102, 95, 0.28);
+}
+
+.quiz-option input:disabled {
+    cursor: not-allowed;
+}
+
 .quiz-options.is-readonly .quiz-option {
     justify-content: space-between;
 }

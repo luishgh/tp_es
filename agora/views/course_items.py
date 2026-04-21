@@ -198,6 +198,7 @@ def course_item_detail_view(request, course_item_id):
     quiz_feedback = None
     quiz_student_answers = {}
     quiz_score = None
+    quiz_locked = False
     forum_messages = []
     material_actions = []
     submission_status = None
@@ -318,6 +319,7 @@ def course_item_detail_view(request, course_item_id):
             if student_answers_qs:
                 quiz_score = _calculate_quiz_score(question_list, student_answers_qs)
                 quiz_feedback = f'{len(quiz_student_answers)}/{detail.questions.count()} questões respondidas'
+                quiz_locked = not detail.allow_resubmissions
             elif not detail.allow_resubmissions:
                 quiz_feedback = 'Este quiz aceita apenas uma tentativa.'
 
@@ -407,6 +409,7 @@ def course_item_detail_view(request, course_item_id):
         'quiz_questions': quiz_questions,
         'quiz_feedback': quiz_feedback,
         'quiz_score': quiz_score,
+        'quiz_locked': quiz_locked,
         'material_actions': material_actions,
     }
     return render(request, 'agora/course_item_detail.html', context)

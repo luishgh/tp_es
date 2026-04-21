@@ -344,10 +344,10 @@ class QuizCreateForm(BaseCourseActivityForm):
             ),
         )
         self.fields[image_name] = forms.FileField(
-            label='Imagem da questão (PNG, opcional)',
+            label='Imagem da questão (PNG ou JPEG, opcional)',
             required=False,
         )
-        self.fields[image_name].widget.attrs.update({'accept': '.png,image/png'})
+        self.fields[image_name].widget.attrs.update({'accept': '.png,.jpg,.jpeg,image/png,image/jpeg'})
         self.fields[type_name] = forms.ChoiceField(
             label='Tipo de questão',
             choices=QuizQuestion.QuestionType.choices,
@@ -418,8 +418,8 @@ class QuizCreateForm(BaseCourseActivityForm):
             image = cleaned_data.get(image_key)
             if image:
                 file_name = image.name.lower()
-                if not file_name.endswith('.png'):
-                    self.add_error(image_key, 'Envie uma imagem PNG para esta questão.')
+                if not file_name.endswith(('.png', '.jpg', '.jpeg')):
+                    self.add_error(image_key, 'Envie uma imagem PNG ou JPEG para esta questão.')
 
             options = []
             seen_options = set()
