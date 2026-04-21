@@ -22,10 +22,17 @@
             const questionCountField = document.getElementById('{{ form.question_count.id_for_label|default:"" }}');
             const quizQuestionList = document.getElementById('quiz-question-list');
             const addQuestionButton = document.getElementById('add-quiz-question');
+            const imagePreviewUrls = [];
 
             if (!form || !moduleField || !submitButton) {
                 return;
             }
+
+            window.addEventListener('beforeunload', function () {
+                imagePreviewUrls.forEach(function (url) {
+                    URL.revokeObjectURL(url);
+                });
+            });
 
             const requiredFields = [moduleField, titleField, dueDateField, maxScoreField].filter(Boolean);
             requiredFields.forEach(function (field) {
@@ -80,6 +87,43 @@
                 }
             };
 
+            const bindQuestionImagePreview = function (input) {
+                if (!input) {
+                    return;
+                }
+
+                let previewUrl = null;
+                const preview = input.parentElement ? input.parentElement.querySelector('[data-question-image-preview]') : null;
+
+                const clearPreview = function () {
+                    if (previewUrl) {
+                        URL.revokeObjectURL(previewUrl);
+                        const previewIndex = imagePreviewUrls.indexOf(previewUrl);
+                        if (previewIndex >= 0) {
+                            imagePreviewUrls.splice(previewIndex, 1);
+                        }
+                        previewUrl = null;
+                    }
+                    if (preview) {
+                        preview.hidden = true;
+                        preview.removeAttribute('src');
+                    }
+                };
+
+                input.addEventListener('change', function () {
+                    clearPreview();
+                    const file = input.files && input.files[0];
+                    if (!file || !preview) {
+                        return;
+                    }
+
+                    previewUrl = URL.createObjectURL(file);
+                    imagePreviewUrls.push(previewUrl);
+                    preview.src = previewUrl;
+                    preview.hidden = false;
+                });
+            };
+
             moduleField.addEventListener('change', syncSubmitAvailability);
             if (titleField) {
                 titleField.addEventListener('input', syncSubmitAvailability);
@@ -131,6 +175,7 @@
                         <div class="form-field">
                             <label for="id_question_${nextIndex}_image">Imagem da questão (PNG ou JPEG, opcional)</label>
                             <input type="file" name="question_${nextIndex}_image" id="id_question_${nextIndex}_image" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
+                            <img class="quiz-question-upload-preview" data-question-image-preview hidden alt="Prévia da imagem da questão ${nextIndex}">
                         </div>
                         <div class="activity-form-grid">
                             <div class="form-field">
@@ -181,8 +226,12 @@
                         </div>
                     `;
                     quizQuestionList.appendChild(wrapper);
+                    bindQuestionImagePreview(wrapper.querySelector('input[type="file"]'));
                     syncSubmitAvailability();
                 });
+            }
+            if (quizQuestionList) {
+                quizQuestionList.querySelectorAll('input[type="file"]').forEach(bindQuestionImagePreview);
             }
             syncSubmitAvailability();
 
@@ -357,6 +406,7 @@
                                     <div class="form-field">
                                         <label for="{{ question.image.id_for_label }}">{{ question.image.label }}</label>
                                         {{ question.image }}
+                                        <img class="quiz-question-upload-preview" data-question-image-preview hidden alt="Prévia da imagem da questão {{ question.index }}">
                                         {% for error in question.image.errors %}
                                             <span class="field-error">{{ error }}</span>
                                         {% endfor %}
