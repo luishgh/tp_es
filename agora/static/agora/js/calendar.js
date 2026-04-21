@@ -2,12 +2,12 @@
     const dataElement = document.getElementById('calendar-data');
     const calendarGrid = document.getElementById('calendar-grid');
     const monthLabel = document.getElementById('calendar-month-label');
+    const monthControls = document.getElementById('calendar-month-controls');
     const prevButton = document.getElementById('calendar-prev-month');
     const nextButton = document.getElementById('calendar-next-month');
     const todayButton = document.getElementById('calendar-today-month');
-    const monthControls = document.getElementById('calendar-month-controls');
 
-    if (!dataElement || !calendarGrid || !monthLabel || !prevButton || !nextButton || !todayButton) {
+    if (!dataElement || !calendarGrid || !monthControls || !monthLabel || !prevButton || !nextButton || !todayButton) {
         return;
     }
 
@@ -35,7 +35,7 @@
         });
     }
 
-    const items = (function () {
+    const activities = (function () {
         const rawItems = (() => {
             try {
                 return JSON.parse(dataElement.textContent || '[]');
@@ -66,8 +66,8 @@
     const itemsByDate = (() => {
         const groups = {};
 
-        for (let index = 0; index < items.length; index += 1) {
-            const activity = items[index];
+        for (let i = 0; i < activities.length; i += 1) {
+            const activity = activities[i];
             const dateKey = `${activity.dueDate.getFullYear()}-${activity.dueDate.getMonth()}-${activity.dueDate.getDate()}`;
 
             if (!groups[dateKey]) {
@@ -87,7 +87,9 @@
         const monthName = new Date(year, month, 1).toLocaleString('pt-BR', {
             month: 'long',
         });
-        return `${monthName.charAt(0).toUpperCase()}${monthName.slice(1)} de ${year}`;
+
+        const formattedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+        return `${formattedMonth} de ${year}`;
     }
 
     function isCurrentMonth() {
@@ -100,23 +102,23 @@
         const isCurrent = isCurrentMonth();
         todayButton.disabled = isCurrent;
         todayButton.classList.toggle('is-current-month', isCurrent);
-        todayButton.setAttribute('aria-pressed', isCurrent ? 'true' : 'false');
+        todayButton.setAttribute(
+            'aria-pressed',
+            isCurrent ? 'true' : 'false'
+        );
         todayButton.setAttribute(
             'aria-label',
-            isCurrent ? 'Você já está no mês atual' : 'Voltar para o mês atual',
+            isCurrent ? 'Você já está no mês atual' : 'Voltar para o mês atual'
+        );
+        monthControls.setAttribute(
+            'aria-label',
+            `Navegação do mês de ${monthLabelText(visibleDate.getFullYear(), visibleDate.getMonth())}`
         );
 
         if (isCurrent) {
             todayButton.setAttribute('title', 'Você está no mês atual');
         } else {
             todayButton.removeAttribute('title');
-        }
-
-        if (monthControls) {
-            monthControls.setAttribute(
-                'aria-label',
-                `Navegação do mês de ${monthLabelText(visibleDate.getFullYear(), visibleDate.getMonth())}`,
-            );
         }
     }
 
