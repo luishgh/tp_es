@@ -3,6 +3,7 @@ from collections import defaultdict
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Count, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
@@ -29,6 +30,17 @@ def _course_detail_redirect(course_id, module_page=None, activity_page=None):
     if not params:
         return base_url
     return f"{base_url}?{'&'.join(params)}"
+
+
+def _calculate_quiz_score(quiz, answers):
+    return round(
+        sum(
+            float(answer.question.weight)
+            for answer in answers
+            if answer.selected_option.is_correct
+        ),
+        2,
+    )
 
 
 @never_cache
@@ -158,26 +170,37 @@ def course_detail_view(request, course_id):
                 course=course,
                 is_published=True,
             )
-            question = quiz.questions.order_by('order', 'id').first()
             module_page = request.POST.get('module_page')
             activity_page = request.POST.get('activity_page')
+            questions = list(quiz.questions.order_by('order', 'id'))
 
-            if not question:
+            if not questions:
                 messages.error(request, 'Este quiz ainda não possui pergunta cadastrada.')
                 return HttpResponseRedirect(_course_detail_redirect(course.id, module_page, activity_page))
 
-            selected_option_id = request.POST.get(f'quiz_{quiz.id}_question_{question.id}')
-            selected_option = question.options.filter(pk=selected_option_id).first()
-            if not selected_option:
-                messages.error(request, 'Selecione uma alternativa antes de enviar o quiz.')
+            missing_answers = []
+            selected_answers = []
+            for question in questions:
+                selected_option_id = request.POST.get(f'quiz_{quiz.id}_question_{question.id}')
+                selected_option = question.options.filter(pk=selected_option_id).first()
+                if not selected_option:
+                    missing_answers.append(question.order)
+                    continue
+                selected_answers.append((question, selected_option))
+
+            if missing_answers:
+                messages.error(request, 'Responda todas as questões antes de enviar o quiz.')
                 return HttpResponseRedirect(_course_detail_redirect(course.id, module_page, activity_page))
 
-            Answer.objects.update_or_create(
-                quiz=quiz,
-                question=question,
-                student=request.user,
-                defaults={'selected_option': selected_option},
-            )
+            with transaction.atomic():
+                for question, selected_option in selected_answers:
+                    Answer.objects.update_or_create(
+                        quiz=quiz,
+                        question=question,
+                        student=request.user,
+                        defaults={'selected_option': selected_option},
+                    )
+
             messages.success(request, f'Sua resposta para o quiz "{quiz.title}" foi registrada.')
             return HttpResponseRedirect(_course_detail_redirect(course.id, module_page, activity_page))
 
@@ -213,10 +236,8 @@ def course_detail_view(request, course_id):
     student_quiz_answers = {}
     quiz_answer_counts = {}
     if is_enrolled_student and role == UserProfile.Role.STUDENT:
-        student_quiz_answers = {
-            answer.quiz_id: answer.selected_option_id
-            for answer in Answer.objects.filter(quiz__course=course, student=request.user).select_related('selected_option')
-        }
+        for answer in Answer.objects.filter(quiz__course=course, student=request.user).select_related('selected_option'):
+            student_quiz_answers[answer.question_id] = answer.selected_option_id
     if is_teacher:
         quiz_answer_counts = {
             row['selected_option_id']: row['total']
@@ -240,23 +261,32 @@ def course_detail_view(request, course_id):
             'quiz': None,
         }
         if isinstance(detail, QuizItem):
-            question = detail.questions.order_by('order', 'id').prefetch_related('options').first()
-            if question:
-                selected_option_id = student_quiz_answers.get(detail.id)
+            questions = list(detail.questions.order_by('order', 'id').prefetch_related('options'))
+            if questions:
+                answer_qs = Answer.objects.filter(quiz=detail, student=request.user).select_related('selected_option', 'question') if is_enrolled_student and role == UserProfile.Role.STUDENT else Answer.objects.none()
+                answer_list = list(answer_qs)
                 activity_data['quiz'] = {
-                    'question_id': question.id,
-                    'statement': question.statement,
-                    'selected_option_id': selected_option_id,
-                    'has_answer': selected_option_id is not None,
-                    'options': [
+                    'score': _calculate_quiz_score(detail, answer_list) if answer_list else None,
+                    'answered_count': len(answer_list),
+                    'question_count': len(questions),
+                    'has_answer': bool(answer_list),
+                    'questions': [
                         {
-                            'id': option.id,
-                            'text': option.text,
-                            'is_correct': option.is_correct,
-                            'answer_count': quiz_answer_counts.get(option.id, 0),
-                            'is_selected': option.id == selected_option_id,
+                            'id': question.id,
+                            'statement': question.statement,
+                            'score': question.weight,
+                            'options': [
+                                {
+                                    'id': option.id,
+                                    'text': option.text,
+                                    'is_correct': option.is_correct,
+                                    'answer_count': quiz_answer_counts.get(option.id, 0),
+                                    'is_selected': option.id == student_quiz_answers.get(question.id),
+                                }
+                                for option in question.options.all()
+                            ],
                         }
-                        for option in question.options.all()
+                        for question in questions
                     ],
                 }
         if course_item.module:

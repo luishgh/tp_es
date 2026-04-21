@@ -255,24 +255,66 @@ class ActivityCreateViewTests(TestCase):
                 'module': str(self.module.id),
                 'title': 'Quiz 1',
                 'description': 'Quiz de revisão.',
-                'question_statement': 'Qual linguagem o Django usa principalmente?',
-                'option_1': 'Python',
-                'option_2': 'Ruby',
-                'option_3': 'PHP',
-                'option_4': 'Go',
-                'correct_option': '1',
+                'question_count': '2',
+                'question_1_statement': 'Qual linguagem o Django usa principalmente?',
+                'question_1_score': '4',
+                'question_1_option_1': 'Python',
+                'question_1_option_2': 'Ruby',
+                'question_1_option_3': 'PHP',
+                'question_1_option_4': 'Go',
+                'question_1_correct_option': '1',
+                'question_2_statement': 'Qual comando inicia o servidor de desenvolvimento?',
+                'question_2_score': '6',
+                'question_2_option_1': 'python manage.py migrate',
+                'question_2_option_2': 'python manage.py runserver',
+                'question_2_option_3': 'python manage.py test',
+                'question_2_option_4': 'python manage.py shell',
+                'question_2_correct_option': '2',
                 'due_date': '2026-04-30T23:59',
-                'max_score': '10',
+                'allow_resubmissions': 'on',
                 'is_published': 'on',
             },
         )
 
         self.assertEqual(response.status_code, 302)
         quiz = QuizItem.objects.get(title='Quiz 1')
-        question = QuizQuestion.objects.get(quiz=quiz)
-        self.assertEqual(question.statement, 'Qual linguagem o Django usa principalmente?')
-        self.assertEqual(question.options.count(), 4)
-        self.assertEqual(question.options.get(is_correct=True).text, 'Python')
+        self.assertEqual(float(quiz.max_score), 10.0)
+        self.assertTrue(quiz.allow_resubmissions)
+        questions = list(QuizQuestion.objects.filter(quiz=quiz).order_by('order'))
+        self.assertEqual(len(questions), 2)
+        self.assertEqual(questions[0].statement, 'Qual linguagem o Django usa principalmente?')
+        self.assertEqual(float(questions[0].weight), 4.0)
+        self.assertEqual(questions[0].options.count(), 4)
+        self.assertEqual(questions[0].options.get(is_correct=True).text, 'Python')
+        self.assertEqual(float(questions[1].weight), 6.0)
+        self.assertEqual(questions[1].options.get(is_correct=True).text, 'python manage.py runserver')
+
+    def test_teacher_can_disable_quiz_resubmissions(self):
+        self.client.force_login(self.teacher)
+
+        response = self.client.post(
+            reverse('agora:course_item_create', args=[self.course.id]),
+            data={
+                'activity_kind': 'quiz',
+                'module': str(self.module.id),
+                'title': 'Quiz sem reenvio',
+                'description': 'Teste.',
+                'question_count': '1',
+                'question_1_statement': 'Pergunta única?',
+                'question_1_score': '5',
+                'question_1_option_1': 'A',
+                'question_1_option_2': 'B',
+                'question_1_option_3': 'C',
+                'question_1_option_4': 'D',
+                'question_1_correct_option': '1',
+                'due_date': '2026-04-30T23:59',
+                'is_published': 'on',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        quiz = QuizItem.objects.get(title='Quiz sem reenvio')
+        self.assertFalse(quiz.allow_resubmissions)
 
 
 class ResourceDetailViewTests(TestCase):
@@ -356,6 +398,7 @@ class ResourceDetailViewTests(TestCase):
             description='Teste de revisão.',
             due_date='2026-04-29T23:59Z',
             max_score=10,
+            allow_resubmissions=True,
             is_published=True,
             created_by=self.teacher,
         )
@@ -363,7 +406,7 @@ class ResourceDetailViewTests(TestCase):
             quiz=self.quiz,
             statement='Qual comando cria migrations no Django?',
             order=1,
-            weight=1,
+            weight=4,
         )
         self.correct_quiz_option = QuizOption.objects.create(
             question=self.quiz_question,
@@ -374,6 +417,24 @@ class ResourceDetailViewTests(TestCase):
         self.quiz_option_2 = QuizOption.objects.create(
             question=self.quiz_question,
             text='python manage.py runserver',
+            is_correct=False,
+            order=2,
+        )
+        self.quiz_question_2 = QuizQuestion.objects.create(
+            quiz=self.quiz,
+            statement='Qual comando aplica migrations?',
+            order=2,
+            weight=6,
+        )
+        self.quiz_question_2_option_1 = QuizOption.objects.create(
+            question=self.quiz_question_2,
+            text='python manage.py migrate',
+            is_correct=True,
+            order=1,
+        )
+        self.quiz_question_2_option_2 = QuizOption.objects.create(
+            question=self.quiz_question_2,
+            text='python manage.py collectstatic',
             is_correct=False,
             order=2,
         )
@@ -493,29 +554,95 @@ class ResourceDetailViewTests(TestCase):
         self.assignment.refresh_from_db()
         self.assertTrue(self.assignment.is_published)
 
-    def test_student_can_answer_quiz_from_course_page(self):
+    def test_student_can_submit_quiz_from_detail_page(self):
         self.client.force_login(self.student)
 
         response = self.client.post(
-            reverse('agora:course_detail', args=[self.course.id]),
+            reverse('agora:course_item_detail', args=[self.quiz.id]),
             data={
-                'action': 'submit_course_quiz',
-                'quiz_id': str(self.quiz.id),
+                'action': 'submit_quiz',
                 f'quiz_{self.quiz.id}_question_{self.quiz_question.id}': str(self.correct_quiz_option.id),
-                'module_page': '1',
-                'activity_page': '1',
+                f'question_{self.quiz_question.id}': str(self.correct_quiz_option.id),
+                f'question_{self.quiz_question_2.id}': str(self.quiz_question_2_option_1.id),
             },
         )
 
         self.assertEqual(response.status_code, 302)
-        answer = Answer.objects.get(quiz=self.quiz, question=self.quiz_question, student=self.student)
-        self.assertEqual(answer.selected_option, self.correct_quiz_option)
+        answers = list(Answer.objects.filter(quiz=self.quiz, student=self.student).order_by('question__order'))
+        self.assertEqual(len(answers), 2)
+        self.assertEqual(answers[0].selected_option, self.correct_quiz_option)
+        self.assertEqual(answers[1].selected_option, self.quiz_question_2_option_1)
 
-    def test_course_page_shows_inline_quiz_for_students(self):
+    def test_course_page_shows_quiz_entry_button_for_students(self):
         self.client.force_login(self.student)
 
         response = self.client.get(reverse('agora:course_detail', args=[self.course.id]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Qual comando cria migrations no Django?')
-        self.assertContains(response, 'Enviar resposta')
+        self.assertContains(response, 'Quiz rápido')
+        self.assertContains(response, 'Responder ao quiz')
+        self.assertNotContains(response, 'Qual comando cria migrations no Django?')
+
+    def test_quiz_detail_shows_one_question_flow_controls(self):
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse('agora:course_item_detail', args=[self.quiz.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Questão 1 de 2')
+        self.assertContains(response, 'Próxima questão')
+        self.assertContains(response, 'Enviar respostas')
+    def test_quiz_score_is_sum_of_correct_question_scores(self):
+        Answer.objects.create(
+            quiz=self.quiz,
+            question=self.quiz_question,
+            selected_option=self.correct_quiz_option,
+            student=self.student,
+        )
+        Answer.objects.create(
+            quiz=self.quiz,
+            question=self.quiz_question_2,
+            selected_option=self.quiz_question_2_option_2,
+            student=self.student,
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse('agora:course_item_detail', args=[self.quiz.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Pontuação atual: 4.0')
+
+    def test_student_cannot_resubmit_when_quiz_disallows_resubmissions(self):
+        self.quiz.allow_resubmissions = False
+        self.quiz.save(update_fields=['allow_resubmissions'])
+        Answer.objects.create(
+            quiz=self.quiz,
+            question=self.quiz_question,
+            selected_option=self.correct_quiz_option,
+            student=self.student,
+        )
+        Answer.objects.create(
+            quiz=self.quiz,
+            question=self.quiz_question_2,
+            selected_option=self.quiz_question_2_option_1,
+            student=self.student,
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.post(
+            reverse('agora:course_item_detail', args=[self.quiz.id]),
+            data={
+                'action': 'submit_quiz',
+                f'question_{self.quiz_question.id}': str(self.quiz_option_2.id),
+                f'question_{self.quiz_question_2.id}': str(self.quiz_question_2_option_2.id),
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Este quiz não permite reenviar respostas.')
+        answers = list(Answer.objects.filter(quiz=self.quiz, student=self.student).order_by('question__order'))
+        self.assertEqual(answers[0].selected_option, self.correct_quiz_option)
+        self.assertEqual(answers[1].selected_option, self.quiz_question_2_option_1)

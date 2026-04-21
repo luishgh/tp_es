@@ -389,6 +389,10 @@ class QuizItem(CourseItem):
         validators=[MinValueValidator(0)],
         verbose_name='nota maxima',
     )
+    allow_resubmissions = models.BooleanField(
+        default=True,
+        verbose_name='permite reenviar respostas',
+    )
 
     class Meta:
         verbose_name = 'quiz'

@@ -91,7 +91,7 @@
                         {% endif %}
                         <div class="activity-list">
                             {% for activity in module.activities_page %}
-                                {% if activity.activity_type_value == 'quiz' and activity.quiz and is_enrolled_student and not is_teacher %}
+                                {% if activity.activity_type_value == 'quiz' and is_enrolled_student and not is_teacher %}
                                     <article class="activity-card activity-card-quiz">
                                         <div class="activity-head">
                                             <strong>{{ activity.title }}</strong>
@@ -107,34 +107,21 @@
                                             {% if activity.due_date %}
                                                 <span>Prazo: {{ activity.due_date|date:"d/m/Y H:i" }}</span>
                                             {% endif %}
+                                            {% if activity.max_score != None %}
+                                                <span>Total: {{ activity.max_score }}</span>
+                                            {% endif %}
                                         </div>
-                                        <form class="inline-quiz-form" method="post">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="action" value="submit_course_quiz">
-                                            <input type="hidden" name="quiz_id" value="{{ activity.id }}">
-                                            <input type="hidden" name="module_page" value="{{ modules_page.number }}">
-                                            <input type="hidden" name="activity_page" value="{{ module.activities_page.number }}">
-                                            <div class="inline-quiz-question">
-                                                <strong>{{ activity.quiz.statement }}</strong>
+                                        <div class="activity-footer quiz-footer">
+                                            {% if activity.quiz and activity.quiz.has_answer %}
+                                                <span class="quiz-status">
+                                                    {{ activity.quiz.answered_count }}/{{ activity.quiz.question_count }} respondidas
+                                                    {% if activity.quiz.score != None %}· {{ activity.quiz.score }} ponto{{ activity.quiz.score|pluralize }}{% endif %}
+                                                </span>
+                                            {% endif %}
+                                            <div class="quiz-footer-actions">
+                                                <a class="primary-button compact" href="{% url 'agora:course_item_detail' activity.id %}">Responder ao quiz</a>
                                             </div>
-                                            <div class="inline-quiz-options">
-                                                {% for option in activity.quiz.options %}
-                                                    <label class="inline-quiz-option">
-                                                        <input type="radio" name="quiz_{{ activity.id }}_question_{{ activity.quiz.question_id }}" value="{{ option.id }}" {% if option.is_selected %}checked{% endif %}>
-                                                        <span>{{ option.text }}</span>
-                                                    </label>
-                                                {% endfor %}
-                                            </div>
-                                            <div class="activity-footer quiz-footer">
-                                                {% if activity.quiz.has_answer %}
-                                                    <span class="quiz-status">Resposta salva</span>
-                                                {% endif %}
-                                                <div class="quiz-footer-actions">
-                                                    <a href="{% url 'agora:course_item_detail' activity.id %}">Abrir detalhes</a>
-                                                    <button class="primary-button compact" type="submit">Enviar resposta</button>
-                                                </div>
-                                            </div>
-                                        </form>
+                                        </div>
                                     </article>
                                 {% else %}
                                     <a class="activity-card-link" href="{% url 'agora:course_item_detail' activity.id %}" aria-label="Abrir item {{ activity.title }}">
@@ -153,19 +140,25 @@
                                                 {% if activity.due_date %}
                                                     <span>Prazo: {{ activity.due_date|date:"d/m/Y H:i" }}</span>
                                                 {% endif %}
+                                                {% if activity.max_score != None %}
+                                                    <span>Total: {{ activity.max_score }}</span>
+                                                {% endif %}
                                             </div>
                                             {% if activity.activity_type_value == 'quiz' and activity.quiz and is_teacher %}
                                                 <div class="teacher-quiz-summary">
-                                                    <strong>{{ activity.quiz.statement }}</strong>
-                                                    <ul class="teacher-quiz-options">
-                                                        {% for option in activity.quiz.options %}
-                                                            <li>
-                                                                {{ option.text }}
-                                                                {% if option.is_correct %}(correta){% endif %}
-                                                                · {{ option.answer_count }} resposta{{ option.answer_count|pluralize }}
-                                                            </li>
-                                                        {% endfor %}
-                                                    </ul>
+                                                    {% for question in activity.quiz.questions %}
+                                                        <strong>Questão {{ forloop.counter }} · {{ question.score }} ponto{{ question.score|pluralize }}</strong>
+                                                        <p>{{ question.statement }}</p>
+                                                        <ul class="teacher-quiz-options">
+                                                            {% for option in question.options %}
+                                                                <li>
+                                                                    {{ option.text }}
+                                                                    {% if option.is_correct %}(correta){% endif %}
+                                                                    · {{ option.answer_count }} resposta{{ option.answer_count|pluralize }}
+                                                                </li>
+                                                            {% endfor %}
+                                                        </ul>
+                                                    {% endfor %}
                                                 </div>
                                             {% endif %}
                                         </article>

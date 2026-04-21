@@ -6,6 +6,66 @@
     <link rel="stylesheet" href="{% static 'agora/css/course_detail.css' %}">
     <link rel="stylesheet" href="{% static 'agora/css/course_item_detail.css' %}">
 {% endblock %}
+{% block scripts %}
+    {{ block.super }}
+    {% if is_student and activity.kind == 'quiz' %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const quizForm = document.querySelector('[data-quiz-wizard]');
+                if (!quizForm) {
+                    return;
+                }
+
+                const questionCards = Array.from(quizForm.querySelectorAll('[data-quiz-step]'));
+                const previousButton = quizForm.querySelector('[data-quiz-previous]');
+                const nextButton = quizForm.querySelector('[data-quiz-next]');
+                const submitButton = quizForm.querySelector('[data-quiz-submit]');
+                const progressLabel = quizForm.querySelector('[data-quiz-progress]');
+                let currentStep = 0;
+
+                const syncWizard = function () {
+                    questionCards.forEach(function (card, index) {
+                        card.hidden = index !== currentStep;
+                    });
+
+                    if (progressLabel) {
+                        progressLabel.textContent = `Questão ${currentStep + 1} de ${questionCards.length}`;
+                    }
+
+                    if (previousButton) {
+                        previousButton.hidden = currentStep === 0;
+                    }
+                    if (nextButton) {
+                        nextButton.hidden = currentStep === questionCards.length - 1;
+                    }
+                    if (submitButton) {
+                        submitButton.hidden = currentStep !== questionCards.length - 1;
+                    }
+                };
+
+                if (previousButton) {
+                    previousButton.addEventListener('click', function () {
+                        if (currentStep > 0) {
+                            currentStep -= 1;
+                            syncWizard();
+                        }
+                    });
+                }
+
+                if (nextButton) {
+                    nextButton.addEventListener('click', function () {
+                        if (currentStep < questionCards.length - 1) {
+                            currentStep += 1;
+                            syncWizard();
+                        }
+                    });
+                }
+
+                syncWizard();
+            });
+        </script>
+    {% endif %}
+{% endblock %}
 
 {% block page_eyebrow %}{{ course.code }} · {{ course.title }}{% endblock %}
 {% block page_title %}{{ activity.title }}{% endblock %}
@@ -53,6 +113,7 @@
                 {% endif %}
                 {% if activity.kind == 'quiz' %}
                     <p><strong>Questões:</strong> {{ quiz_questions|length }}</p>
+                    <p><strong>Reenvio:</strong> {% if detail.allow_resubmissions %}Permitido{% else %}Uma única tentativa{% endif %}</p>
                 {% endif %}
                 {% if activity.kind == 'forum' %}
                     <p><strong>Mensagens:</strong> {{ forum_messages|length }}</p>
@@ -225,14 +286,23 @@
                 </div>
 
                 {% if is_student %}
-                    <form class="quiz-sheet" method="post">
+                    <form class="quiz-sheet" method="post" data-quiz-wizard>
                         {% csrf_token %}
                         <input type="hidden" name="action" value="submit_quiz">
+                        <div class="resource-highlight quiz-intro">
+                            <p>Responda cada questão do quiz em sequência. Ao final, envie todas as respostas de uma vez.</p>
+                            {% if not detail.allow_resubmissions %}
+                                <p>Depois de enviar, você não poderá alterar as respostas.</p>
+                            {% endif %}
+                        </div>
+                        <div class="quiz-wizard-head">
+                            <span class="status-pill neutral" data-quiz-progress>Questão 1 de {{ quiz_questions|length }}</span>
+                        </div>
                         {% for question in quiz_questions %}
-                            <article class="quiz-question-card">
+                            <article class="quiz-question-card" data-quiz-step {% if not forloop.first %}hidden{% endif %}>
                                 <div class="quiz-question-head">
                                     <strong>Questão {{ question.order }}</strong>
-                                    <span>Peso {{ question.weight }}</span>
+                                    <span>{{ question.weight }} ponto{{ question.weight|pluralize }}</span>
                                 </div>
                                 <p>{{ question.statement }}</p>
                                 <div class="quiz-options">
@@ -246,8 +316,10 @@
                             </article>
                         {% endfor %}
                         {% if quiz_questions %}
-                            <div class="form-actions">
-                                <button class="primary-button" type="submit">Salvar respostas</button>
+                            <div class="quiz-wizard-actions">
+                                <button class="ghost-button" data-quiz-previous type="button" hidden>Questão anterior</button>
+                                <button class="ghost-button" data-quiz-next type="button">Próxima questão</button>
+                                <button class="primary-button" data-quiz-submit type="submit" hidden>Enviar respostas</button>
                             </div>
                         {% else %}
                             <div class="empty-state">
@@ -265,7 +337,7 @@
                                 <article class="quiz-question-card">
                                     <div class="quiz-question-head">
                                         <strong>Questão {{ question.order }}</strong>
-                                        <span>Peso {{ question.weight }}</span>
+                                        <span>{{ question.weight }} ponto{{ question.weight|pluralize }}</span>
                                     </div>
                                     <p>{{ question.statement }}</p>
                                     <div class="quiz-options is-readonly">

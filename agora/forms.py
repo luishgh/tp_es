@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from decimal import Decimal
 import re
 
 from .models import (
@@ -283,34 +284,29 @@ class AssignmentCreateForm(BaseCourseActivityForm):
 class QuizCreateForm(BaseCourseActivityForm):
     title_placeholder = 'Ex.: Quiz 1'
     description_placeholder = 'Descreva o objetivo do quiz e as orientações principais.'
+    quiz_option_count = 4
 
-    question_statement = forms.CharField(
-        label='Pergunta do quiz',
-        widget=forms.Textarea(attrs={'rows': 4, 'placeholder': 'Digite a pergunta de múltipla escolha.'}),
-    )
-    option_1 = forms.CharField(label='Alternativa A')
-    option_2 = forms.CharField(label='Alternativa B')
-    option_3 = forms.CharField(label='Alternativa C')
-    option_4 = forms.CharField(label='Alternativa D')
-    correct_option = forms.ChoiceField(
-        label='Alternativa correta',
-        choices=[
-            ('1', 'Alternativa A'),
-            ('2', 'Alternativa B'),
-            ('3', 'Alternativa C'),
-            ('4', 'Alternativa D'),
-        ],
-    )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.question_count = self._resolve_question_count()
+        self.fields['question_count'] = forms.IntegerField(
+            initial=self.question_count,
+            min_value=1,
+            widget=forms.HiddenInput(),
+        )
+        self.question_blocks = []
+        for question_index in range(1, self.question_count + 1):
+            self._add_question_fields(question_index)
 
     class Meta:
         model = QuizItem
-        fields = ['module', 'title', 'description', 'due_date', 'max_score', 'is_published']
+        fields = ['module', 'title', 'description', 'due_date', 'allow_resubmissions', 'is_published']
         labels = {
             'module': 'Módulo (opcional)',
             'title': 'Título do quiz',
             'description': 'Descrição',
             'due_date': 'Prazo de realização',
-            'max_score': 'Pontuação máxima',
+            'allow_resubmissions': 'Permitir que estudantes reenviem respostas',
             'is_published': 'Publicar agora',
         }
         widgets = {
@@ -318,29 +314,117 @@ class QuizCreateForm(BaseCourseActivityForm):
             'due_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }
 
+    def _resolve_question_count(self):
+        raw_count = None
+        if self.data:
+            raw_count = self.data.get('question_count')
+        elif self.initial:
+            raw_count = self.initial.get('question_count')
+
+        try:
+            count = int(raw_count)
+        except (TypeError, ValueError):
+            count = 1
+        return max(1, count)
+
+    def _add_question_fields(self, question_index):
+        question_prefix = f'question_{question_index}'
+        statement_name = f'{question_prefix}_statement'
+        score_name = f'{question_prefix}_score'
+        correct_option_name = f'{question_prefix}_correct_option'
+
+        self.fields[statement_name] = forms.CharField(
+            label=f'Pergunta {question_index}',
+            widget=forms.Textarea(
+                attrs={
+                    'rows': 4,
+                    'placeholder': 'Digite a pergunta de múltipla escolha.',
+                }
+            ),
+        )
+        self.fields[score_name] = forms.DecimalField(
+            label='Pontuação da questão',
+            min_value=Decimal('0.01'),
+            decimal_places=2,
+            max_digits=5,
+            widget=forms.NumberInput(attrs={'min': '0.01', 'step': '0.01'}),
+        )
+        self.fields[correct_option_name] = forms.ChoiceField(
+            label='Alternativa correta',
+            choices=[
+                ('1', 'Alternativa A'),
+                ('2', 'Alternativa B'),
+                ('3', 'Alternativa C'),
+                ('4', 'Alternativa D'),
+            ],
+        )
+
+        option_fields = []
+        for option_index, option_label in enumerate(('A', 'B', 'C', 'D'), start=1):
+            option_name = f'{question_prefix}_option_{option_index}'
+            self.fields[option_name] = forms.CharField(label=f'Alternativa {option_label}')
+            option_fields.append(self[option_name])
+
+        self.question_blocks.append(
+            {
+                'index': question_index,
+                'statement': self[statement_name],
+                'score': self[score_name],
+                'correct_option': self[correct_option_name],
+                'options': option_fields,
+            }
+        )
+
     def clean(self):
         cleaned_data = super().clean()
         if not cleaned_data.get('due_date'):
             self.add_error('due_date', 'Informe o prazo de realização do quiz.')
-        if cleaned_data.get('max_score') is None:
-            self.add_error('max_score', 'Informe a pontuação máxima do quiz.')
 
-        statement = (cleaned_data.get('question_statement') or '').strip()
-        if not statement:
-            self.add_error('question_statement', 'Informe a pergunta do quiz.')
-        cleaned_data['question_statement'] = statement
+        quiz_questions = []
+        for question_index in range(1, self.question_count + 1):
+            question_prefix = f'question_{question_index}'
+            statement_key = f'{question_prefix}_statement'
+            score_key = f'{question_prefix}_score'
+            correct_option_key = f'{question_prefix}_correct_option'
 
-        seen_options = set()
-        for field_name in ('option_1', 'option_2', 'option_3', 'option_4'):
-            option_text = (cleaned_data.get(field_name) or '').strip()
-            if not option_text:
-                self.add_error(field_name, 'Preencha esta alternativa.')
-                continue
-            normalized = option_text.casefold()
-            if normalized in seen_options:
-                self.add_error(field_name, 'As alternativas devem ser diferentes entre si.')
-            seen_options.add(normalized)
-            cleaned_data[field_name] = option_text
+            statement = (cleaned_data.get(statement_key) or '').strip()
+            if not statement:
+                self.add_error(statement_key, 'Informe a pergunta desta questão.')
+            cleaned_data[statement_key] = statement
+
+            score = cleaned_data.get(score_key)
+            if score is None:
+                self.add_error(score_key, 'Informe a pontuação desta questão.')
+
+            options = []
+            seen_options = set()
+            for option_index in range(1, self.quiz_option_count + 1):
+                option_key = f'{question_prefix}_option_{option_index}'
+                option_text = (cleaned_data.get(option_key) or '').strip()
+                if not option_text:
+                    self.add_error(option_key, 'Preencha esta alternativa.')
+                    continue
+
+                normalized = option_text.casefold()
+                if normalized in seen_options:
+                    self.add_error(option_key, 'As alternativas devem ser diferentes entre si.')
+                seen_options.add(normalized)
+                cleaned_data[option_key] = option_text
+                options.append(option_text)
+
+            if statement and score is not None and len(options) == self.quiz_option_count:
+                quiz_questions.append(
+                    {
+                        'statement': statement,
+                        'score': score,
+                        'correct_option': int(cleaned_data[correct_option_key]),
+                        'options': options,
+                    }
+                )
+
+        cleaned_data['quiz_questions'] = quiz_questions
+        if not quiz_questions:
+            raise forms.ValidationError('Adicione ao menos uma questão válida ao quiz.')
         return cleaned_data
 
     @transaction.atomic
@@ -349,20 +433,25 @@ class QuizCreateForm(BaseCourseActivityForm):
         if not commit:
             return quiz
 
-        question = QuizQuestion.objects.create(
-            quiz=quiz,
-            statement=self.cleaned_data['question_statement'],
-            order=1,
-            weight=1,
-        )
-        correct_option = self.cleaned_data['correct_option']
-        for option_order in range(1, 5):
-            QuizOption.objects.create(
-                question=question,
-                text=self.cleaned_data[f'option_{option_order}'],
-                is_correct=str(option_order) == str(correct_option),
-                order=option_order,
+        total_score = Decimal('0')
+        for question_order, question_data in enumerate(self.cleaned_data['quiz_questions'], start=1):
+            question = QuizQuestion.objects.create(
+                quiz=quiz,
+                statement=question_data['statement'],
+                order=question_order,
+                weight=question_data['score'],
             )
+            total_score += question_data['score']
+            for option_order, option_text in enumerate(question_data['options'], start=1):
+                QuizOption.objects.create(
+                    question=question,
+                    text=option_text,
+                    is_correct=option_order == question_data['correct_option'],
+                    order=option_order,
+                )
+
+        quiz.max_score = total_score
+        quiz.save(update_fields=['max_score'])
         return quiz
 
 

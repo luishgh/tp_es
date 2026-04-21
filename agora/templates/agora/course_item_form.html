@@ -19,6 +19,9 @@
             const statementFileField = document.getElementById('{{ form.statement_file.id_for_label|default:"" }}');
             const dueDateField = document.getElementById('{{ form.due_date.id_for_label|default:"" }}');
             const maxScoreField = document.getElementById('{{ form.max_score.id_for_label|default:"" }}');
+            const questionCountField = document.getElementById('{{ form.question_count.id_for_label|default:"" }}');
+            const quizQuestionList = document.getElementById('quiz-question-list');
+            const addQuestionButton = document.getElementById('add-quiz-question');
 
             if (!form || !moduleField || !submitButton) {
                 return;
@@ -108,6 +111,60 @@
                     syncSubmitAvailability();
                 });
                 syncAlternativeRequirement(statementUrlField, statementFileField);
+            }
+
+            if (selectedType === 'quiz' && addQuestionButton && quizQuestionList && questionCountField) {
+                addQuestionButton.addEventListener('click', function () {
+                    const nextIndex = quizQuestionList.querySelectorAll('.quiz-builder-card').length + 1;
+                    questionCountField.value = String(nextIndex);
+
+                    const wrapper = document.createElement('article');
+                    wrapper.className = 'quiz-builder-card';
+                    wrapper.innerHTML = `
+                        <div class="quiz-builder-head">
+                            <strong>Questão ${nextIndex}</strong>
+                        </div>
+                        <div class="form-field">
+                            <label for="id_question_${nextIndex}_statement">Pergunta ${nextIndex} <span class="field-required">*</span></label>
+                            <textarea name="question_${nextIndex}_statement" id="id_question_${nextIndex}_statement" rows="4" placeholder="Digite a pergunta de múltipla escolha." required></textarea>
+                        </div>
+                        <div class="activity-form-grid">
+                            <div class="form-field">
+                                <label for="id_question_${nextIndex}_score">Pontuação da questão <span class="field-required">*</span></label>
+                                <input type="number" name="question_${nextIndex}_score" id="id_question_${nextIndex}_score" min="0.01" step="0.01" required>
+                            </div>
+                            <div class="form-field">
+                                <label for="id_question_${nextIndex}_correct_option">Alternativa correta <span class="field-required">*</span></label>
+                                <select name="question_${nextIndex}_correct_option" id="id_question_${nextIndex}_correct_option">
+                                    <option value="1">Alternativa A</option>
+                                    <option value="2">Alternativa B</option>
+                                    <option value="3">Alternativa C</option>
+                                    <option value="4">Alternativa D</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="activity-form-grid">
+                            <div class="form-field">
+                                <label for="id_question_${nextIndex}_option_1">Alternativa A <span class="field-required">*</span></label>
+                                <input type="text" name="question_${nextIndex}_option_1" id="id_question_${nextIndex}_option_1" required>
+                            </div>
+                            <div class="form-field">
+                                <label for="id_question_${nextIndex}_option_2">Alternativa B <span class="field-required">*</span></label>
+                                <input type="text" name="question_${nextIndex}_option_2" id="id_question_${nextIndex}_option_2" required>
+                            </div>
+                            <div class="form-field">
+                                <label for="id_question_${nextIndex}_option_3">Alternativa C <span class="field-required">*</span></label>
+                                <input type="text" name="question_${nextIndex}_option_3" id="id_question_${nextIndex}_option_3" required>
+                            </div>
+                            <div class="form-field">
+                                <label for="id_question_${nextIndex}_option_4">Alternativa D <span class="field-required">*</span></label>
+                                <input type="text" name="question_${nextIndex}_option_4" id="id_question_${nextIndex}_option_4" required>
+                            </div>
+                        </div>
+                    `;
+                    quizQuestionList.appendChild(wrapper);
+                    syncSubmitAvailability();
+                });
             }
             syncSubmitAvailability();
 
@@ -254,52 +311,63 @@
                 {% endif %}
 
                 {% if selected_type == 'quiz' %}
-                    <div class="form-field">
-                        <label for="{{ form.question_statement.id_for_label }}">{{ form.question_statement.label }} <span class="field-required">*</span></label>
-                        {{ form.question_statement }}
-                        {% for error in form.question_statement.errors %}
-                            <span class="field-error">{{ error }}</span>
-                        {% endfor %}
-                    </div>
+                    {{ form.question_count }}
+                    <section class="quiz-builder-shell">
+                        <div class="quiz-builder-toolbar">
+                            <div>
+                                <p class="eyebrow">Questões</p>
+                                <h3>Monte o quiz</h3>
+                            </div>
+                            <button id="add-quiz-question" class="ghost-button compact" type="button">Adicionar questão</button>
+                        </div>
 
-                    <div class="activity-form-grid">
-                        <div class="form-field">
-                            <label for="{{ form.option_1.id_for_label }}">{{ form.option_1.label }} <span class="field-required">*</span></label>
-                            {{ form.option_1 }}
-                            {% for error in form.option_1.errors %}
-                                <span class="field-error">{{ error }}</span>
-                            {% endfor %}
-                        </div>
-                        <div class="form-field">
-                            <label for="{{ form.option_2.id_for_label }}">{{ form.option_2.label }} <span class="field-required">*</span></label>
-                            {{ form.option_2 }}
-                            {% for error in form.option_2.errors %}
-                                <span class="field-error">{{ error }}</span>
-                            {% endfor %}
-                        </div>
-                        <div class="form-field">
-                            <label for="{{ form.option_3.id_for_label }}">{{ form.option_3.label }} <span class="field-required">*</span></label>
-                            {{ form.option_3 }}
-                            {% for error in form.option_3.errors %}
-                                <span class="field-error">{{ error }}</span>
-                            {% endfor %}
-                        </div>
-                        <div class="form-field">
-                            <label for="{{ form.option_4.id_for_label }}">{{ form.option_4.label }} <span class="field-required">*</span></label>
-                            {{ form.option_4 }}
-                            {% for error in form.option_4.errors %}
-                                <span class="field-error">{{ error }}</span>
-                            {% endfor %}
-                        </div>
-                    </div>
+                        <div id="quiz-question-list" class="quiz-builder-list">
+                            {% for question in form.question_blocks %}
+                                <article class="quiz-builder-card">
+                                    <div class="quiz-builder-head">
+                                        <strong>Questão {{ question.index }}</strong>
+                                    </div>
 
-                    <div class="form-field">
-                        <label for="{{ form.correct_option.id_for_label }}">{{ form.correct_option.label }} <span class="field-required">*</span></label>
-                        {{ form.correct_option }}
-                        {% for error in form.correct_option.errors %}
-                            <span class="field-error">{{ error }}</span>
-                        {% endfor %}
-                    </div>
+                                    <div class="form-field">
+                                        <label for="{{ question.statement.id_for_label }}">{{ question.statement.label }} <span class="field-required">*</span></label>
+                                        {{ question.statement }}
+                                        {% for error in question.statement.errors %}
+                                            <span class="field-error">{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+
+                                    <div class="activity-form-grid">
+                                        <div class="form-field">
+                                            <label for="{{ question.score.id_for_label }}">{{ question.score.label }} <span class="field-required">*</span></label>
+                                            {{ question.score }}
+                                            {% for error in question.score.errors %}
+                                                <span class="field-error">{{ error }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="form-field">
+                                            <label for="{{ question.correct_option.id_for_label }}">{{ question.correct_option.label }} <span class="field-required">*</span></label>
+                                            {{ question.correct_option }}
+                                            {% for error in question.correct_option.errors %}
+                                                <span class="field-error">{{ error }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+
+                                    <div class="activity-form-grid">
+                                        {% for option in question.options %}
+                                            <div class="form-field">
+                                                <label for="{{ option.id_for_label }}">{{ option.label }} <span class="field-required">*</span></label>
+                                                {{ option }}
+                                                {% for error in option.errors %}
+                                                    <span class="field-error">{{ error }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    </section>
                 {% endif %}
 
                 <div class="activity-form-grid">
@@ -323,6 +391,13 @@
                         </div>
                     {% endif %}
                 </div>
+
+                {% if form.allow_resubmissions %}
+                    <label class="checkbox-field activity-checkbox" for="{{ form.allow_resubmissions.id_for_label }}">
+                        {{ form.allow_resubmissions }}
+                        <span>{{ form.allow_resubmissions.label }}</span>
+                    </label>
+                {% endif %}
 
                 {% if form.is_published %}
                     <label class="checkbox-field activity-checkbox" for="{{ form.is_published.id_for_label }}">

@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -31,6 +32,17 @@ from ..models import (
     UserProfile,
 )
 from .common import _user_role
+
+
+def _calculate_quiz_score(answers):
+    return round(
+        sum(
+            float(answer.question.weight)
+            for answer in answers
+            if answer.selected_option.is_correct
+        ),
+        2,
+    )
 
 
 ACTIVITY_CREATE_CONFIG = {
@@ -238,7 +250,12 @@ def course_item_detail_view(request, course_item_id):
                 forum_form = ForumMessageForm()
         elif isinstance(detail, QuizItem):
             if request.method == 'POST' and request.POST.get('action') == 'submit_quiz':
+                if not detail.allow_resubmissions and Answer.objects.filter(quiz=detail, student=request.user).exists():
+                    messages.error(request, 'Este quiz não permite reenviar respostas.')
+                    return redirect('agora:course_item_detail', course_item_id=course_item.id)
+
                 missing_answers = []
+                selected_answers = []
                 for question in detail.questions.prefetch_related('options').all():
                     selected_option_id = request.POST.get(f'question_{question.id}')
                     if not selected_option_id:
@@ -248,12 +265,7 @@ def course_item_detail_view(request, course_item_id):
                     if not selected_option:
                         missing_answers.append(question.order)
                         continue
-                    Answer.objects.update_or_create(
-                        quiz=detail,
-                        question=question,
-                        student=request.user,
-                        defaults={'selected_option': selected_option},
-                    )
+                    selected_answers.append((question, selected_option))
 
                 if missing_answers:
                     messages.error(
@@ -261,6 +273,14 @@ def course_item_detail_view(request, course_item_id):
                         'Responda todas as questões antes de enviar o quiz.'
                     )
                 else:
+                    with transaction.atomic():
+                        for question, selected_option in selected_answers:
+                            Answer.objects.update_or_create(
+                                quiz=detail,
+                                question=question,
+                                student=request.user,
+                                defaults={'selected_option': selected_option},
+                            )
                     messages.success(request, 'Suas respostas do quiz foram registradas.')
                     return redirect('agora:course_item_detail', course_item_id=course_item.id)
 
@@ -270,15 +290,10 @@ def course_item_detail_view(request, course_item_id):
                 for answer in student_answers_qs
             }
             if student_answers_qs:
-                total_weight = sum(float(question.weight) for question in detail.questions.all()) or 1
-                earned_weight = sum(
-                    float(answer.question.weight)
-                    for answer in student_answers_qs
-                    if answer.selected_option.is_correct
-                )
-                if detail.max_score is not None:
-                    quiz_score = round((earned_weight / total_weight) * float(detail.max_score), 2)
+                quiz_score = _calculate_quiz_score(student_answers_qs)
                 quiz_feedback = f'{len(student_answers_qs)}/{detail.questions.count()} questões respondidas'
+            elif not detail.allow_resubmissions:
+                quiz_feedback = 'Este quiz aceita apenas uma tentativa.'
 
     submissions = []
     if is_teacher and isinstance(detail, AssignmentItem):
