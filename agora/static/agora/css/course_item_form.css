@@ -102,6 +102,34 @@
     resize: vertical;
 }
 
+.deadline-field {
+    gap: 10px;
+}
+
+.deadline-input-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(160px, 0.9fr);
+    gap: 14px;
+}
+
+.deadline-input-card {
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(24, 92, 55, 0.12);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(245, 250, 246, 0.62));
+    box-shadow: 0 12px 24px rgba(24, 56, 36, 0.05);
+}
+
+.deadline-input-label {
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
 .activity-checkbox {
     display: inline-flex;
     align-items: center;
@@ -210,7 +238,8 @@
 
 @media (max-width: 780px) {
     .activity-type-grid,
-    .activity-form-grid {
+    .activity-form-grid,
+    .deadline-input-grid {
         grid-template-columns: 1fr;
     }
 

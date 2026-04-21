@@ -16,7 +16,6 @@ function LoginPage() {
     const [registerCpf, setRegisterCpf] = useState(readJsonScriptContent('login-initial-register-cpf'));
     const [registerBirthDate, setRegisterBirthDate] = useState(readJsonScriptContent('login-initial-register-birth-date'));
     const [registerPhone, setRegisterPhone] = useState(readJsonScriptContent('login-initial-register-phone'));
-    const [registerBio, setRegisterBio] = useState(readJsonScriptContent('login-initial-register-bio'));
     const [registerPassword, setRegisterPassword] = useState('');
     const [registerPasswordConfirm, setRegisterPasswordConfirm] = useState('');
     const [errorMessage, setErrorMessage] = useState(readJsonScriptContent('login-error-message'));
@@ -216,18 +215,6 @@ function LoginPage() {
                                     onChange={(event) => setRegisterPhone(event.target.value)}
                                     placeholder="(00) 00000-0000"
                                     required
-                                />
-                            </div>
-
-                            <div className="field">
-                                <label htmlFor="register_bio">Biografia</label>
-                                <textarea
-                                    id="register_bio"
-                                    name="register_bio"
-                                    value={registerBio}
-                                    onChange={(event) => setRegisterBio(event.target.value)}
-                                    placeholder="Conte um pouco sobre você (opcional)"
-                                    rows={3}
                                 />
                             </div>
 

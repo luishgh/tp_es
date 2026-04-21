@@ -109,20 +109,21 @@
                 {% if grade_page.paginator.count %}
                     <div class="grade-list">
                         {% for grade in grade_page %}
-                            <article class="grade-card">
-                                <div class="grade-head">
-                                    <strong>{{ grade.course_code }}</strong>
-                                    <span>{{ grade.activity_title }}</span>
-                                </div>
-                                <div class="grade-meta">
-                                    <span>{{ grade.course_title }}</span>
-                                    <span>Professor(a): {{ grade.teacher_name }}</span>
-                                </div>
-                                <div class="grade-foot">
-                                    <span>Nota: {{ grade.score }}</span>
-                                    <span>Corrigida em {{ grade.graded_at|date:"d/m, H:i" }}</span>
-                                </div>
-                            </article>
+                            <a class="grade-card-link" href="{% url 'agora:course_item_detail' grade.id %}" aria-label="Abrir item {{ grade.activity_title }}">
+                                <article class="grade-card">
+                                    <div class="grade-head">
+                                        <strong>{{ grade.activity_title }}</strong>
+                                    </div>
+                                    <div class="grade-meta">
+                                        <span>{{ grade.course_code }} · {{ grade.course_title }}</span>
+                                        <span>Professor(a): {{ grade.teacher_name }}</span>
+                                    </div>
+                                    <div class="grade-foot">
+                                        <span>Nota: {{ grade.score }}</span>
+                                        <span>Corrigida em {{ grade.graded_at|date:"d/m, H:i" }}</span>
+                                    </div>
+                                </article>
+                            </a>
                         {% endfor %}
                     </div>
                     {% if grade_page.has_other_pages %}

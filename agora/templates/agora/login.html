@@ -23,7 +23,6 @@
     {{ initial_register_cpf|json_script:"login-initial-register-cpf" }}
     {{ initial_register_birth_date|json_script:"login-initial-register-birth-date" }}
     {{ initial_register_phone|json_script:"login-initial-register-phone" }}
-    {{ initial_register_bio|json_script:"login-initial-register-bio" }}
     {{ csrf_token_value|json_script:"csrf-token" }}
 
     <div id="login-root"></div>
@@ -31,6 +30,6 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script type="text/babel" src="{% static 'agora/js/login.js' %}"></script>
+    <script type="text/babel" src="{% static 'agora/js/login.js' %}?v=20260420"></script>
 </body>
 </html>

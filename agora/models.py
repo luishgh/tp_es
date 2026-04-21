@@ -46,11 +46,6 @@ class UserProfile(models.Model):
         default='',
         verbose_name='telefone',
     )
-    bio = models.TextField(
-        blank=True,
-        default='',
-        verbose_name='biografia',
-    )
 
     class Meta:
         verbose_name = 'perfil de usuario'
@@ -622,13 +617,15 @@ class Submission(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.student} - {self.assignment}'
+        student_label = self.student if self.student_id else 'Sem estudante'
+        assignment_label = self.assignment if self.assignment_id else 'Sem tarefa'
+        return f'{student_label} - {assignment_label}'
 
     def clean(self):
         super().clean()
         errors = {}
 
-        if _user_role(self.student) != UserProfile.Role.STUDENT:
+        if self.student_id and _user_role(self.student) != UserProfile.Role.STUDENT:
             errors['student'] = 'A entrega deve estar vinculada a um estudante.'
 
         if self.graded_by and _user_role(self.graded_by) != UserProfile.Role.TEACHER:
@@ -636,6 +633,7 @@ class Submission(models.Model):
 
         if (
             self.score is not None
+            and self.assignment_id
             and self.assignment.max_score is not None
             and self.score > self.assignment.max_score
         ):

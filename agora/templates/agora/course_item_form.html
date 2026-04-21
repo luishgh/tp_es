@@ -17,7 +17,10 @@
             const attachmentFileField = document.getElementById('{{ form.attachment_file.id_for_label|default:"" }}');
             const statementUrlField = document.getElementById('{{ form.statement_url.id_for_label|default:"" }}');
             const statementFileField = document.getElementById('{{ form.statement_file.id_for_label|default:"" }}');
-            const dueDateField = document.getElementById('{{ form.due_date.id_for_label|default:"" }}');
+            const dueDateFields = [
+                document.getElementById('{{ form.due_date_date.id_for_label|default:"" }}'),
+                document.getElementById('{{ form.due_date_time.id_for_label|default:"" }}'),
+            ].filter(Boolean);
             const maxScoreField = document.getElementById('{{ form.max_score.id_for_label|default:"" }}');
             const questionCountField = document.getElementById('{{ form.question_count.id_for_label|default:"" }}');
             const quizQuestionList = document.getElementById('quiz-question-list');
@@ -34,8 +37,11 @@
                 });
             });
 
-            const requiredFields = [moduleField, titleField, dueDateField, maxScoreField].filter(Boolean);
+            const requiredFields = [moduleField, titleField, maxScoreField].filter(Boolean);
             requiredFields.forEach(function (field) {
+                field.required = true;
+            });
+            dueDateFields.forEach(function (field) {
                 field.required = true;
             });
 
@@ -66,7 +72,9 @@
             const syncSubmitAvailability = function () {
                 const hasSelectedModule = Boolean(moduleField.value);
                 const hasTitle = !titleField || Boolean(titleField.value.trim());
-                const hasDueDate = !dueDateField || Boolean(dueDateField.value);
+                const hasDueDate = !dueDateFields.length || dueDateFields.every(function (field) {
+                    return Boolean(field.value);
+                });
                 const hasMaxScore = !maxScoreField || Boolean(maxScoreField.value);
                 const hasAttachmentSource = hasRequiredPair(attachmentUrlField, attachmentFileField);
                 const hasStatementSource = hasRequiredPair(statementUrlField, statementFileField);
@@ -194,9 +202,10 @@
             if (titleField) {
                 titleField.addEventListener('input', syncSubmitAvailability);
             }
-            if (dueDateField) {
-                dueDateField.addEventListener('input', syncSubmitAvailability);
-            }
+            dueDateFields.forEach(function (field) {
+                field.addEventListener('input', syncSubmitAvailability);
+                field.addEventListener('change', syncSubmitAvailability);
+            });
             if (maxScoreField) {
                 maxScoreField.addEventListener('input', syncSubmitAvailability);
             }
@@ -523,11 +532,24 @@
                 {% endif %}
 
                 <div class="activity-form-grid">
-                    {% if form.due_date %}
-                        <div class="form-field">
-                            <label for="{{ form.due_date.id_for_label }}">{{ form.due_date.label }} <span class="field-required">*</span></label>
-                            {{ form.due_date }}
-                            {% for error in form.due_date.errors %}
+                    {% if form.due_date_date and form.due_date_time %}
+                        <div class="form-field deadline-field">
+                            <label for="{{ form.due_date_date.id_for_label }}">Prazo <span class="field-required">*</span></label>
+                            <div class="deadline-input-grid">
+                                <div class="deadline-input-card">
+                                    <span class="deadline-input-label">Data</span>
+                                    {{ form.due_date_date }}
+                                </div>
+                                <div class="deadline-input-card">
+                                    <span class="deadline-input-label">Hora</span>
+                                    {{ form.due_date_time }}
+                                </div>
+                            </div>
+                            <p class="field-help">Escolha o dia e o horário final para disponibilizar este conteúdo aos estudantes.</p>
+                            {% for error in form.due_date_date.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                            {% for error in form.due_date_time.errors %}
                                 <span class="field-error">{{ error }}</span>
                             {% endfor %}
                         </div>

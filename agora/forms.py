@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from datetime import datetime
 from django.db import transaction
 from decimal import Decimal
 import re
@@ -33,7 +34,6 @@ class SuperuserCreateUserForm(forms.Form):
         widget=forms.DateInput(attrs={'type': 'date'}),
     )
     phone = forms.CharField(max_length=20, label='Telefone')
-    bio = forms.CharField(widget=forms.Textarea, required=False, label='Biografia')
 
     def clean_username(self):
         username = self.cleaned_data['username'].strip()
@@ -98,8 +98,7 @@ class SuperuserCreateUserForm(forms.Form):
         profile.cpf = self.cleaned_data['cpf']
         profile.birth_date = self.cleaned_data['birth_date']
         profile.phone = self.cleaned_data['phone']
-        profile.bio = self.cleaned_data['bio']
-        profile.save(update_fields=['role', 'academic_id', 'cpf', 'birth_date', 'phone', 'bio'])
+        profile.save(update_fields=['role', 'academic_id', 'cpf', 'birth_date', 'phone'])
         return user
 
 
@@ -210,7 +209,7 @@ class ResourceCreateForm(BaseCourseActivityForm):
         model = ResourceItem
         fields = ['module', 'title', 'description', 'attachment_url', 'attachment_file', 'is_published']
         labels = {
-            'module': 'Módulo (opcional)',
+            'module': 'Módulo',
             'title': 'Título do material',
             'description': 'Descrição',
             'attachment_url': 'Link do material',
@@ -236,6 +235,22 @@ class ResourceCreateForm(BaseCourseActivityForm):
 class AssignmentCreateForm(BaseCourseActivityForm):
     title_placeholder = 'Ex.: Lista 1'
     description_placeholder = 'Descreva a proposta da tarefa, critérios e orientações de entrega.'
+    due_date_date = forms.DateField(
+        label='Data',
+        widget=forms.DateInput(
+            attrs={'type': 'date', 'class': 'deadline-date-input'},
+            format='%Y-%m-%d',
+        ),
+        input_formats=['%Y-%m-%d'],
+    )
+    due_date_time = forms.TimeField(
+        label='Hora',
+        widget=forms.TimeInput(
+            attrs={'type': 'time', 'class': 'deadline-time-input', 'step': 60},
+            format='%H:%M',
+        ),
+        input_formats=['%H:%M'],
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -243,6 +258,10 @@ class AssignmentCreateForm(BaseCourseActivityForm):
         self.fields['statement_file'].widget.attrs.update({
             'accept': '.pdf,.doc,.docx,.ppt,.pptx,.txt,.zip,.png,.jpg,.jpeg',
         })
+        if self.instance and self.instance.due_date:
+            localized_due_date = self.instance.due_date
+            self.fields['due_date_date'].initial = localized_due_date.date()
+            self.fields['due_date_time'].initial = localized_due_date.time().replace(second=0, microsecond=0)
 
     class Meta:
         model = AssignmentItem
@@ -252,42 +271,73 @@ class AssignmentCreateForm(BaseCourseActivityForm):
             'description',
             'statement_url',
             'statement_file',
-            'due_date',
             'max_score',
             'is_published',
         ]
         labels = {
-            'module': 'Módulo (opcional)',
+            'module': 'Módulo',
             'title': 'Título da tarefa',
             'description': 'Descrição',
             'statement_url': 'Link do enunciado',
             'statement_file': 'Arquivo do enunciado',
-            'due_date': 'Data de entrega',
             'max_score': 'Nota máxima',
             'is_published': 'Publicar agora',
         }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 5}),
-            'due_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }
 
     def clean(self):
         cleaned_data = super().clean()
         cleaned_data['statement_url'] = (cleaned_data.get('statement_url') or '').strip()
-        if not cleaned_data.get('due_date'):
-            self.add_error('due_date', 'Informe a data de entrega da tarefa.')
+        due_date_date = cleaned_data.get('due_date_date')
+        due_date_time = cleaned_data.get('due_date_time')
+        if not due_date_date:
+            self.add_error('due_date_date', 'Informe a data de entrega da tarefa.')
+        if not due_date_time:
+            self.add_error('due_date_time', 'Informe o horário de entrega da tarefa.')
+        if due_date_date and due_date_time:
+            cleaned_data['due_date'] = datetime.combine(due_date_date, due_date_time)
         if cleaned_data.get('max_score') is None:
             self.add_error('max_score', 'Informe a nota máxima da tarefa.')
         return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.due_date = self.cleaned_data.get('due_date')
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
 
 
 class QuizCreateForm(BaseCourseActivityForm):
     title_placeholder = 'Ex.: Quiz 1'
     description_placeholder = 'Descreva o objetivo do quiz e as orientações principais.'
     quiz_option_count = 4
+    due_date_date = forms.DateField(
+        label='Data',
+        widget=forms.DateInput(
+            attrs={'type': 'date', 'class': 'deadline-date-input'},
+            format='%Y-%m-%d',
+        ),
+        input_formats=['%Y-%m-%d'],
+    )
+    due_date_time = forms.TimeField(
+        label='Hora',
+        widget=forms.TimeInput(
+            attrs={'type': 'time', 'class': 'deadline-time-input', 'step': 60},
+            format='%H:%M',
+        ),
+        input_formats=['%H:%M'],
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.instance and self.instance.due_date:
+            localized_due_date = self.instance.due_date
+            self.fields['due_date_date'].initial = localized_due_date.date()
+            self.fields['due_date_time'].initial = localized_due_date.time().replace(second=0, microsecond=0)
         self.question_count = self._resolve_question_count()
         self.fields['question_count'] = forms.IntegerField(
             initial=self.question_count,
@@ -300,18 +350,16 @@ class QuizCreateForm(BaseCourseActivityForm):
 
     class Meta:
         model = QuizItem
-        fields = ['module', 'title', 'description', 'due_date', 'allow_resubmissions', 'is_published']
+        fields = ['module', 'title', 'description', 'allow_resubmissions', 'is_published']
         labels = {
-            'module': 'Módulo (opcional)',
+            'module': 'Módulo',
             'title': 'Título do quiz',
             'description': 'Descrição',
-            'due_date': 'Prazo de realização',
             'allow_resubmissions': 'Permitir que estudantes reenviem respostas',
             'is_published': 'Publicar agora',
         }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 5}),
-            'due_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }
 
     def _resolve_question_count(self):
@@ -411,8 +459,14 @@ class QuizCreateForm(BaseCourseActivityForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if not cleaned_data.get('due_date'):
-            self.add_error('due_date', 'Informe o prazo de realização do quiz.')
+        due_date_date = cleaned_data.get('due_date_date')
+        due_date_time = cleaned_data.get('due_date_time')
+        if not due_date_date:
+            self.add_error('due_date_date', 'Informe a data de realização do quiz.')
+        if not due_date_time:
+            self.add_error('due_date_time', 'Informe o horário de realização do quiz.')
+        if due_date_date and due_date_time:
+            cleaned_data['due_date'] = datetime.combine(due_date_date, due_date_time)
 
         quiz_questions = []
         for question_index in range(1, self.question_count + 1):
@@ -512,7 +566,8 @@ class QuizCreateForm(BaseCourseActivityForm):
                 )
 
         quiz.max_score = total_score
-        quiz.save(update_fields=['max_score'])
+        quiz.due_date = self.cleaned_data.get('due_date')
+        quiz.save(update_fields=['max_score', 'due_date'])
         return quiz
 
 
@@ -524,7 +579,7 @@ class ForumCreateForm(BaseCourseActivityForm):
         model = ForumItem
         fields = ['module', 'title', 'description', 'is_published']
         labels = {
-            'module': 'Módulo (opcional)',
+            'module': 'Módulo',
             'title': 'Título do fórum',
             'description': 'Descrição',
             'is_published': 'Publicar agora',
