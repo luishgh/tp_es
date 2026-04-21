@@ -31,6 +31,52 @@
     gap: var(--size-4);
 }
 
+.submission-upload-form {
+    padding: 22px;
+    border-radius: 24px;
+    border: 1px solid rgba(24, 92, 55, 0.12);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(245, 250, 246, 0.62));
+    box-shadow: var(--shadow-1);
+}
+
+.submission-upload-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr);
+    gap: var(--size-4);
+    align-items: start;
+}
+
+.submission-upload-side {
+    display: grid;
+    gap: var(--size-3);
+    align-content: start;
+}
+
+.submission-file-field,
+.submission-notes-field {
+    padding: var(--size-4);
+    border-radius: 20px;
+    border: 1px solid rgba(24, 92, 55, 0.08);
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.submission-file-field input,
+.submission-notes-field textarea {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.submission-notes-field textarea {
+    min-height: 132px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    line-height: 1.6;
+    box-shadow: none;
+}
+
+.submission-inline-actions {
+    justify-content: flex-start;
+}
+
 .field-help {
     display: block;
     margin-top: var(--size-2);
@@ -201,5 +247,13 @@
 
     .submission-review-summary {
         grid-template-columns: 1fr;
+    }
+
+    .submission-upload-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .submission-inline-actions {
+        margin-top: 0;
     }
 }
