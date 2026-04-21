@@ -3,6 +3,7 @@ from .common import _configure_time_locale
 _configure_time_locale()
 
 from .course_items import (  # noqa: E402,F401
+    course_item_delete_view,
     course_item_create_view,
     course_item_detail_view,
     module_create_view,

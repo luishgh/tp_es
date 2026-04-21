@@ -13,6 +13,7 @@ urlpatterns = [
     path('cursos/<int:course_id>/modulos/criar/', module_create_view, name='module_create'),
     path('cursos/<int:course_id>/itens/criar/', course_item_create_view, name='course_item_create'),
     path('itens/<int:course_item_id>/', course_item_detail_view, name='course_item_detail'),
+    path('itens/<int:course_item_id>/excluir/', course_item_delete_view, name='course_item_delete'),
     path('itens/<int:course_item_id>/quiz/editar/', quiz_edit_view, name='quiz_edit'),
     path('itens/<int:course_item_id>/quiz/excluir/', quiz_delete_view, name='quiz_delete'),
     path('itens/<int:course_item_id>/publicar/', publish_course_item_view, name='publish_course_item'),

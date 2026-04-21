@@ -33,9 +33,11 @@
                     <div class="teacher-item-actions">
                         {% if activity.kind == 'quiz' %}
                             <a class="ghost-button compact" href="{% url 'agora:quiz_edit' activity.id %}">Editar quiz</a>
-                            <form method="post" action="{% url 'agora:quiz_delete' activity.id %}" onsubmit="return confirm('Deseja excluir este quiz? Esta ação não poderá ser desfeita.');">
+                        {% endif %}
+                        {% if activity.kind == 'quiz' or activity.kind == 'assignment' or activity.kind == 'resource' %}
+                            <form method="post" action="{% url 'agora:course_item_delete' activity.id %}" onsubmit="return confirm('Deseja excluir este {{ activity.kind_label|lower }}? Esta ação não poderá ser desfeita.');">
                                 {% csrf_token %}
-                                <button class="ghost-button compact danger-action" type="submit">Excluir quiz</button>
+                                <button class="ghost-button compact danger-action" type="submit">Excluir {{ activity.kind_label|lower }}</button>
                             </form>
                         {% endif %}
                         {% if not activity.is_published %}

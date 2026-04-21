@@ -215,20 +215,27 @@ def quiz_edit_view(request, course_item_id):
 
 @never_cache
 @login_required(login_url='agora:login')
-def quiz_delete_view(request, course_item_id):
+def course_item_delete_view(request, course_item_id):
     if request.method != 'POST':
         return redirect('agora:course_item_detail', course_item_id=course_item_id)
 
-    quiz = get_object_or_404(QuizItem.objects.select_related('course'), pk=course_item_id)
-    if quiz.course.teacher_id != request.user.id:
-        messages.error(request, 'Você não tem permissão para excluir este quiz.')
-        return redirect('agora:course_item_detail', course_item_id=quiz.id)
+    course_item = get_object_or_404(CourseItem.objects.select_related('course'), pk=course_item_id)
+    if course_item.course.teacher_id != request.user.id:
+        messages.error(request, 'Você não tem permissão para excluir este item.')
+        return redirect('agora:course_item_detail', course_item_id=course_item.id)
 
-    course_id = quiz.course_id
-    quiz_title = quiz.title
-    quiz.delete()
-    messages.success(request, f'Quiz "{quiz_title}" excluído com sucesso.')
+    course_id = course_item.course_id
+    course_item_title = course_item.title
+    course_item_label = course_item.kind_label
+    course_item.delete()
+    messages.success(request, f'{course_item_label} "{course_item_title}" excluído com sucesso.')
     return redirect('agora:course_detail', course_id=course_id)
+
+
+@never_cache
+@login_required(login_url='agora:login')
+def quiz_delete_view(request, course_item_id):
+    return course_item_delete_view(request, course_item_id)
 
 
 @never_cache
