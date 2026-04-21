@@ -3,7 +3,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import AssignmentItem, Course, Enrollment, Module, ResourceItem, Submission, UserProfile
+from .models import Answer, AssignmentItem, Course, Enrollment, Module, QuizItem, QuizOption, QuizQuestion, ResourceItem, Submission, UserProfile
 
 
 class CourseDetailViewTests(TestCase):
@@ -245,6 +245,35 @@ class ActivityCreateViewTests(TestCase):
         form = response.context['form']
         self.assertIn('max_score', form.errors)
 
+    def test_teacher_can_create_quiz_with_single_multiple_choice_question(self):
+        self.client.force_login(self.teacher)
+
+        response = self.client.post(
+            reverse('agora:course_item_create', args=[self.course.id]),
+            data={
+                'activity_kind': 'quiz',
+                'module': str(self.module.id),
+                'title': 'Quiz 1',
+                'description': 'Quiz de revisão.',
+                'question_statement': 'Qual linguagem o Django usa principalmente?',
+                'option_1': 'Python',
+                'option_2': 'Ruby',
+                'option_3': 'PHP',
+                'option_4': 'Go',
+                'correct_option': '1',
+                'due_date': '2026-04-30T23:59',
+                'max_score': '10',
+                'is_published': 'on',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        quiz = QuizItem.objects.get(title='Quiz 1')
+        question = QuizQuestion.objects.get(quiz=quiz)
+        self.assertEqual(question.statement, 'Qual linguagem o Django usa principalmente?')
+        self.assertEqual(question.options.count(), 4)
+        self.assertEqual(question.options.get(is_correct=True).text, 'Python')
+
 
 class ResourceDetailViewTests(TestCase):
     def setUp(self):
@@ -319,6 +348,34 @@ class ResourceDetailViewTests(TestCase):
             max_score=10,
             is_published=False,
             created_by=self.teacher,
+        )
+        self.quiz = QuizItem.objects.create(
+            course=self.course,
+            module=self.module,
+            title='Quiz rápido',
+            description='Teste de revisão.',
+            due_date='2026-04-29T23:59Z',
+            max_score=10,
+            is_published=True,
+            created_by=self.teacher,
+        )
+        self.quiz_question = QuizQuestion.objects.create(
+            quiz=self.quiz,
+            statement='Qual comando cria migrations no Django?',
+            order=1,
+            weight=1,
+        )
+        self.correct_quiz_option = QuizOption.objects.create(
+            question=self.quiz_question,
+            text='python manage.py makemigrations',
+            is_correct=True,
+            order=1,
+        )
+        self.quiz_option_2 = QuizOption.objects.create(
+            question=self.quiz_question,
+            text='python manage.py runserver',
+            is_correct=False,
+            order=2,
         )
 
     def test_student_can_view_published_activity_detail(self):
@@ -435,3 +492,30 @@ class ResourceDetailViewTests(TestCase):
         self.assertEqual(second.status_code, 302)
         self.assignment.refresh_from_db()
         self.assertTrue(self.assignment.is_published)
+
+    def test_student_can_answer_quiz_from_course_page(self):
+        self.client.force_login(self.student)
+
+        response = self.client.post(
+            reverse('agora:course_detail', args=[self.course.id]),
+            data={
+                'action': 'submit_course_quiz',
+                'quiz_id': str(self.quiz.id),
+                f'quiz_{self.quiz.id}_question_{self.quiz_question.id}': str(self.correct_quiz_option.id),
+                'module_page': '1',
+                'activity_page': '1',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        answer = Answer.objects.get(quiz=self.quiz, question=self.quiz_question, student=self.student)
+        self.assertEqual(answer.selected_option, self.correct_quiz_option)
+
+    def test_course_page_shows_inline_quiz_for_students(self):
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse('agora:course_detail', args=[self.course.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Qual comando cria migrations no Django?')
+        self.assertContains(response, 'Enviar resposta')

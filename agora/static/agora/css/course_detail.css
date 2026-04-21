@@ -20,6 +20,32 @@
     color: var(--text-1);
 }
 
+.course-roster {
+    margin-top: var(--size-4);
+    padding-top: var(--size-4);
+    border-top: 1px dashed var(--border-color);
+}
+
+.roster-list {
+    display: grid;
+    gap: var(--size-2);
+    margin-top: var(--size-3);
+}
+
+.roster-entry {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--size-3);
+    padding: var(--size-2) var(--size-3);
+    border-radius: var(--radius-1);
+    background: var(--surface-2);
+    color: var(--text-2);
+}
+
+.roster-entry strong {
+    color: var(--text-1);
+}
+
 .modules-panel .section-head {
     align-items: flex-end;
     flex-wrap: wrap;
@@ -149,6 +175,10 @@
     flex-grow: 1;
 }
 
+.activity-card-quiz {
+    gap: var(--size-3);
+}
+
 .activity-meta {
     display: flex;
     flex-wrap: wrap;
@@ -180,6 +210,75 @@
 .activity-footer a {
     color: var(--link-color);
     font-weight: var(--font-weight-5);
+}
+
+.inline-quiz-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-3);
+}
+
+.inline-quiz-question strong {
+    display: block;
+    color: var(--text-1);
+    font-size: var(--font-size-1);
+    line-height: var(--font-lineheight-3);
+}
+
+.inline-quiz-options {
+    display: grid;
+    gap: var(--size-2);
+}
+
+.inline-quiz-option {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--size-2);
+    padding: var(--size-2) var(--size-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-1);
+    background: var(--surface-2);
+    color: var(--text-1);
+}
+
+.inline-quiz-option input {
+    margin-top: 0.2rem;
+}
+
+.quiz-footer {
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--size-3);
+}
+
+.quiz-status {
+    color: var(--accent-1);
+    font-size: var(--font-size-0);
+    font-weight: var(--font-weight-5);
+}
+
+.quiz-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--size-3);
+}
+
+.teacher-quiz-summary {
+    margin-top: var(--size-3);
+    padding-top: var(--size-3);
+    border-top: 1px dashed var(--border-color);
+}
+
+.teacher-quiz-summary strong {
+    display: block;
+    margin-bottom: var(--size-2);
+    color: var(--text-1);
+}
+
+.teacher-quiz-options {
+    margin: 0;
+    padding-left: 1.2rem;
+    color: var(--text-2);
 }
 
 .status-pill.accent {
@@ -224,7 +323,16 @@
         justify-content: flex-start;
     }
 
+    .roster-entry {
+        flex-direction: column;
+    }
+
     .activity-list {
         grid-template-columns: 1fr;
+    }
+
+    .quiz-footer {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

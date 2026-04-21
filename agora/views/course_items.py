@@ -117,10 +117,7 @@ def course_item_create_view(request, course_id):
         form.instance.created_by = request.user
         form.instance.course = course
         if form.is_valid():
-            course_item = form.save(commit=False)
-            course_item.created_by = request.user
-            course_item.course = course
-            course_item.save()
+            course_item = form.save()
             messages.success(request, f'{course_item.kind_label} "{course_item.title}" criado com sucesso.')
             return redirect('agora:course_detail', course_id=course.id)
     else:

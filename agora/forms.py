@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.db import transaction
 import re
 
 from .models import (
@@ -8,6 +9,8 @@ from .models import (
     ForumMessage,
     ForumItem,
     Module,
+    QuizOption,
+    QuizQuestion,
     QuizItem,
     ResourceItem,
     Submission,
@@ -281,6 +284,24 @@ class QuizCreateForm(BaseCourseActivityForm):
     title_placeholder = 'Ex.: Quiz 1'
     description_placeholder = 'Descreva o objetivo do quiz e as orientações principais.'
 
+    question_statement = forms.CharField(
+        label='Pergunta do quiz',
+        widget=forms.Textarea(attrs={'rows': 4, 'placeholder': 'Digite a pergunta de múltipla escolha.'}),
+    )
+    option_1 = forms.CharField(label='Alternativa A')
+    option_2 = forms.CharField(label='Alternativa B')
+    option_3 = forms.CharField(label='Alternativa C')
+    option_4 = forms.CharField(label='Alternativa D')
+    correct_option = forms.ChoiceField(
+        label='Alternativa correta',
+        choices=[
+            ('1', 'Alternativa A'),
+            ('2', 'Alternativa B'),
+            ('3', 'Alternativa C'),
+            ('4', 'Alternativa D'),
+        ],
+    )
+
     class Meta:
         model = QuizItem
         fields = ['module', 'title', 'description', 'due_date', 'max_score', 'is_published']
@@ -303,7 +324,46 @@ class QuizCreateForm(BaseCourseActivityForm):
             self.add_error('due_date', 'Informe o prazo de realização do quiz.')
         if cleaned_data.get('max_score') is None:
             self.add_error('max_score', 'Informe a pontuação máxima do quiz.')
+
+        statement = (cleaned_data.get('question_statement') or '').strip()
+        if not statement:
+            self.add_error('question_statement', 'Informe a pergunta do quiz.')
+        cleaned_data['question_statement'] = statement
+
+        seen_options = set()
+        for field_name in ('option_1', 'option_2', 'option_3', 'option_4'):
+            option_text = (cleaned_data.get(field_name) or '').strip()
+            if not option_text:
+                self.add_error(field_name, 'Preencha esta alternativa.')
+                continue
+            normalized = option_text.casefold()
+            if normalized in seen_options:
+                self.add_error(field_name, 'As alternativas devem ser diferentes entre si.')
+            seen_options.add(normalized)
+            cleaned_data[field_name] = option_text
         return cleaned_data
+
+    @transaction.atomic
+    def save(self, commit=True):
+        quiz = super().save(commit=commit)
+        if not commit:
+            return quiz
+
+        question = QuizQuestion.objects.create(
+            quiz=quiz,
+            statement=self.cleaned_data['question_statement'],
+            order=1,
+            weight=1,
+        )
+        correct_option = self.cleaned_data['correct_option']
+        for option_order in range(1, 5):
+            QuizOption.objects.create(
+                question=question,
+                text=self.cleaned_data[f'option_{option_order}'],
+                is_correct=str(option_order) == str(correct_option),
+                order=option_order,
+            )
+        return quiz
 
 
 class ForumCreateForm(BaseCourseActivityForm):

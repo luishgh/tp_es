@@ -253,6 +253,55 @@
                     </div>
                 {% endif %}
 
+                {% if selected_type == 'quiz' %}
+                    <div class="form-field">
+                        <label for="{{ form.question_statement.id_for_label }}">{{ form.question_statement.label }} <span class="field-required">*</span></label>
+                        {{ form.question_statement }}
+                        {% for error in form.question_statement.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+
+                    <div class="activity-form-grid">
+                        <div class="form-field">
+                            <label for="{{ form.option_1.id_for_label }}">{{ form.option_1.label }} <span class="field-required">*</span></label>
+                            {{ form.option_1 }}
+                            {% for error in form.option_1.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                        <div class="form-field">
+                            <label for="{{ form.option_2.id_for_label }}">{{ form.option_2.label }} <span class="field-required">*</span></label>
+                            {{ form.option_2 }}
+                            {% for error in form.option_2.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                        <div class="form-field">
+                            <label for="{{ form.option_3.id_for_label }}">{{ form.option_3.label }} <span class="field-required">*</span></label>
+                            {{ form.option_3 }}
+                            {% for error in form.option_3.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                        <div class="form-field">
+                            <label for="{{ form.option_4.id_for_label }}">{{ form.option_4.label }} <span class="field-required">*</span></label>
+                            {{ form.option_4 }}
+                            {% for error in form.option_4.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="{{ form.correct_option.id_for_label }}">{{ form.correct_option.label }} <span class="field-required">*</span></label>
+                        {{ form.correct_option }}
+                        {% for error in form.correct_option.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
                 <div class="activity-form-grid">
                     {% if form.due_date %}
                         <div class="form-field">

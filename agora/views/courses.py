@@ -4,17 +4,31 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
+from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.cache import never_cache
 
 from ..forms import CourseCreateForm
-from ..models import AssignmentItem, Course, CourseItem, Enrollment, Submission, UserProfile
+from ..models import Answer, AssignmentItem, Course, CourseItem, Enrollment, QuizItem, Submission, UserProfile
 from .common import _user_role
 
 
 def _detail_due_date(course_item):
     detail = course_item.detail_object
     return getattr(detail, 'due_date', None)
+
+
+def _course_detail_redirect(course_id, module_page=None, activity_page=None):
+    base_url = reverse('agora:course_detail', args=[course_id])
+    params = []
+    if module_page:
+        params.append(f'module_page={module_page}')
+    if activity_page:
+        params.append(f'activity_page={activity_page}')
+    if not params:
+        return base_url
+    return f"{base_url}?{'&'.join(params)}"
 
 
 @never_cache
@@ -136,6 +150,37 @@ def course_detail_view(request, course_id):
         messages.error(request, 'Você não tem permissão para acessar esta página.')
         return redirect('agora:courses_hub')
 
+    if request.method == 'POST' and role == UserProfile.Role.STUDENT and is_enrolled_student:
+        if request.POST.get('action') == 'submit_course_quiz':
+            quiz = get_object_or_404(
+                QuizItem.objects.prefetch_related('questions__options'),
+                pk=request.POST.get('quiz_id'),
+                course=course,
+                is_published=True,
+            )
+            question = quiz.questions.order_by('order', 'id').first()
+            module_page = request.POST.get('module_page')
+            activity_page = request.POST.get('activity_page')
+
+            if not question:
+                messages.error(request, 'Este quiz ainda não possui pergunta cadastrada.')
+                return HttpResponseRedirect(_course_detail_redirect(course.id, module_page, activity_page))
+
+            selected_option_id = request.POST.get(f'quiz_{quiz.id}_question_{question.id}')
+            selected_option = question.options.filter(pk=selected_option_id).first()
+            if not selected_option:
+                messages.error(request, 'Selecione uma alternativa antes de enviar o quiz.')
+                return HttpResponseRedirect(_course_detail_redirect(course.id, module_page, activity_page))
+
+            Answer.objects.update_or_create(
+                quiz=quiz,
+                question=question,
+                student=request.user,
+                defaults={'selected_option': selected_option},
+            )
+            messages.success(request, f'Sua resposta para o quiz "{quiz.title}" foi registrada.')
+            return HttpResponseRedirect(_course_detail_redirect(course.id, module_page, activity_page))
+
     modules = course.modules.all().order_by('order')
     items_by_module = defaultdict(list)
     items_without_module = []
@@ -165,6 +210,21 @@ def course_detail_view(request, course_id):
         key=lambda item: (_detail_due_date(item) is None, _detail_due_date(item) or item.created_at, item.title.lower()),
     )
 
+    student_quiz_answers = {}
+    quiz_answer_counts = {}
+    if is_enrolled_student and role == UserProfile.Role.STUDENT:
+        student_quiz_answers = {
+            answer.quiz_id: answer.selected_option_id
+            for answer in Answer.objects.filter(quiz__course=course, student=request.user).select_related('selected_option')
+        }
+    if is_teacher:
+        quiz_answer_counts = {
+            row['selected_option_id']: row['total']
+            for row in Answer.objects.filter(quiz__course=course)
+            .values('selected_option_id')
+            .annotate(total=Count('id'))
+        }
+
     for course_item in course_items:
         detail = course_item.detail_object
         activity_data = {
@@ -177,7 +237,28 @@ def course_detail_view(request, course_id):
             'max_score': getattr(detail, 'max_score', None),
             'is_published': course_item.is_published,
             'submission_count': assignment_submission_counts.get(course_item.id, 0),
+            'quiz': None,
         }
+        if isinstance(detail, QuizItem):
+            question = detail.questions.order_by('order', 'id').prefetch_related('options').first()
+            if question:
+                selected_option_id = student_quiz_answers.get(detail.id)
+                activity_data['quiz'] = {
+                    'question_id': question.id,
+                    'statement': question.statement,
+                    'selected_option_id': selected_option_id,
+                    'has_answer': selected_option_id is not None,
+                    'options': [
+                        {
+                            'id': option.id,
+                            'text': option.text,
+                            'is_correct': option.is_correct,
+                            'answer_count': quiz_answer_counts.get(option.id, 0),
+                            'is_selected': option.id == selected_option_id,
+                        }
+                        for option in question.options.all()
+                    ],
+                }
         if course_item.module:
             items_by_module[course_item.module.id].append(activity_data)
         else:
@@ -222,6 +303,7 @@ def course_detail_view(request, course_id):
         'is_enrolled_student': is_enrolled_student,
         'modules_page': modules_page,
         'modules_count': len(modules_data),
+        'current_activity_page': activity_page_number or '1',
     }
     return render(request, 'agora/course_detail.html', context)
 
