@@ -3,56 +3,18 @@ from collections import defaultdict
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.paginator import Paginator
-from django.db import transaction
 from django.db.models import Count, Q
-from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.views.decorators.cache import never_cache
 
 from ..forms import CourseCreateForm
-from ..models import Answer, AssignmentItem, Course, CourseItem, Enrollment, QuizItem, Submission, UserProfile
+from ..models import AssignmentItem, Course, CourseItem, Enrollment, Submission, UserProfile
 from .common import _user_role
 
 
 def _detail_due_date(course_item):
     detail = course_item.detail_object
     return getattr(detail, 'due_date', None)
-
-
-def _course_detail_redirect(course_id, module_page=None, activity_page=None):
-    base_url = reverse('agora:course_detail', args=[course_id])
-    params = []
-    if module_page:
-        params.append(f'module_page={module_page}')
-    if activity_page:
-        params.append(f'activity_page={activity_page}')
-    if not params:
-        return base_url
-    return f"{base_url}?{'&'.join(params)}"
-
-
-def _question_is_correct(question, selected_option_ids):
-    selected_ids = set(selected_option_ids)
-    correct_ids = set(question.options.filter(is_correct=True).values_list('id', flat=True))
-    return selected_ids == correct_ids
-
-
-def _calculate_quiz_score(questions, answers):
-    answers_by_question = {}
-    for answer in answers:
-        answers_by_question.setdefault(answer.question_id, set()).add(answer.selected_option_id)
-
-    return round(
-        sum(
-            float(question.weight)
-            for question in questions
-            if _question_is_correct(question, answers_by_question.get(question.id, set()))
-        ),
-        2,
-    )
-
-
 @never_cache
 @login_required(login_url='agora:login')
 def courses_hub_view(request):
@@ -172,48 +134,6 @@ def course_detail_view(request, course_id):
         messages.error(request, 'Você não tem permissão para acessar esta página.')
         return redirect('agora:courses_hub')
 
-    if request.method == 'POST' and role == UserProfile.Role.STUDENT and is_enrolled_student:
-        if request.POST.get('action') == 'submit_course_quiz':
-            quiz = get_object_or_404(
-                QuizItem.objects.prefetch_related('questions__options'),
-                pk=request.POST.get('quiz_id'),
-                course=course,
-                is_published=True,
-            )
-            module_page = request.POST.get('module_page')
-            activity_page = request.POST.get('activity_page')
-            questions = list(quiz.questions.order_by('order', 'id'))
-
-            if not questions:
-                messages.error(request, 'Este quiz ainda não possui pergunta cadastrada.')
-                return HttpResponseRedirect(_course_detail_redirect(course.id, module_page, activity_page))
-
-            missing_answers = []
-            selected_answers = []
-            for question in questions:
-                selected_option_id = request.POST.get(f'quiz_{quiz.id}_question_{question.id}')
-                selected_option = question.options.filter(pk=selected_option_id).first()
-                if not selected_option:
-                    missing_answers.append(question.order)
-                    continue
-                selected_answers.append((question, selected_option))
-
-            if missing_answers:
-                messages.error(request, 'Responda todas as questões antes de enviar o quiz.')
-                return HttpResponseRedirect(_course_detail_redirect(course.id, module_page, activity_page))
-
-            with transaction.atomic():
-                for question, selected_option in selected_answers:
-                    Answer.objects.update_or_create(
-                        quiz=quiz,
-                        question=question,
-                        student=request.user,
-                        defaults={'selected_option': selected_option},
-                    )
-
-            messages.success(request, f'Sua resposta para o quiz "{quiz.title}" foi registrada.')
-            return HttpResponseRedirect(_course_detail_redirect(course.id, module_page, activity_page))
-
     modules = course.modules.all().order_by('order')
     items_by_module = defaultdict(list)
     items_without_module = []
@@ -243,19 +163,6 @@ def course_detail_view(request, course_id):
         key=lambda item: (_detail_due_date(item) is None, _detail_due_date(item) or item.created_at, item.title.lower()),
     )
 
-    student_quiz_answers = {}
-    quiz_answer_counts = {}
-    if is_enrolled_student and role == UserProfile.Role.STUDENT:
-        for answer in Answer.objects.filter(quiz__course=course, student=request.user).select_related('selected_option'):
-            student_quiz_answers.setdefault(answer.question_id, set()).add(answer.selected_option_id)
-    if is_teacher:
-        quiz_answer_counts = {
-            row['selected_option_id']: row['total']
-            for row in Answer.objects.filter(quiz__course=course)
-            .values('selected_option_id')
-            .annotate(total=Count('id'))
-        }
-
     for course_item in course_items:
         detail = course_item.detail_object
         activity_data = {
@@ -268,39 +175,7 @@ def course_detail_view(request, course_id):
             'max_score': getattr(detail, 'max_score', None),
             'is_published': course_item.is_published,
             'submission_count': assignment_submission_counts.get(course_item.id, 0),
-            'quiz': None,
         }
-        if isinstance(detail, QuizItem):
-            questions = list(detail.questions.order_by('order', 'id').prefetch_related('options'))
-            if questions:
-                answer_qs = Answer.objects.filter(quiz=detail, student=request.user).select_related('selected_option', 'question') if is_enrolled_student and role == UserProfile.Role.STUDENT else Answer.objects.none()
-                answer_list = list(answer_qs)
-                answered_questions = len({answer.question_id for answer in answer_list})
-                activity_data['quiz'] = {
-                    'score': _calculate_quiz_score(questions, answer_list) if answer_list else None,
-                    'answered_count': answered_questions,
-                    'question_count': len(questions),
-                    'has_answer': bool(answer_list),
-                    'questions': [
-                        {
-                            'id': question.id,
-                            'statement': question.statement,
-                            'question_type': question.question_type,
-                            'score': question.weight,
-                            'options': [
-                                {
-                                    'id': option.id,
-                                    'text': option.text,
-                                    'is_correct': option.is_correct,
-                                    'answer_count': quiz_answer_counts.get(option.id, 0),
-                                    'is_selected': option.id in student_quiz_answers.get(question.id, set()),
-                                }
-                                for option in question.options.all()
-                            ],
-                        }
-                        for question in questions
-                    ],
-                }
         if course_item.module:
             items_by_module[course_item.module.id].append(activity_data)
         else:
@@ -335,11 +210,12 @@ def course_detail_view(request, course_id):
         .filter(course=course, status=Enrollment.Status.ACTIVE)
         .order_by('student__first_name', 'student__last_name', 'student__username')
     )
+    active_enrollments_page = Paginator(active_enrollments, 10).get_page(request.GET.get('roster_page'))
 
     context = {
         'course': course,
         'professor_name': course.teacher.get_full_name() or course.teacher.username,
-        'active_enrollments': active_enrollments,
+        'active_enrollments_page': active_enrollments_page,
         'student_count': len(active_enrollments),
         'is_teacher': is_teacher,
         'is_enrolled_student': is_enrolled_student,

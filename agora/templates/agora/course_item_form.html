@@ -24,8 +24,11 @@
             const maxScoreField = document.getElementById('{{ form.max_score.id_for_label|default:"" }}');
             const questionCountField = document.getElementById('{{ form.question_count.id_for_label|default:"" }}');
             const quizQuestionList = document.getElementById('quiz-question-list');
+            const quizQuestionPagination = document.getElementById('quiz-question-pagination');
+            const quizQuestionProgress = document.getElementById('quiz-question-progress');
             const addQuestionButton = document.getElementById('add-quiz-question');
             const imagePreviewUrls = [];
+            let activeQuizQuestionIndex = 0;
 
             if (!form || !moduleField || !submitButton) {
                 return;
@@ -139,6 +142,107 @@
                 });
             };
 
+            const getQuizCards = function () {
+                if (!quizQuestionList) {
+                    return [];
+                }
+                return Array.from(quizQuestionList.querySelectorAll('.quiz-builder-card'));
+            };
+
+            const setActiveQuizQuestion = function (nextIndex) {
+                const cards = getQuizCards();
+                if (!cards.length) {
+                    return;
+                }
+
+                const boundedIndex = Math.min(Math.max(nextIndex, 0), cards.length - 1);
+                const shouldRefreshPagination = boundedIndex !== activeQuizQuestionIndex;
+                activeQuizQuestionIndex = boundedIndex;
+
+                cards.forEach(function (card, index) {
+                    const isActive = index === boundedIndex;
+                    card.hidden = !isActive;
+                    card.classList.toggle('is-active', isActive);
+                });
+
+                if (quizQuestionPagination) {
+                    quizQuestionPagination.querySelectorAll('.quiz-page-dot').forEach(function (dot, index) {
+                        const isActive = index === boundedIndex;
+                        dot.classList.toggle('is-active', isActive);
+                        dot.setAttribute('aria-current', isActive ? 'page' : 'false');
+                    });
+                }
+
+                if (quizQuestionProgress) {
+                    quizQuestionProgress.textContent = `Página ${boundedIndex + 1} de ${cards.length}`;
+                }
+
+                if (shouldRefreshPagination && quizQuestionPagination) {
+                    renderQuizQuestionPagination();
+                }
+            };
+
+            const renderQuizQuestionPagination = function () {
+                const cards = getQuizCards();
+                if (!quizQuestionPagination) {
+                    setActiveQuizQuestion(activeQuizQuestionIndex);
+                    return;
+                }
+
+                quizQuestionPagination.innerHTML = '';
+                const total = cards.length;
+                const currentPage = activeQuizQuestionIndex + 1;
+                const items = [];
+
+                if (total <= 7) {
+                    for (let page = 1; page <= total; page += 1) {
+                        items.push(page);
+                    }
+                } else {
+                    items.push(1);
+
+                    const windowStart = Math.max(2, currentPage - 1);
+                    const windowEnd = Math.min(total - 1, currentPage + 1);
+
+                    if (windowStart > 2) {
+                        items.push('ellipsis-start');
+                    }
+
+                    for (let page = windowStart; page <= windowEnd; page += 1) {
+                        items.push(page);
+                    }
+
+                    if (windowEnd < total - 1) {
+                        items.push('ellipsis-end');
+                    }
+
+                    items.push(total);
+                }
+
+                items.forEach(function (item) {
+                    if (typeof item !== 'number') {
+                        const ellipsis = document.createElement('span');
+                        ellipsis.className = 'quiz-page-ellipsis';
+                        ellipsis.textContent = '...';
+                        ellipsis.setAttribute('aria-hidden', 'true');
+                        quizQuestionPagination.appendChild(ellipsis);
+                        return;
+                    }
+
+                    const dot = document.createElement('button');
+                    dot.type = 'button';
+                    dot.className = 'quiz-page-dot';
+                    dot.textContent = String(item);
+                    dot.setAttribute('aria-label', `Ir para a questão ${item}`);
+                    dot.addEventListener('click', function () {
+                        setActiveQuizQuestion(item - 1);
+                    });
+                    quizQuestionPagination.appendChild(dot);
+                });
+
+                setActiveQuizQuestion(activeQuizQuestionIndex);
+            };
+
             const bindQuestionRemoval = function (card) {
                 if (!card) {
                     return;
@@ -155,8 +259,13 @@
                         return;
                     }
 
+                    const removedIndex = getQuizCards().indexOf(card);
                     card.remove();
                     renumberQuizQuestions();
+                    if (activeQuizQuestionIndex >= removedIndex) {
+                        activeQuizQuestionIndex = Math.max(0, activeQuizQuestionIndex - 1);
+                    }
+                    renderQuizQuestionPagination();
                     syncSubmitAvailability();
                 });
             };
@@ -305,6 +414,8 @@
                     bindQuestionImagePreview(wrapper.querySelector('input[type="file"]'));
                     bindQuestionRemoval(wrapper);
                     renumberQuizQuestions();
+                    activeQuizQuestionIndex = getQuizCards().length - 1;
+                    renderQuizQuestionPagination();
                     syncSubmitAvailability();
                 });
             }
@@ -312,6 +423,7 @@
                 quizQuestionList.querySelectorAll('input[type="file"]').forEach(bindQuestionImagePreview);
                 quizQuestionList.querySelectorAll('.quiz-builder-card').forEach(bindQuestionRemoval);
                 renumberQuizQuestions();
+                renderQuizQuestionPagination();
             }
             syncSubmitAvailability();
 
@@ -325,6 +437,13 @@
                 }
 
                 event.preventDefault();
+                const invalidQuizCard = firstInvalidField.closest('.quiz-builder-card');
+                if (invalidQuizCard && quizQuestionList) {
+                    const invalidQuizCardIndex = getQuizCards().indexOf(invalidQuizCard);
+                    if (invalidQuizCardIndex >= 0) {
+                        setActiveQuizQuestion(invalidQuizCardIndex);
+                    }
+                }
                 firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 firstInvalidField.focus({ preventScroll: true });
 
@@ -468,9 +587,14 @@
                             <button id="add-quiz-question" class="ghost-button compact" type="button">Adicionar questão</button>
                         </div>
 
+                        <div class="quiz-builder-pagination-shell" aria-label="Navegação entre questões">
+                            <span id="quiz-question-progress" class="quiz-builder-progress">Página 1 de {{ form.question_blocks|length }}</span>
+                            <div id="quiz-question-pagination" class="quiz-builder-pagination-dots"></div>
+                        </div>
+
                         <div id="quiz-question-list" class="quiz-builder-list">
                             {% for question in form.question_blocks %}
-                                <article class="quiz-builder-card">
+                                <article class="quiz-builder-card{% if question.index == 1 %} is-active{% endif %}" {% if question.index != 1 %}hidden{% endif %}>
                                     <div class="quiz-builder-head">
                                         <strong data-question-title>Questão {{ question.index }}</strong>
                                         <button class="ghost-button compact" data-remove-question type="button">Excluir questão</button>

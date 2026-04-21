@@ -33,11 +33,11 @@
                 <p><strong>Professor:</strong> {{ course.teacher.get_full_name|default:course.teacher.username }}</p>
                 <p><strong>Status:</strong> {% if course.is_published %}Publicado{% else %}Rascunho{% endif %}</p>
             </div>
-            {% if active_enrollments %}
+            {% if active_enrollments_page.paginator.count %}
                 <div class="course-roster">
                     <p><strong>Estudantes ativos:</strong> {{ student_count }}</p>
                     <div class="roster-list">
-                        {% for enrollment in active_enrollments %}
+                        {% for enrollment in active_enrollments_page %}
                             <div class="roster-entry">
                                 <strong>{{ enrollment.student.get_full_name|default:enrollment.student.username }}</strong>
                                 {% if enrollment.student.profile.academic_id %}
@@ -46,6 +46,19 @@
                             </div>
                         {% endfor %}
                     </div>
+                    {% if active_enrollments_page.has_other_pages %}
+                        <div class="pagination-row roster-pagination">
+                            <span class="pagination-label">Página {{ active_enrollments_page.number }} de {{ active_enrollments_page.paginator.num_pages }}</span>
+                            <div class="pagination-actions">
+                                {% if active_enrollments_page.has_previous %}
+                                    <a class="page-button" href="?module_page={{ modules_page.number }}&activity_page={% if modules_page.object_list %}{{ modules_page.object_list.0.activities_page.number }}{% else %}1{% endif %}&roster_page={{ active_enrollments_page.previous_page_number }}">← Anterior</a>
+                                {% endif %}
+                                {% if active_enrollments_page.has_next %}
+                                    <a class="page-button" href="?module_page={{ modules_page.number }}&activity_page={% if modules_page.object_list %}{{ modules_page.object_list.0.activities_page.number }}{% else %}1{% endif %}&roster_page={{ active_enrollments_page.next_page_number }}">Próxima →</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
                 </div>
             {% endif %}
         </section>
@@ -91,8 +104,8 @@
                         {% endif %}
                         <div class="activity-list">
                             {% for activity in module.activities_page %}
-                                {% if activity.activity_type_value == 'quiz' and is_enrolled_student and not is_teacher %}
-                                    <article class="activity-card activity-card-quiz">
+                                <a class="activity-card-link" href="{% url 'agora:course_item_detail' activity.id %}" aria-label="Abrir item {{ activity.title }}">
+                                    <article class="activity-card">
                                         <div class="activity-head">
                                             <strong>{{ activity.title }}</strong>
                                             {% if activity.is_published %}
@@ -111,59 +124,8 @@
                                                 <span>Total: {{ activity.max_score }}</span>
                                             {% endif %}
                                         </div>
-                                        <div class="activity-footer quiz-footer">
-                                            {% if activity.quiz and activity.quiz.has_answer %}
-                                                <span class="quiz-status">
-                                                    {{ activity.quiz.answered_count }}/{{ activity.quiz.question_count }} respondidas
-                                                    {% if activity.quiz.score != None %}· {{ activity.quiz.score }} ponto{{ activity.quiz.score|pluralize }}{% endif %}
-                                                </span>
-                                            {% endif %}
-                                            <div class="quiz-footer-actions">
-                                                <a class="primary-button compact" href="{% url 'agora:course_item_detail' activity.id %}">Responder ao quiz</a>
-                                            </div>
-                                        </div>
                                     </article>
-                                {% else %}
-                                    <a class="activity-card-link" href="{% url 'agora:course_item_detail' activity.id %}" aria-label="Abrir item {{ activity.title }}">
-                                        <article class="activity-card">
-                                            <div class="activity-head">
-                                                <strong>{{ activity.title }}</strong>
-                                                {% if activity.is_published %}
-                                                    <span class="status-pill accent">Publicado</span>
-                                                {% else %}
-                                                    <span class="status-pill neutral">Rascunho</span>
-                                                {% endif %}
-                                            </div>
-                                            <p>{{ activity.description|truncatechars:100 }}</p>
-                                            <div class="activity-meta">
-                                                <span>Tipo: {{ activity.activity_type }}</span>
-                                                {% if activity.due_date %}
-                                                    <span>Prazo: {{ activity.due_date|date:"d/m/Y H:i" }}</span>
-                                                {% endif %}
-                                                {% if activity.max_score != None %}
-                                                    <span>Total: {{ activity.max_score }}</span>
-                                                {% endif %}
-                                            </div>
-                                            {% if activity.activity_type_value == 'quiz' and activity.quiz and is_teacher %}
-                                                <div class="teacher-quiz-summary">
-                                                    {% for question in activity.quiz.questions %}
-                                                        <strong>Questão {{ forloop.counter }} · {{ question.score }} ponto{{ question.score|pluralize }}</strong>
-                                                        <p>{{ question.statement }}</p>
-                                                        <ul class="teacher-quiz-options">
-                                                            {% for option in question.options %}
-                                                                <li>
-                                                                    {{ option.text }}
-                                                                    {% if option.is_correct %}(correta){% endif %}
-                                                                    · {{ option.answer_count }} resposta{{ option.answer_count|pluralize }}
-                                                                </li>
-                                                            {% endfor %}
-                                                        </ul>
-                                                    {% endfor %}
-                                                </div>
-                                            {% endif %}
-                                        </article>
-                                    </a>
-                                {% endif %}
+                                </a>
                             {% endfor %}
                         </div>
                         {% if module.activities_page.has_other_pages %}
