@@ -1,0 +1,151 @@
+{% extends 'agora/layout.html' %}
+{% load static %}
+
+{% block title %}Desempenho | {{ course.title }} | Ágora{% endblock %}
+{% block stylesheet %}<link rel="stylesheet" href="{% static 'agora/css/course_performance.css' %}">{% endblock %}
+
+{% block page_eyebrow %}{{ course.code }} · Relatório{% endblock %}
+{% block page_title %}Desempenho dos alunos{% endblock %}
+{% block page_lead %}
+    Consulte as entregas, respostas e notas do curso. Você também pode atualizar a nota final de cada matrícula ativa.
+{% endblock %}
+
+{% block content %}
+    <section class="performance-shell">
+        <section class="panel performance-summary-panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Curso</p>
+                    <h2>{{ course.title }}</h2>
+                </div>
+                <a class="ghost-button" href="{% url 'agora:course_detail' course.id %}">Voltar ao curso</a>
+            </div>
+
+            <div class="performance-summary-grid">
+                <article class="performance-stat-card">
+                    <span>Professor</span>
+                    <strong>{{ course.teacher.get_full_name|default:course.teacher.username }}</strong>
+                </article>
+                <article class="performance-stat-card">
+                    <span>Estudantes ativos</span>
+                    <strong>{{ student_count }}</strong>
+                </article>
+                <article class="performance-stat-card">
+                    <span>Código</span>
+                    <strong>{{ course.code }}</strong>
+                </article>
+            </div>
+        </section>
+
+        {% if student_cards_page %}
+            <section class="performance-list">
+                {% for card in student_cards_page %}
+                    <article class="panel performance-card">
+                        <div class="performance-card-head">
+                            <div>
+                                <p class="eyebrow">Estudante</p>
+                                <h2>{{ card.enrollment.student.get_full_name|default:card.enrollment.student.username }}</h2>
+                                <p class="performance-student-meta">
+                                    {% if card.enrollment.student.profile.academic_id %}
+                                        Matrícula {{ card.enrollment.student.profile.academic_id }}
+                                    {% else %}
+                                        {{ card.enrollment.student.username }}
+                                    {% endif %}
+                                </p>
+                            </div>
+
+                            <form class="performance-grade-form" method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_final_grade">
+                                <input type="hidden" name="enrollment_id" value="{{ card.enrollment.id }}">
+                                <input type="hidden" name="student_page" value="{{ student_cards_page.number }}">
+                                <div class="form-field">
+                                    <label for="{{ card.grade_form.final_grade.id_for_label }}">{{ card.grade_form.final_grade.label }}</label>
+                                    {{ card.grade_form.final_grade }}
+                                    {% for error in card.grade_form.final_grade.errors %}
+                                        <span class="field-error">{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                                <button class="primary-button compact" type="submit">Salvar nota</button>
+                            </form>
+                        </div>
+
+                        <div class="performance-metrics">
+                            <div class="metric-pill">
+                                <span>Entregas/Respostas</span>
+                                <strong>{{ card.delivered_count }}</strong>
+                            </div>
+                            <div class="metric-pill">
+                                <span>Notas registradas</span>
+                                <strong>{{ card.graded_count }}</strong>
+                            </div>
+                            <div class="metric-pill">
+                                <span>Média parcial</span>
+                                <strong>{% if card.average_score != None %}{{ card.average_score }}{% else %}—{% endif %}</strong>
+                            </div>
+                        </div>
+
+                        {% if card.items %}
+                            <div class="performance-table-wrap">
+                                <table class="performance-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Tipo</th>
+                                            <th>Status</th>
+                                            <th>Nota</th>
+                                            <th>Data</th>
+                                            <th>Feedback</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in card.items %}
+                                            <tr>
+                                                <td>{{ item.title }}</td>
+                                                <td>{{ item.kind }}</td>
+                                                <td>{{ item.status }}</td>
+                                                <td>
+                                                    {% if item.score != None %}
+                                                        {{ item.score }}{% if item.max_score != None %} / {{ item.max_score }}{% endif %}
+                                                    {% else %}
+                                                        —
+                                                    {% endif %}
+                                                </td>
+                                                <td>{% if item.submitted_at %}{{ item.submitted_at|date:"d/m/Y H:i" }}{% else %}—{% endif %}</td>
+                                                <td>{% if item.feedback %}{{ item.feedback|truncatechars:90 }}{% else %}—{% endif %}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="empty-state performance-empty-state">
+                                <h3>Sem registros ainda.</h3>
+                                <p>Este estudante ainda não possui tarefas entregues nem quizzes respondidos neste curso.</p>
+                            </div>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </section>
+
+            {% if student_cards_page.has_other_pages %}
+                <div class="pagination-row performance-pagination">
+                    <span class="pagination-label">Página {{ student_cards_page.number }} de {{ student_cards_page.paginator.num_pages }}</span>
+                    <div class="pagination-actions">
+                        {% if student_cards_page.has_previous %}
+                            <a class="page-button" href="?student_page={{ student_cards_page.previous_page_number }}">← Anterior</a>
+                        {% endif %}
+                        {% if student_cards_page.has_next %}
+                            <a class="page-button" href="?student_page={{ student_cards_page.next_page_number }}">Próxima →</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <section class="panel empty-state performance-empty-state">
+                <h3>Nenhum estudante ativo neste curso.</h3>
+                <p>Quando houver matrículas ativas, o relatório de desempenho aparecerá aqui.</p>
+            </section>
+        {% endif %}
+    </section>
+{% endblock %}

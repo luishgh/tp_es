@@ -1,20 +1,52 @@
 from collections import defaultdict
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.cache import never_cache
 
-from ..forms import CourseCreateForm
-from ..models import AssignmentItem, Course, CourseItem, Enrollment, Submission, UserProfile
+from ..forms import CourseCreateForm, EnrollmentGradeForm
+from ..models import Answer, AssignmentItem, Course, CourseItem, Enrollment, QuizItem, Submission, UserProfile
 from .common import _user_role
 
 
 def _detail_due_date(course_item):
     detail = course_item.detail_object
     return getattr(detail, 'due_date', None)
+
+
+def _question_is_correct(question, selected_option_ids):
+    selected_ids = set(selected_option_ids)
+    correct_ids = set(question.options.filter(is_correct=True).values_list('id', flat=True))
+    return selected_ids == correct_ids
+
+
+def _calculate_quiz_score(questions, answers):
+    answers_by_question = {}
+    for answer in answers:
+        answers_by_question.setdefault(answer.question_id, set()).add(answer.selected_option_id)
+
+    return round(
+        sum(
+            float(question.weight)
+            for question in questions
+            if _question_is_correct(question, answers_by_question.get(question.id, set()))
+        ),
+        2,
+    )
+
+
+def _calculate_default_final_grade(report_items):
+    scored_items = [Decimal(str(item['score'])) for item in report_items if item['score'] is not None]
+    if not scored_items:
+        return None
+    return sum(scored_items, Decimal('0'))
+
+
 @never_cache
 @login_required(login_url='agora:login')
 def courses_hub_view(request):
@@ -224,6 +256,145 @@ def course_detail_view(request, course_id):
         'current_activity_page': activity_page_number or '1',
     }
     return render(request, 'agora/course_detail.html', context)
+
+
+@never_cache
+@login_required(login_url='agora:login')
+def course_performance_view(request, course_id):
+    course = get_object_or_404(Course.objects.select_related('teacher'), pk=course_id)
+    if course.teacher_id != request.user.id or _user_role(request.user) != UserProfile.Role.TEACHER:
+        messages.error(request, 'Você não tem permissão para acessar o desempenho deste curso.')
+        return redirect('agora:course_detail', course_id=course.id)
+
+    active_enrollments = list(
+        Enrollment.objects.select_related('student', 'student__profile')
+        .filter(course=course, status=Enrollment.Status.ACTIVE)
+        .order_by('student__first_name', 'student__last_name', 'student__username')
+    )
+
+    enrollment_forms = {}
+
+    current_student_page = request.GET.get('student_page', '1')
+    if request.method == 'POST' and request.POST.get('action') == 'update_final_grade':
+        enrollment = get_object_or_404(
+            Enrollment.objects.select_related('course'),
+            pk=request.POST.get('enrollment_id'),
+            course=course,
+            status=Enrollment.Status.ACTIVE,
+        )
+        current_student_page = request.POST.get('student_page') or current_student_page
+        form = EnrollmentGradeForm(request.POST, prefix=f'enrollment-{enrollment.id}')
+        enrollment_forms[enrollment.id] = form
+        if form.is_valid():
+            enrollment.final_grade = form.cleaned_data['final_grade']
+            enrollment.save(update_fields=['final_grade'])
+            messages.success(
+                request,
+                f'Nota final atualizada para {enrollment.student.get_full_name() or enrollment.student.username}.',
+            )
+            return redirect(f"{reverse('agora:course_performance', args=[course.id])}?student_page={current_student_page}")
+
+    student_ids = [enrollment.student_id for enrollment in active_enrollments]
+
+    assignment_submissions = list(
+        Submission.objects.select_related('assignment', 'student')
+        .filter(assignment__course=course, student_id__in=student_ids)
+        .exclude(status=Submission.Status.DRAFT)
+        .order_by('student__first_name', 'student__last_name', 'assignment__title')
+    )
+
+    quizzes = list(
+        QuizItem.objects.filter(course=course)
+        .prefetch_related('questions__options')
+        .order_by('title')
+    )
+    quizzes_by_id = {quiz.id: quiz for quiz in quizzes}
+    quiz_answers = list(
+        Answer.objects.select_related('quiz', 'question', 'selected_option', 'student')
+        .filter(quiz__course=course, student_id__in=student_ids)
+        .order_by('student__first_name', 'student__last_name', 'quiz__title', 'question__order')
+    )
+
+    quiz_questions_by_id = {
+        quiz.id: list(quiz.questions.all().order_by('order', 'id'))
+        for quiz in quizzes
+    }
+    quiz_answer_groups = defaultdict(list)
+    for answer in quiz_answers:
+        quiz_answer_groups[(answer.student_id, answer.quiz_id)].append(answer)
+
+    reports_by_student = defaultdict(list)
+    for submission in assignment_submissions:
+        reports_by_student[submission.student_id].append(
+            {
+                'kind': 'Tarefa',
+                'title': submission.assignment.title,
+                'status': submission.get_status_display(),
+                'score': submission.score,
+                'max_score': submission.assignment.max_score,
+                'submitted_at': submission.submitted_at,
+                'feedback': submission.feedback,
+            }
+        )
+
+    for (student_id, quiz_id), answers in quiz_answer_groups.items():
+        quiz = quizzes_by_id.get(quiz_id)
+        if not quiz:
+            continue
+        questions = quiz_questions_by_id.get(quiz_id, [])
+        quiz_score = _calculate_quiz_score(questions, answers)
+        answered_at = max(answer.answered_at for answer in answers)
+        reports_by_student[student_id].append(
+            {
+                'kind': 'Quiz',
+                'title': quiz.title,
+                'status': 'Respondido',
+                'score': quiz_score,
+                'max_score': quiz.max_score,
+                'submitted_at': answered_at,
+                'feedback': '',
+            }
+        )
+
+    student_cards = []
+    for enrollment in active_enrollments:
+        report_items = sorted(
+            reports_by_student.get(enrollment.student_id, []),
+            key=lambda item: (
+                item['submitted_at'] is None,
+                item['submitted_at'],
+                item['title'].lower(),
+            ),
+            reverse=True,
+        )
+        suggested_final_grade = _calculate_default_final_grade(report_items)
+        enrollment_forms.setdefault(
+            enrollment.id,
+            EnrollmentGradeForm(
+                prefix=f'enrollment-{enrollment.id}',
+                initial={'final_grade': enrollment.final_grade if enrollment.final_grade is not None else suggested_final_grade},
+            ),
+        )
+        reviewed_scores = [float(item['score']) for item in report_items if item['score'] is not None]
+        student_cards.append(
+            {
+                'enrollment': enrollment,
+                'grade_form': enrollment_forms[enrollment.id],
+                'items': report_items,
+                'delivered_count': len(report_items),
+                'graded_count': len(reviewed_scores),
+                'average_score': round(sum(reviewed_scores) / len(reviewed_scores), 2) if reviewed_scores else None,
+                'suggested_final_grade': suggested_final_grade,
+            }
+        )
+
+    student_cards_page = Paginator(student_cards, 5).get_page(current_student_page)
+    context = {
+        'course': course,
+        'student_cards_page': student_cards_page,
+        'student_count': len(student_cards),
+    }
+    return render(request, 'agora/course_performance.html', context)
 
 
 @never_cache

@@ -16,6 +16,7 @@ from .admin_views import create_user_view  # noqa: E402,F401
 from .auth import login_view, logout_view  # noqa: E402,F401
 from .courses import (  # noqa: E402,F401
     course_detail_view,
+    course_performance_view,
     courses_hub_view,
     enrollment_decision_view,
     publish_course_view,

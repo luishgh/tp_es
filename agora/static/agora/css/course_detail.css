@@ -26,6 +26,17 @@
     border-top: 1px dashed var(--border-color);
 }
 
+.course-roster-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--size-3);
+}
+
+.course-roster-head p {
+    margin: 0;
+}
+
 .roster-list {
     display: grid;
     gap: var(--size-2);

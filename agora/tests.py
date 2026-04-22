@@ -84,6 +84,112 @@ class CourseDetailViewTests(TestCase):
         self.assertContains(response, 'Nenhuma atividade disponível ainda.')
 
 
+class CoursePerformanceViewTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+
+        self.teacher = user_model.objects.create_user(
+            username='teacher-performance',
+            password='test-pass-123',
+            first_name='Ada',
+            last_name='Lovelace',
+        )
+        self.teacher.profile.role = UserProfile.Role.TEACHER
+        self.teacher.profile.save(update_fields=['role'])
+
+        self.other_teacher = user_model.objects.create_user(
+            username='other-teacher',
+            password='test-pass-123',
+            first_name='Barbara',
+            last_name='Liskov',
+        )
+        self.other_teacher.profile.role = UserProfile.Role.TEACHER
+        self.other_teacher.profile.save(update_fields=['role'])
+
+        self.student = user_model.objects.create_user(
+            username='student-performance',
+            password='test-pass-123',
+            first_name='Grace',
+            last_name='Hopper',
+        )
+        self.student.profile.role = UserProfile.Role.STUDENT
+        self.student.profile.academic_id = '260000001'
+        self.student.profile.save(update_fields=['role', 'academic_id'])
+
+        self.course = Course.objects.create(
+            code='DCC300',
+            title='Course Performance',
+            description='Course used to validate teacher performance reports.',
+            syllabus='Performance syllabus',
+            workload_hours=60,
+            teacher=self.teacher,
+            is_published=True,
+        )
+        self.enrollment = Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+            status=Enrollment.Status.ACTIVE,
+        )
+
+        self.assignment = AssignmentItem.objects.create(
+            course=self.course,
+            title='Lista 1',
+            description='Entrega 1',
+            due_date=timezone.now() + timedelta(days=3),
+            max_score=10,
+            created_by=self.teacher,
+            is_published=True,
+        )
+        Submission.objects.create(
+            assignment=self.assignment,
+            student=self.student,
+            status=Submission.Status.REVIEWED,
+            content='Entrega pronta',
+            score='8.5',
+            feedback='Bom trabalho',
+            submitted_at=timezone.now(),
+            graded_at=timezone.now(),
+            graded_by=self.teacher,
+        )
+
+    def test_teacher_can_view_course_performance(self):
+        self.client.force_login(self.teacher)
+
+        response = self.client.get(reverse('agora:course_performance', args=[self.course.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Desempenho dos alunos')
+        self.assertContains(response, 'Grace Hopper')
+        self.assertContains(response, 'Lista 1')
+        self.assertContains(response, 'Bom trabalho')
+        student_card = response.context['student_cards_page'].object_list[0]
+        self.assertEqual(float(student_card['grade_form'].initial['final_grade']), 8.5)
+
+    def test_other_teacher_cannot_view_course_performance(self):
+        self.client.force_login(self.other_teacher)
+
+        response = self.client.get(reverse('agora:course_performance', args=[self.course.id]))
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_teacher_can_update_final_grade(self):
+        self.client.force_login(self.teacher)
+
+        response = self.client.post(
+            reverse('agora:course_performance', args=[self.course.id]),
+            data={
+                'action': 'update_final_grade',
+                'enrollment_id': str(self.enrollment.id),
+                'student_page': '1',
+                f'enrollment-{self.enrollment.id}-final_grade': '9.25',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.enrollment.refresh_from_db()
+        self.assertEqual(float(self.enrollment.final_grade), 9.25)
+
+
 class ActivityCreateViewTests(TestCase):
     def setUp(self):
         user_model = get_user_model()

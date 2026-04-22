@@ -35,7 +35,12 @@
             </div>
             {% if active_enrollments_page.paginator.count %}
                 <div class="course-roster">
-                    <p><strong>Estudantes ativos:</strong> {{ student_count }}</p>
+                    <div class="course-roster-head">
+                        <p><strong>Estudantes ativos:</strong> {{ student_count }}</p>
+                        {% if is_teacher %}
+                            <a class="ghost-button compact" href="{% url 'agora:course_performance' course.id %}">Relatório de Notas</a>
+                        {% endif %}
+                    </div>
                     <div class="roster-list">
                         {% for enrollment in active_enrollments_page %}
                             <div class="roster-entry">

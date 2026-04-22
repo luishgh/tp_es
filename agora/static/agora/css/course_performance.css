@@ -1,0 +1,127 @@
+.performance-shell {
+    display: grid;
+    gap: 20px;
+}
+
+.performance-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.performance-stat-card,
+.metric-pill {
+    display: grid;
+    gap: 6px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    border: 1px solid rgba(24, 92, 55, 0.12);
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: 0 12px 24px rgba(24, 56, 36, 0.06);
+}
+
+.performance-stat-card span,
+.metric-pill span,
+.performance-student-meta {
+    color: var(--muted);
+}
+
+.performance-stat-card strong,
+.metric-pill strong {
+    font-size: 1.15rem;
+    color: var(--text);
+}
+
+.performance-list {
+    display: grid;
+    gap: 18px;
+}
+
+.performance-card {
+    display: grid;
+    gap: 18px;
+}
+
+.performance-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+}
+
+.performance-card-head h2 {
+    margin-bottom: 8px;
+}
+
+.performance-grade-form {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+    flex-wrap: wrap;
+    min-width: 260px;
+}
+
+.performance-grade-form .form-field {
+    min-width: 180px;
+}
+
+.performance-grade-form input {
+    width: 100%;
+}
+
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.performance-table-wrap {
+    overflow-x: auto;
+}
+
+.performance-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 760px;
+}
+
+.performance-table th,
+.performance-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid rgba(24, 92, 55, 0.08);
+    vertical-align: top;
+}
+
+.performance-table th {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.performance-empty-state {
+    text-align: left;
+}
+
+.performance-pagination {
+    margin-top: 4px;
+}
+
+@media (max-width: 960px) {
+    .performance-summary-grid,
+    .performance-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .performance-card-head {
+        flex-direction: column;
+    }
+
+    .performance-grade-form {
+        width: 100%;
+    }
+
+    .performance-grade-form .form-field {
+        width: 100%;
+    }
+}

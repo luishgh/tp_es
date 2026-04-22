@@ -172,6 +172,17 @@ class ModuleCreateForm(forms.ModelForm):
         return cleaned_data
 
 
+class EnrollmentGradeForm(forms.Form):
+    final_grade = forms.DecimalField(
+        label='Nota final',
+        required=False,
+        min_value=0,
+        max_digits=5,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'placeholder': 'Ex.: 8.50'}),
+    )
+
+
 class BaseCourseActivityForm(forms.ModelForm):
     title_placeholder = ''
     description_placeholder = ''

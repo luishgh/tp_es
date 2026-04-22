@@ -9,6 +9,7 @@ urlpatterns = [
     path('calendario/', calendar_view, name='calendar'),
     path('cursos/', courses_hub_view, name='courses_hub'),
     path('cursos/<int:course_id>/', course_detail_view, name='course_detail'),
+    path('cursos/<int:course_id>/desempenho/', course_performance_view, name='course_performance'),
     path('cursos/<int:course_id>/publicar/', publish_course_view, name='publish_course'),
     path('cursos/<int:course_id>/modulos/criar/', module_create_view, name='module_create'),
     path('cursos/<int:course_id>/itens/criar/', course_item_create_view, name='course_item_create'),
