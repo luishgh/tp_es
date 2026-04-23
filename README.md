@@ -19,6 +19,20 @@ Nosso sistema visa fornecer uma plataforma virtual de aprendizagem completa e in
 - **Banco de Dados:** SQLite
 - **Agentes de IA:** Claude Code, Codex
 
+## Dataset de demonstração
+
+Para popular o banco com dados fictícios, use:
+
+```bash
+python manage.py migrate
+python manage.py seed --reset --seed 1234 --password demo123
+```
+
+- Usuários criados: `demo_prof_ana`, `demo_prof_carlos`, `demo_aluno_joao`, `demo_aluna_maria`, `demo_aluno_pedro`, `demo_aluna_luiza`, `demo_aluno_rodrigo`, `demo_aluna_camila`, `demo_aluno_felipe`, `demo_aluna_bruna`, `demo_aluno_igor`
+- Cursos criados: códigos começando com `DEMO-`
+- O `--reset` remove **apenas** dados de demonstração (usuários `demo_*` e cursos `DEMO-*`) antes de recriar.
+- O `--seed` permite repetir as mesmas variações textuais entre execuções.
+
 ## Histórias de Usuário
 0. Como estudante, quero fazer login para acessar meus cursos e todos os recursos disponíveis de cada um deles.
 1. Como estudante, quero realizar tarefas e atividades para que meu progresso seja registrado automaticamente.
