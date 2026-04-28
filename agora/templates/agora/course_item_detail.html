@@ -55,7 +55,7 @@
                     <p><strong>Questões:</strong> {{ quiz_questions|length }}</p>
                 {% endif %}
                 {% if activity.kind == 'forum' %}
-                    <p><strong>Mensagens:</strong> {{ forum_messages|length }}</p>
+                    <p><strong>Mensagens:</strong> {{ forum_message_count }}</p>
                 {% endif %}
             </div>
         </section>
@@ -294,21 +294,23 @@
                 <div class="section-head">
                     <div>
                         <p class="eyebrow">Discussão</p>
-                        <h2>Chat do fórum</h2>
+                        <h2>Discussão do fórum</h2>
                     </div>
-                    <span>{{ forum_messages|length }} mensagem{{ forum_messages|pluralize:"ens" }}</span>
+                    <div class="forum-panel-actions">
+                        <span>{{ forum_message_count }} mensagem{% if forum_message_count != 1 %}ns{% endif %}</span>
+                        {% if is_teacher %}
+                            <form method="post" action="{% url 'agora:delete_forum' activity.id %}" onsubmit="return confirm('Deseja excluir este fórum e todas as mensagens?');">
+                                {% csrf_token %}
+                                <button class="ghost-button compact danger-button" type="submit">Excluir fórum</button>
+                            </form>
+                        {% endif %}
+                    </div>
                 </div>
 
-                {% if forum_messages %}
+                {% if forum_threads %}
                     <div class="forum-thread">
-                        {% for message in forum_messages %}
-                            <article class="forum-message">
-                                <div class="forum-message-head">
-                                    <strong>{{ message.author.get_full_name|default:message.author.username }}</strong>
-                                    <span>{{ message.created_at|date:"d/m/Y H:i" }}</span>
-                                </div>
-                                <p>{{ message.content }}</p>
-                            </article>
+                        {% for message in forum_threads %}
+                            {% include 'agora/partials/forum_message.html' with message=message activity=activity is_teacher=is_teacher %}
                         {% endfor %}
                     </div>
                 {% else %}
@@ -323,6 +325,14 @@
                         {% csrf_token %}
                         <input type="hidden" name="action" value="post_forum_message">
 
+                        <div class="forum-form-head">
+                            <div>
+                                <p class="eyebrow">Participação</p>
+                                <h3>Nova mensagem</h3>
+                            </div>
+                            <p class="forum-form-lead">Compartilhe uma dúvida, ideia ou comentário para iniciar a discussão.</p>
+                        </div>
+
                         {% for error in forum_form.non_field_errors %}
                             <span class="field-error form-error-banner">{{ error }}</span>
                         {% endfor %}
@@ -336,7 +346,7 @@
                         </div>
 
                         <div class="form-actions">
-                            <button class="primary-button" type="submit">Enviar mensagem</button>
+                            <button class="primary-button" type="submit">Publicar nova mensagem</button>
                         </div>
                     </form>
                 {% endif %}

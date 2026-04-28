@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Count
@@ -67,6 +69,60 @@ ACTIVITY_CREATE_CONFIG = {
         'description': 'Abra um espaço de discussão entre os estudantes.',
     },
 }
+
+
+def _build_forum_message_tree(messages_qs):
+    nodes_by_id = {}
+    children_by_parent = defaultdict(list)
+
+    for message in messages_qs:
+        nodes_by_id[message.id] = {
+            'id': message.id,
+            'author_name': message.author.get_full_name() or message.author.username,
+            'author_username': message.author.username,
+            'content': message.content,
+            'created_at': message.created_at,
+            'children': [],
+            'depth': 0,
+        }
+        children_by_parent[message.parent_id].append(message.id)
+
+    def attach_children(message_id, depth=0):
+        node = nodes_by_id[message_id]
+        node['depth'] = depth
+        node['children'] = [
+            attach_children(child_id, depth + 1)
+            for child_id in children_by_parent.get(message_id, [])
+        ]
+        return node
+
+    return [attach_children(message_id) for message_id in children_by_parent.get(None, [])]
+
+
+def _handle_forum_message_submission(request, forum, user, course_item_id):
+    forum_form = ForumMessageForm(request.POST)
+    if not forum_form.is_valid():
+        return forum_form
+
+    parent_id = request.POST.get('parent_id')
+    parent_message = None
+    if parent_id:
+        parent_message = forum.messages.filter(pk=parent_id).first()
+        if parent_message is None:
+            forum_form.add_error(None, 'A mensagem que você tentou responder não foi encontrada.')
+            return forum_form
+
+    forum_message = forum_form.save(commit=False)
+    forum_message.forum = forum
+    forum_message.author = user
+    forum_message.parent = parent_message
+    forum_message.save()
+
+    if parent_message is None:
+        messages.success(request, 'Mensagem enviada no fórum.')
+    else:
+        messages.success(request, 'Resposta enviada no fórum.')
+    return redirect('agora:course_item_detail', course_item_id=course_item_id)
 
 
 @never_cache
@@ -179,7 +235,8 @@ def course_item_detail_view(request, course_item_id):
     quiz_feedback = None
     quiz_student_answers = {}
     quiz_score = None
-    forum_messages = []
+    forum_message_count = 0
+    forum_threads = []
     material_actions = []
     submission_status = None
     current_submission = None
@@ -229,14 +286,15 @@ def course_item_detail_view(request, course_item_id):
                 }
         elif isinstance(detail, ForumItem):
             if request.method == 'POST' and request.POST.get('action') == 'post_forum_message':
-                forum_form = ForumMessageForm(request.POST)
-                if forum_form.is_valid():
-                    forum_message = forum_form.save(commit=False)
-                    forum_message.forum = detail
-                    forum_message.author = request.user
-                    forum_message.save()
-                    messages.success(request, 'Mensagem enviada no fórum.')
-                    return redirect('agora:course_item_detail', course_item_id=course_item.id)
+                forum_submission_result = _handle_forum_message_submission(
+                    request,
+                    forum=detail,
+                    user=request.user,
+                    course_item_id=course_item.id,
+                )
+                if hasattr(forum_submission_result, 'status_code'):
+                    return forum_submission_result
+                forum_form = forum_submission_result
             else:
                 forum_form = ForumMessageForm()
         elif isinstance(detail, QuizItem):
@@ -314,15 +372,18 @@ def course_item_detail_view(request, course_item_id):
         forum_messages = list(
             detail.messages.select_related('author').order_by('created_at', 'id')
         )
+        forum_message_count = len(forum_messages)
+        forum_threads = _build_forum_message_tree(forum_messages)
         if is_teacher and request.method == 'POST' and request.POST.get('action') == 'post_forum_message':
-            forum_form = ForumMessageForm(request.POST)
-            if forum_form.is_valid():
-                forum_message = forum_form.save(commit=False)
-                forum_message.forum = detail
-                forum_message.author = request.user
-                forum_message.save()
-                messages.success(request, 'Mensagem enviada no fórum.')
-                return redirect('agora:course_item_detail', course_item_id=course_item.id)
+            forum_submission_result = _handle_forum_message_submission(
+                request,
+                forum=detail,
+                user=request.user,
+                course_item_id=course_item.id,
+            )
+            if hasattr(forum_submission_result, 'status_code'):
+                return forum_submission_result
+            forum_form = forum_submission_result
         elif is_teacher and forum_form is None:
             forum_form = ForumMessageForm()
 
@@ -363,13 +424,54 @@ def course_item_detail_view(request, course_item_id):
         'assignment_form': assignment_form,
         'current_submission': current_submission,
         'forum_form': forum_form,
-        'forum_messages': forum_messages,
+        'forum_threads': forum_threads,
+        'forum_message_count': forum_message_count,
         'quiz_questions': quiz_questions,
         'quiz_feedback': quiz_feedback,
         'quiz_score': quiz_score,
         'material_actions': material_actions,
     }
     return render(request, 'agora/course_item_detail.html', context)
+
+
+@never_cache
+@login_required(login_url='agora:login')
+def delete_forum_message_view(request, message_id):
+    if request.method != 'POST':
+        return redirect('agora:index')
+
+    forum_message = get_object_or_404(
+        ForumMessage.objects.select_related('forum', 'forum__course'),
+        pk=message_id,
+    )
+    if forum_message.forum.course.teacher_id != request.user.id:
+        messages.error(request, 'Você não tem permissão para moderar este fórum.')
+        return redirect('agora:course_item_detail', course_item_id=forum_message.forum.id)
+
+    forum_id = forum_message.forum.id
+    forum_message.delete()
+    messages.success(request, 'Mensagem removida com sucesso.')
+    return redirect('agora:course_item_detail', course_item_id=forum_id)
+
+
+@never_cache
+@login_required(login_url='agora:login')
+def delete_forum_view(request, course_item_id):
+    if request.method != 'POST':
+        return redirect('agora:course_item_detail', course_item_id=course_item_id)
+
+    forum = get_object_or_404(
+        ForumItem.objects.select_related('course'),
+        pk=course_item_id,
+    )
+    if forum.course.teacher_id != request.user.id:
+        messages.error(request, 'Você não tem permissão para excluir este fórum.')
+        return redirect('agora:course_item_detail', course_item_id=forum.id)
+
+    course_id = forum.course_id
+    forum.delete()
+    messages.success(request, 'Fórum excluído com sucesso.')
+    return redirect('agora:course_detail', course_id=course_id)
 
 
 @never_cache

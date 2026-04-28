@@ -1,0 +1,44 @@
+<article class="forum-message" style="--forum-depth: {{ message.depth }};">
+    <div class="forum-message-head">
+        <div class="forum-message-meta">
+            <strong>{{ message.author_name }}</strong>
+            <span>@{{ message.author_username }}</span>
+        </div>
+        <span>{{ message.created_at|date:"d/m/Y H:i" }}</span>
+    </div>
+
+    <p>{{ message.content }}</p>
+
+    <div class="forum-message-actions">
+        <details class="forum-reply-toggle">
+            <summary>Responder</summary>
+            <form class="agora-form detail-form forum-reply-form" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="post_forum_message">
+                <input type="hidden" name="parent_id" value="{{ message.id }}">
+                <div class="form-field">
+                    <label for="reply-{{ message.id }}">Sua resposta</label>
+                    <textarea id="reply-{{ message.id }}" name="content" rows="3" placeholder="Escreva sua resposta para esta mensagem."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button class="primary-button compact" type="submit">Responder</button>
+                </div>
+            </form>
+        </details>
+
+        {% if is_teacher %}
+            <form method="post" action="{% url 'agora:delete_forum_message' message.id %}" onsubmit="return confirm('Deseja apagar esta mensagem e todas as respostas?');">
+                {% csrf_token %}
+                <button class="ghost-button compact danger-button" type="submit">Apagar</button>
+            </form>
+        {% endif %}
+    </div>
+
+    {% if message.children %}
+        <div class="forum-replies">
+            {% for message in message.children %}
+                {% include 'agora/partials/forum_message.html' with message=message activity=activity is_teacher=is_teacher %}
+            {% endfor %}
+        </div>
+    {% endif %}
+</article>
