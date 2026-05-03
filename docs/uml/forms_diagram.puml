@@ -11,6 +11,12 @@ skinparam classAttributeIconSize 0
 skinparam packageStyle rectangle
 skinparam roundcorner 6
 
+' === AJUSTES PARA PROPORÇÃO MAIS HORIZONTAL ===
+' Reduz a distância vertical entre caixas na mesma coluna
+skinparam nodesep 25
+' Aumenta a distância horizontal entre as colunas/pacotes
+skinparam ranksep 140
+
 skinparam class {
   BackgroundColor #FFFFFF
   BorderColor #374151
@@ -44,15 +50,31 @@ package "Models usados" as ModelRefs {
   class UserProfile <<Model>>
   class Course <<Model>>
   class Module <<Model>>
+  class Enrollment <<Model>>
+
   class ResourceItem <<Model>>
   class AssignmentItem <<Model>>
   class QuizItem <<Model>>
   class QuizQuestion <<Model>>
   class QuizOption <<Model>>
+
   class ForumItem <<Model>>
   class ForumMessage <<Model>>
   class Submission <<Model>>
-  class Enrollment <<Model>>
+
+  ' --- TRUQUE: Setas invisíveis para forçar os models a se dividirem em 3 colunas horizontais ---
+  ' Isso evita que os 13 models empilhem verticalmente em uma torre gigante.
+  User -[hidden]-> ResourceItem
+  ResourceItem -[hidden]-> ForumItem
+
+  UserProfile -[hidden]-> AssignmentItem
+  AssignmentItem -[hidden]-> ForumMessage
+
+  Course -[hidden]-> QuizItem
+  QuizItem -[hidden]-> Submission
+
+  Module -[hidden]-> QuizQuestion
+  Enrollment -[hidden]-> QuizOption
 }
 
 package "Forms" as Forms {
@@ -154,13 +176,5 @@ AssignmentSubmissionForm ..> Submission : Meta.model
 SubmissionReviewForm ..> Submission : Meta.model
 SubmissionReviewForm ..> AssignmentItem : validates max_score
 ForumMessageForm ..> ForumMessage : Meta.model
-
-note bottom of ModelRefs
-  As setas tracejadas indicam dependência/uso.
-  Os formulários não compõem os models e não
-  herdam dos models; eles herdam de Form ou
-  ModelForm e apontam para models via Meta.model,
-  validações e operações de save().
-end note
 
 @enduml

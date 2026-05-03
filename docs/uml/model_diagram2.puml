@@ -11,9 +11,9 @@ skinparam classAttributeIconSize 0
 skinparam packageStyle rectangle
 skinparam roundcorner 6
 
-' Espaçamento mais equilibrado agora que o diagrama não está tão largo
-skinparam nodesep 60
-skinparam ranksep 80
+' === ESPAÇAMENTO ADICIONADO AQUI ===
+skinparam nodesep 80
+skinparam ranksep 100
 
 skinparam class {
   BackgroundColor #FFFFFF
@@ -201,6 +201,7 @@ package "Models" as Models {
   }
 }
 
+' Herança mantida com dois traços para manter agrupamento natural
 Model <|-- UserProfile
 Model <|-- Course
 Model <|-- Enrollment
@@ -217,34 +218,29 @@ CourseItem <|-- AssignmentItem
 CourseItem <|-- QuizItem
 CourseItem <|-- ForumItem
 
-' === RELACIONAMENTOS COM DIREÇÕES EXPLÍCITAS (FOLDING) ===
+' === SETAS ALONGADAS (---) PARA DAR RESPIRO ÀS CARDINALIDADES ===
 
-' Força o Role a ficar debaixo do UserProfile (e não à direita)
-UserProfile -down-> Role : role
+UserProfile ---> Role : role
 
-' O fluxo principal do curso segue para a direita
-Course *-- "0..*" Module : modules
-Course *-- "0..*" CourseItem : course_items
-Module "0..1" o-- "0..*" CourseItem : groups
+Course *--- "0..*" Enrollment : enrollments
+Enrollment ---> EnrollmentStatus : status
 
-' Mas o Enrollment desce para ficar embaixo do Course (shiftado para a esquerda)
-Course *-down- "0..*" Enrollment : enrollments
-Enrollment -down-> EnrollmentStatus : status
+Course *--- "0..*" Module : modules
+Course *--- "0..*" CourseItem : course_items
+Module "0..1" o--- "0..*" CourseItem : groups
 
-QuizItem *-- "1..*" QuizQuestion : questions
-QuizQuestion *-- "2..*" QuizOption : options
-' O enum QuestionType desce para não alargar o diagrama
-QuizQuestion -down-> QuestionType : question_type
+QuizItem *---- "1..*" QuizQuestion : questions
+QuizQuestion *--- "2..*" QuizOption : options
+QuizQuestion ---> QuestionType : question_type
 
-ForumItem *-- "0..*" ForumMessage : messages
-ForumMessage "0..1" <-down- "0..*" ForumMessage : replies
+ForumItem *--- "0..*" ForumMessage : messages
+ForumMessage "0..1" <--- "0..*" ForumMessage : replies
 
-AssignmentItem *-- "0..*" Submission : submissions
-' O enum de status desce
-Submission -down-> SubmissionStatus : status
+AssignmentItem *--- "0..*" Submission : submissions
+Submission ----> SubmissionStatus : status
 
-QuizItem *-down- "0..*" Answer : answers
-QuizQuestion *-- "0..*" Answer : answers
-QuizOption "1" <-down- "0..*" Answer : selected_option
+QuizItem *--- "0..*" Answer : answers
+QuizQuestion *--- "0..*" Answer : answers
+QuizOption "1" <--- "0..*" Answer : selected_option
 
 @enduml

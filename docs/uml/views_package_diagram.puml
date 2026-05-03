@@ -1,0 +1,137 @@
+@startuml AgoraCoursesSequence
+
+title courses.py - Fluxo HTTP
+
+hide footbox
+
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam dpi 140
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 48
+
+skinparam participant {
+  BackgroundColor #FFFFFF
+  BorderColor #3F3F46
+  FontColor #18181B
+}
+
+skinparam actor {
+  BackgroundColor #FFFFFF
+  BorderColor #3F3F46
+  FontColor #18181B
+}
+
+skinparam sequence {
+  ArrowColor #3F3F46
+  LifeLineBorderColor #9CA3AF
+  LifeLineBackgroundColor #FFFFFF
+  ParticipantBorderColor #3F3F46
+  ParticipantBackgroundColor #FFFFFF
+  BoxBorderColor #E5E7EB
+  BoxBackgroundColor #FFFFFF
+  GroupBorderColor #D4D4D8
+  GroupBackgroundColor #FAFAFA
+}
+
+actor "Cliente" as Client
+participant "agora.urls" as Urls
+participant "courses.py" as Courses
+participant "CourseCreateForm" as CourseForm
+database "Course" as Course
+database "Enrollment" as Enrollment
+database "CourseItem" as CourseItem
+database "Submission" as Submission
+participant "Template" as Template
+
+Client -> Urls : GET /cursos/
+Urls -> Courses : courses_hub_view(request)
+activate Courses
+Courses -> Courses : _user_role(user)
+
+alt professor
+  Courses -> CourseForm : CourseCreateForm()
+  Courses -> Course : courses_taught.order_by()
+  Courses -> Enrollment : active counts
+  Courses -> Enrollment : pending requests
+else estudante
+  Courses -> Course : published courses
+  Courses -> Enrollment : existing enrollments
+end
+
+Courses -> Template : courses_hub.html
+Template --> Client : HTML
+deactivate Courses
+
+Client -> Urls : POST /cursos/
+Urls -> Courses : courses_hub_view(request)
+activate Courses
+Courses -> Courses : _user_role(user)
+Courses -> CourseForm : CourseCreateForm(POST)
+activate CourseForm
+CourseForm --> Courses : valid form
+deactivate CourseForm
+Courses -> Course : save teacher course
+Courses --> Client : redirect /cursos/
+deactivate Courses
+
+Client -> Urls : GET /cursos/{course_id}/
+Urls -> Courses : course_detail_view(request, course_id)
+activate Courses
+Courses -> Course : get course
+Courses -> Enrollment : check access
+
+alt access denied
+  Courses --> Client : redirect /cursos/
+else access granted
+  Courses -> Course : modules
+  Courses -> CourseItem : course items
+  Courses -> Submission : submission counts
+  Courses -> Enrollment : active students
+  Courses -> Template : course_detail.html
+  Template --> Client : HTML
+end
+deactivate Courses
+
+Client -> Urls : POST /cursos/{course_id}/publicar/
+Urls -> Courses : publish_course_view(request, course_id)
+activate Courses
+Courses -> Course : get course
+Courses -> Courses : check teacher
+Courses -> Course : is_published = True
+Courses --> Client : redirect course_detail
+deactivate Courses
+
+Client -> Urls : POST /cursos/{course_id}/solicitar-matricula/
+Urls -> Courses : request_enrollment_view(request, course_id)
+activate Courses
+Courses -> Courses : check student
+Courses -> Course : get published course
+Courses -> Enrollment : find enrollment
+
+alt enrollment exists
+  Courses -> Enrollment : update status
+else new request
+  Courses -> Enrollment : create pending
+end
+
+Courses --> Client : redirect /cursos/
+deactivate Courses
+
+Client -> Urls : POST /matriculas/{id}/{decision}/
+Urls -> Courses : enrollment_decision_view(request, id, decision)
+activate Courses
+Courses -> Courses : check teacher
+Courses -> Enrollment : get pending request
+
+alt accept
+  Courses -> Enrollment : status = ACTIVE
+else reject
+  Courses -> Enrollment : status = CANCELLED
+end
+
+Courses --> Client : redirect /cursos/
+deactivate Courses
+
+@enduml
