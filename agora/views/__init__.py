@@ -6,6 +6,8 @@ from .course_items import (  # noqa: E402,F401
     course_item_delete_view,
     course_item_create_view,
     course_item_detail_view,
+    delete_forum_message_view,
+    delete_forum_view,
     module_create_view,
     publish_course_item_view,
     quiz_delete_view,

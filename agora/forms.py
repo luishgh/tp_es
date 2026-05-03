@@ -2,6 +2,8 @@ from django import forms
 from django.contrib.auth import get_user_model
 from datetime import datetime
 from django.db import transaction
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from decimal import Decimal
 import re
 
@@ -18,6 +20,12 @@ from .models import (
     Submission,
     UserProfile,
 )
+
+
+def _as_current_timezone(value):
+    if value and timezone.is_naive(value):
+        return timezone.make_aware(value, timezone.get_current_timezone())
+    return value
 
 
 class SuperuserCreateUserForm(forms.Form):
@@ -248,6 +256,7 @@ class AssignmentCreateForm(BaseCourseActivityForm):
     description_placeholder = 'Descreva a proposta da tarefa, critérios e orientações de entrega.'
     due_date_date = forms.DateField(
         label='Data',
+        required=False,
         widget=forms.DateInput(
             attrs={'type': 'date', 'class': 'deadline-date-input'},
             format='%Y-%m-%d',
@@ -256,6 +265,7 @@ class AssignmentCreateForm(BaseCourseActivityForm):
     )
     due_date_time = forms.TimeField(
         label='Hora',
+        required=False,
         widget=forms.TimeInput(
             attrs={'type': 'time', 'class': 'deadline-time-input', 'step': 60},
             format='%H:%M',
@@ -303,12 +313,16 @@ class AssignmentCreateForm(BaseCourseActivityForm):
         cleaned_data['statement_url'] = (cleaned_data.get('statement_url') or '').strip()
         due_date_date = cleaned_data.get('due_date_date')
         due_date_time = cleaned_data.get('due_date_time')
+        legacy_due_date = parse_datetime(self.data.get('due_date', '')) if self.data else None
+        if legacy_due_date:
+            due_date_date = due_date_date or legacy_due_date.date()
+            due_date_time = due_date_time or legacy_due_date.time().replace(second=0, microsecond=0)
         if not due_date_date:
             self.add_error('due_date_date', 'Informe a data de entrega da tarefa.')
         if not due_date_time:
             self.add_error('due_date_time', 'Informe o horário de entrega da tarefa.')
         if due_date_date and due_date_time:
-            cleaned_data['due_date'] = datetime.combine(due_date_date, due_date_time)
+            cleaned_data['due_date'] = _as_current_timezone(datetime.combine(due_date_date, due_date_time))
         if cleaned_data.get('max_score') is None:
             self.add_error('max_score', 'Informe a nota máxima da tarefa.')
         return cleaned_data
@@ -328,6 +342,7 @@ class QuizCreateForm(BaseCourseActivityForm):
     quiz_option_count = 4
     due_date_date = forms.DateField(
         label='Data',
+        required=False,
         widget=forms.DateInput(
             attrs={'type': 'date', 'class': 'deadline-date-input'},
             format='%Y-%m-%d',
@@ -336,6 +351,7 @@ class QuizCreateForm(BaseCourseActivityForm):
     )
     due_date_time = forms.TimeField(
         label='Hora',
+        required=False,
         widget=forms.TimeInput(
             attrs={'type': 'time', 'class': 'deadline-time-input', 'step': 60},
             format='%H:%M',
@@ -472,12 +488,16 @@ class QuizCreateForm(BaseCourseActivityForm):
         cleaned_data = super().clean()
         due_date_date = cleaned_data.get('due_date_date')
         due_date_time = cleaned_data.get('due_date_time')
+        legacy_due_date = parse_datetime(self.data.get('due_date', '')) if self.data else None
+        if legacy_due_date:
+            due_date_date = due_date_date or legacy_due_date.date()
+            due_date_time = due_date_time or legacy_due_date.time().replace(second=0, microsecond=0)
         if not due_date_date:
             self.add_error('due_date_date', 'Informe a data de realização do quiz.')
         if not due_date_time:
             self.add_error('due_date_time', 'Informe o horário de realização do quiz.')
         if due_date_date and due_date_time:
-            cleaned_data['due_date'] = datetime.combine(due_date_date, due_date_time)
+            cleaned_data['due_date'] = _as_current_timezone(datetime.combine(due_date_date, due_date_time))
 
         quiz_questions = []
         for question_index in range(1, self.question_count + 1):

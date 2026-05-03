@@ -128,6 +128,15 @@
                                             {% if activity.max_score != None %}
                                                 <span>Total: {{ activity.max_score }}</span>
                                             {% endif %}
+                                            {% if activity.activity_type_value == 'quiz' %}
+                                                <span>Responder ao quiz</span>
+                                            {% elif activity.activity_type_value == 'assignment' %}
+                                                <span>Enviar tarefa</span>
+                                            {% elif activity.activity_type_value == 'forum' %}
+                                                <span>Abrir discussão</span>
+                                            {% elif activity.activity_type_value == 'resource' %}
+                                                <span>Acessar material</span>
+                                            {% endif %}
                                         </div>
                                     </article>
                                 </a>
