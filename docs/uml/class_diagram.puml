@@ -1,0 +1,358 @@
+@startuml AgoraClassDiagram
+
+title Ágora - Diagrama UML de Classes
+
+left to right direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam dpi 140
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam roundcorner 6
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #374151
+  ArrowColor #374151
+  FontColor #111827
+  HeaderBackgroundColor #F3F4F6
+}
+
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #D1D5DB
+  FontColor #111827
+}
+
+skinparam note {
+  BackgroundColor #F9FAFB
+  BorderColor #D1D5DB
+  FontColor #374151
+}
+
+hide circle
+hide empty members
+
+package "Django/Auth" as Auth {
+  class User <<AUTH_USER_MODEL>> {
+    +username
+    +first_name
+    +last_name
+    +email
+    +date_joined
+  }
+
+  abstract class Model <<Django>>
+  abstract class Form <<Django>>
+  abstract class ModelForm <<Django>>
+}
+
+package "Models" as Models {
+  class UserProfile <<Model>> {
+    +user: User
+    +role: Role
+    +academic_id: CharField
+    +cpf: CharField
+    +birth_date: DateField
+    +phone: CharField
+    +ensure_academic_id(created_at)
+  }
+
+  enum Role {
+    STUDENT
+    TEACHER
+  }
+
+  class Course <<Model>> {
+    +code: CharField
+    +title: CharField
+    +description: TextField
+    +syllabus: TextField
+    +workload_hours: PositiveIntegerField
+    +teacher: User
+    +is_published: BooleanField
+    +created_at: DateTimeField
+    +updated_at: DateTimeField
+    +clean()
+  }
+
+  class Enrollment <<Model>> {
+    +student: User
+    +course: Course
+    +status: EnrollmentStatus
+    +enrolled_at: DateTimeField
+    +final_grade: DecimalField
+    +clean()
+  }
+
+  enum EnrollmentStatus {
+    PENDING
+    ACTIVE
+    COMPLETED
+    CANCELLED
+  }
+
+  class Module <<Model>> {
+    +course: Course
+    +title: CharField
+    +description: TextField
+    +order: PositiveIntegerField
+  }
+
+  class CourseItem <<Model>> {
+    +course: Course
+    +module: Module
+    +title: CharField
+    +description: TextField
+    +is_published: BooleanField
+    +created_by: User
+    +created_at: DateTimeField
+    +updated_at: DateTimeField
+    +kind
+    +kind_label
+    +detail_object
+    +clean()
+  }
+
+  class ResourceItem <<Model>> {
+    +attachment_url: URLField
+    +attachment_file: FileField
+    +clean()
+  }
+
+  class AssignmentItem <<Model>> {
+    +due_date: DateTimeField
+    +max_score: DecimalField
+    +statement_url: URLField
+    +statement_file: FileField
+  }
+
+  class QuizItem <<Model>> {
+    +due_date: DateTimeField
+    +max_score: DecimalField
+    +allow_resubmissions: BooleanField
+  }
+
+  class ForumItem <<Model>>
+
+  class QuizQuestion <<Model>> {
+    +quiz: QuizItem
+    +statement: TextField
+    +image: FileField
+    +question_type: QuestionType
+    +order: PositiveIntegerField
+    +weight: DecimalField
+  }
+
+  enum QuestionType {
+    SINGLE_CHOICE
+    MULTIPLE_CHOICE
+  }
+
+  class QuizOption <<Model>> {
+    +question: QuizQuestion
+    +text: CharField
+    +is_correct: BooleanField
+    +order: PositiveIntegerField
+  }
+
+  class ForumMessage <<Model>> {
+    +forum: ForumItem
+    +author: User
+    +parent: ForumMessage
+    +content: TextField
+    +created_at: DateTimeField
+    +updated_at: DateTimeField
+    +clean()
+  }
+
+  class Submission <<Model>> {
+    +assignment: AssignmentItem
+    +student: User
+    +content: TextField
+    +attachment_file: FileField
+    +status: SubmissionStatus
+    +submitted_at: DateTimeField
+    +updated_at: DateTimeField
+    +score: DecimalField
+    +feedback: TextField
+    +graded_at: DateTimeField
+    +graded_by: User
+    +clean()
+  }
+
+  enum SubmissionStatus {
+    DRAFT
+    SUBMITTED
+    REVIEWED
+    LATE
+  }
+
+  class Answer <<Model>> {
+    +quiz: QuizItem
+    +question: QuizQuestion
+    +selected_option: QuizOption
+    +student: User
+    +answered_at: DateTimeField
+    +clean()
+  }
+}
+
+package "Forms" as Forms {
+  class SuperuserCreateUserForm <<Form>> {
+    +clean_username()
+    +clean_cpf()
+    +clean()
+    +save()
+  }
+
+  class CourseCreateForm <<ModelForm>> {
+    +clean_code()
+    +clean_title()
+  }
+
+  class ModuleCreateForm <<ModelForm>> {
+    +course: Course
+    +clean_title()
+    +clean()
+  }
+
+  class EnrollmentGradeForm <<Form>> {
+    +final_grade: DecimalField
+  }
+
+  abstract class BaseCourseActivityForm <<ModelForm>> {
+    +title_placeholder: str
+    +description_placeholder: str
+    +clean_title()
+  }
+
+  class ResourceCreateForm <<ModelForm>> {
+    +clean()
+  }
+
+  class AssignmentCreateForm <<ModelForm>> {
+    +due_date_date: DateField
+    +due_date_time: TimeField
+    +clean()
+    +save(commit)
+  }
+
+  class QuizCreateForm <<ModelForm>> {
+    +quiz_option_count: int
+    +due_date_date: DateField
+    +due_date_time: TimeField
+    +question_blocks: list
+    +clean()
+    +save(commit)
+  }
+
+  class ForumCreateForm <<ModelForm>>
+
+  class AssignmentSubmissionForm <<ModelForm>> {
+    +clean()
+  }
+
+  class SubmissionReviewForm <<ModelForm>> {
+    +assignment: AssignmentItem
+    +clean_score()
+  }
+
+  class ForumMessageForm <<ModelForm>> {
+    +clean_content()
+  }
+}
+
+Model <|-- UserProfile
+Model <|-- Course
+Model <|-- Enrollment
+Model <|-- Module
+Model <|-- CourseItem
+Model <|-- QuizQuestion
+Model <|-- QuizOption
+Model <|-- ForumMessage
+Model <|-- Submission
+Model <|-- Answer
+
+CourseItem <|-- ResourceItem
+CourseItem <|-- AssignmentItem
+CourseItem <|-- QuizItem
+CourseItem <|-- ForumItem
+
+Form <|-- SuperuserCreateUserForm
+Form <|-- EnrollmentGradeForm
+ModelForm <|-- CourseCreateForm
+ModelForm <|-- ModuleCreateForm
+ModelForm <|-- BaseCourseActivityForm
+ModelForm <|-- AssignmentSubmissionForm
+ModelForm <|-- SubmissionReviewForm
+ModelForm <|-- ForumMessageForm
+BaseCourseActivityForm <|-- ResourceCreateForm
+BaseCourseActivityForm <|-- AssignmentCreateForm
+BaseCourseActivityForm <|-- QuizCreateForm
+BaseCourseActivityForm <|-- ForumCreateForm
+
+User *-- "1" UserProfile : profile
+UserProfile --> Role : role
+
+User "1" <-- "0..*" Course : teacher
+Course *-- "0..*" Enrollment : enrollments
+User "1" <-- "0..*" Enrollment : student
+Enrollment --> EnrollmentStatus : status
+
+Course *-- "0..*" Module : modules
+Course *-- "0..*" CourseItem : course_items
+Module "0..1" o-- "0..*" CourseItem : groups
+User "1" <-- "0..*" CourseItem : created_by
+
+QuizItem *-- "1..*" QuizQuestion : questions
+QuizQuestion *-- "2..*" QuizOption : options
+QuizQuestion --> QuestionType : question_type
+
+ForumItem *-- "0..*" ForumMessage : messages
+ForumMessage "0..1" <-- "0..*" ForumMessage : replies
+User "1" <-- "0..*" ForumMessage : author
+
+AssignmentItem *-- "0..*" Submission : submissions
+User "1" <-- "0..*" Submission : student
+User "0..1" <-- "0..*" Submission : graded_by
+Submission --> SubmissionStatus : status
+
+QuizItem *-- "0..*" Answer : answers
+QuizQuestion *-- "0..*" Answer : answers
+QuizOption "1" <-- "0..*" Answer : selected_option
+User "1" <-- "0..*" Answer : student
+
+SuperuserCreateUserForm ..> User : creates
+SuperuserCreateUserForm ..> UserProfile : updates
+CourseCreateForm ..> Course : model
+ModuleCreateForm ..> Module : model
+ModuleCreateForm ..> Course : validates order
+BaseCourseActivityForm ..> Module : filters by course
+ResourceCreateForm ..> ResourceItem : model
+AssignmentCreateForm ..> AssignmentItem : model
+QuizCreateForm ..> QuizItem : model
+QuizCreateForm ..> QuizQuestion : creates
+QuizCreateForm ..> QuizOption : creates
+ForumCreateForm ..> ForumItem : model
+AssignmentSubmissionForm ..> Submission : model
+SubmissionReviewForm ..> Submission : model
+SubmissionReviewForm ..> AssignmentItem : validates max_score
+ForumMessageForm ..> ForumMessage : model
+EnrollmentGradeForm ..> Enrollment : edits final_grade
+
+note bottom of CourseItem
+  Classe base dos itens de curso.
+  ResourceItem, AssignmentItem,
+  QuizItem e ForumItem usam herança
+  multi-table do Django.
+end note
+
+note bottom of QuizCreateForm
+  Além de editar QuizItem, cria
+  QuizQuestion e QuizOption dentro
+  de uma transação.
+end note
+
+@enduml
