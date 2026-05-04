@@ -46,6 +46,11 @@ class UserProfile(models.Model):
         default='',
         verbose_name='telefone',
     )
+    bio = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='biografia',
+    )
 
     class Meta:
         verbose_name = 'perfil de usuario'
@@ -384,10 +389,6 @@ class QuizItem(CourseItem):
         validators=[MinValueValidator(0)],
         verbose_name='nota maxima',
     )
-    allow_resubmissions = models.BooleanField(
-        default=True,
-        verbose_name='permite reenviar respostas',
-    )
 
     class Meta:
         verbose_name = 'quiz'
@@ -402,10 +403,6 @@ class ForumItem(CourseItem):
 
 
 class QuizQuestion(models.Model):
-    class QuestionType(models.TextChoices):
-        SINGLE_CHOICE = 'single_choice', 'Uma resposta'
-        MULTIPLE_CHOICE = 'multiple_choice', 'Múltiplas respostas'
-
     quiz = models.ForeignKey(
         QuizItem,
         on_delete=models.CASCADE,
@@ -414,18 +411,6 @@ class QuizQuestion(models.Model):
     )
     statement = models.TextField(
         verbose_name='enunciado',
-    )
-    image = models.FileField(
-        upload_to='quiz_question_images/',
-        blank=True,
-        null=True,
-        verbose_name='imagem da questao',
-    )
-    question_type = models.CharField(
-        max_length=30,
-        choices=QuestionType.choices,
-        default=QuestionType.SINGLE_CHOICE,
-        verbose_name='tipo de questao',
     )
     order = models.PositiveIntegerField(
         default=1,
@@ -617,15 +602,13 @@ class Submission(models.Model):
         ]
 
     def __str__(self):
-        student_label = self.student if self.student_id else 'Sem estudante'
-        assignment_label = self.assignment if self.assignment_id else 'Sem tarefa'
-        return f'{student_label} - {assignment_label}'
+        return f'{self.student} - {self.assignment}'
 
     def clean(self):
         super().clean()
         errors = {}
 
-        if self.student_id and _user_role(self.student) != UserProfile.Role.STUDENT:
+        if _user_role(self.student) != UserProfile.Role.STUDENT:
             errors['student'] = 'A entrega deve estar vinculada a um estudante.'
 
         if self.graded_by and _user_role(self.graded_by) != UserProfile.Role.TEACHER:
@@ -633,7 +616,6 @@ class Submission(models.Model):
 
         if (
             self.score is not None
-            and self.assignment_id
             and self.assignment.max_score is not None
             and self.score > self.assignment.max_score
         ):
@@ -681,11 +663,8 @@ class Answer(models.Model):
         verbose_name_plural = 'respostas de quiz'
         ordering = ['-answered_at']
         constraints = [
-            models.UniqueConstraint(
-                fields=['question', 'student', 'selected_option'],
-                name='unique_answer_per_question_student_option',
-            ),
-        ]
+            models.UniqueConstraint(fields=['question', 'student'], name='unique_answer_per_question_student'),
+                                            ]
 
     def __str__(self):
         return f'{self.student} · {self.question}'
