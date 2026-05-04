@@ -31,7 +31,7 @@
                         {% if role == 'teacher' %}Painel do professor{% else %}Painel do aluno{% endif %}
                     </a>
                     <a class="nav-item {% if current == 'courses_hub' %}active{% endif %}" href="{% url 'agora:courses_hub' %}">
-                        {% if role == 'teacher' %}Criar curso{% else %}Matricular em cursos{% endif %}
+                        {% if role == 'teacher' %}Gestão de cursos{% else %}Matricular em cursos{% endif %}
                     </a>
                     {% if role == 'student' %}
                         <a class="nav-item {% if current == 'calendar' %}active{% endif %}" href="{% url 'agora:calendar' %}">Calendário</a>
