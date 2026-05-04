@@ -1,0 +1,94 @@
+@startuml AgoraDashboardSequence
+
+title dashboard.py - Fluxo HTTP
+
+hide footbox
+
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam dpi 140
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 48
+
+skinparam participant {
+  BackgroundColor #FFFFFF
+  BorderColor #3F3F46
+  FontColor #18181B
+}
+
+skinparam actor {
+  BackgroundColor #FFFFFF
+  BorderColor #3F3F46
+  FontColor #18181B
+}
+
+skinparam sequence {
+  ArrowColor #3F3F46
+  LifeLineBorderColor #9CA3AF
+  LifeLineBackgroundColor #FFFFFF
+  ParticipantBorderColor #3F3F46
+  ParticipantBackgroundColor #FFFFFF
+  GroupBorderColor #D4D4D8
+  GroupBackgroundColor #FAFAFA
+}
+
+actor "Cliente" as Client
+participant "agora.urls" as Urls
+participant "dashboard.py" as Dashboard
+database "Enrollment" as Enrollment
+database "CourseItem" as CourseItem
+database "AssignmentItem" as Assignment
+database "QuizItem" as Quiz
+database "Submission" as Submission
+database "Answer" as Answer
+participant "Template" as Template
+
+Client -> Urls : GET /
+Urls -> Dashboard : index(request)
+activate Dashboard
+Dashboard -> Dashboard : _user_role(user)
+
+alt professor
+  Dashboard -> Dashboard : _build_teacher_dashboard_context(user)
+  Dashboard -> Enrollment : active student counts
+  Dashboard -> CourseItem : published item counts
+  Dashboard -> Assignment : pending reviews
+  Dashboard -> Submission : review counts
+else estudante
+  Dashboard -> Dashboard : _build_student_dashboard_context(user)
+  Dashboard -> Enrollment : active enrollments
+  Dashboard -> CourseItem : published item counts
+  Dashboard -> Answer : answered quizzes
+  Dashboard -> Submission : submitted assignments
+  Dashboard -> Assignment : pending assignments
+  Dashboard -> Quiz : pending quizzes
+end
+
+Dashboard -> Dashboard : paginate cards
+Dashboard -> Template : index.html
+Template --> Client : HTML
+deactivate Dashboard
+
+Client -> Urls : GET /calendario/
+Urls -> Dashboard : calendar_view(request)
+activate Dashboard
+Dashboard -> Dashboard : _user_role(user)
+
+alt professor
+  Dashboard --> Client : redirect /
+else estudante
+  Dashboard -> Enrollment : active enrollments
+  Dashboard -> Answer : answered quizzes
+  Dashboard -> Submission : submitted assignments
+  Dashboard -> Assignment : month assignments
+  Dashboard -> Quiz : month quizzes
+  Dashboard -> Submission : reviewed grades
+  Dashboard -> Dashboard : build calendar
+  Dashboard -> Template : calendar.html
+  Template --> Client : HTML
+end
+
+deactivate Dashboard
+
+@enduml

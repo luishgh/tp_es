@@ -1,0 +1,180 @@
+@startuml AgoraFormsDiagram
+
+title Ágora - Diagrama de Classes dos Formulários
+
+left to right direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam dpi 140
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam roundcorner 6
+
+' === AJUSTES PARA PROPORÇÃO MAIS HORIZONTAL ===
+' Reduz a distância vertical entre caixas na mesma coluna
+skinparam nodesep 25
+' Aumenta a distância horizontal entre as colunas/pacotes
+skinparam ranksep 140
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #374151
+  ArrowColor #374151
+  FontColor #111827
+  HeaderBackgroundColor #F3F4F6
+}
+
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #D1D5DB
+  FontColor #111827
+}
+
+skinparam note {
+  BackgroundColor #F9FAFB
+  BorderColor #D1D5DB
+  FontColor #374151
+}
+
+hide circle
+hide empty members
+
+package "Django Forms" as DjangoForms {
+  abstract class Form <<Django>>
+  abstract class ModelForm <<Django>>
+}
+
+package "Models usados" as ModelRefs {
+  class User <<AUTH_USER_MODEL>>
+  class UserProfile <<Model>>
+  class Course <<Model>>
+  class Module <<Model>>
+  class Enrollment <<Model>>
+
+  class ResourceItem <<Model>>
+  class AssignmentItem <<Model>>
+  class QuizItem <<Model>>
+  class QuizQuestion <<Model>>
+  class QuizOption <<Model>>
+
+  class ForumItem <<Model>>
+  class ForumMessage <<Model>>
+  class Submission <<Model>>
+
+  ' --- TRUQUE: Setas invisíveis para forçar os models a se dividirem em 3 colunas horizontais ---
+  ' Isso evita que os 13 models empilhem verticalmente em uma torre gigante.
+  User -[hidden]-> ResourceItem
+  ResourceItem -[hidden]-> ForumItem
+
+  UserProfile -[hidden]-> AssignmentItem
+  AssignmentItem -[hidden]-> ForumMessage
+
+  Course -[hidden]-> QuizItem
+  QuizItem -[hidden]-> Submission
+
+  Module -[hidden]-> QuizQuestion
+  Enrollment -[hidden]-> QuizOption
+}
+
+package "Forms" as Forms {
+  class SuperuserCreateUserForm <<Form>> {
+    +clean_username()
+    +clean_cpf()
+    +clean()
+    +save()
+  }
+
+  class CourseCreateForm <<ModelForm>> {
+    +clean_code()
+    +clean_title()
+  }
+
+  class ModuleCreateForm <<ModelForm>> {
+    +course: Course
+    +clean_title()
+    +clean()
+  }
+
+  class EnrollmentGradeForm <<Form>> {
+    +final_grade: DecimalField
+  }
+
+  abstract class BaseCourseActivityForm <<ModelForm>> {
+    +title_placeholder: str
+    +description_placeholder: str
+    +clean_title()
+  }
+
+  class ResourceCreateForm <<ModelForm>> {
+    +clean()
+  }
+
+  class AssignmentCreateForm <<ModelForm>> {
+    +due_date_date: DateField
+    +due_date_time: TimeField
+    +clean()
+    +save(commit)
+  }
+
+  class QuizCreateForm <<ModelForm>> {
+    +quiz_option_count: int
+    +due_date_date: DateField
+    +due_date_time: TimeField
+    +question_blocks: list
+    +clean()
+    +save(commit)
+  }
+
+  class ForumCreateForm <<ModelForm>>
+
+  class AssignmentSubmissionForm <<ModelForm>> {
+    +clean()
+  }
+
+  class SubmissionReviewForm <<ModelForm>> {
+    +assignment: AssignmentItem
+    +clean_score()
+  }
+
+  class ForumMessageForm <<ModelForm>> {
+    +clean_content()
+  }
+}
+
+Form <|-- SuperuserCreateUserForm
+Form <|-- EnrollmentGradeForm
+ModelForm <|-- CourseCreateForm
+ModelForm <|-- ModuleCreateForm
+ModelForm <|-- BaseCourseActivityForm
+ModelForm <|-- AssignmentSubmissionForm
+ModelForm <|-- SubmissionReviewForm
+ModelForm <|-- ForumMessageForm
+
+BaseCourseActivityForm <|-- ResourceCreateForm
+BaseCourseActivityForm <|-- AssignmentCreateForm
+BaseCourseActivityForm <|-- QuizCreateForm
+BaseCourseActivityForm <|-- ForumCreateForm
+
+SuperuserCreateUserForm ..> User : creates
+SuperuserCreateUserForm ..> UserProfile : updates profile
+CourseCreateForm ..> Course : Meta.model
+ModuleCreateForm ..> Module : Meta.model
+ModuleCreateForm ..> Course : validates order
+EnrollmentGradeForm ..> Enrollment : edits final_grade
+
+BaseCourseActivityForm ..> Course : receives course
+BaseCourseActivityForm ..> Module : filters queryset
+ResourceCreateForm ..> ResourceItem : Meta.model
+AssignmentCreateForm ..> AssignmentItem : Meta.model
+QuizCreateForm ..> QuizItem : Meta.model
+QuizCreateForm ..> QuizQuestion : creates
+QuizCreateForm ..> QuizOption : creates
+ForumCreateForm ..> ForumItem : Meta.model
+
+AssignmentSubmissionForm ..> Submission : Meta.model
+SubmissionReviewForm ..> Submission : Meta.model
+SubmissionReviewForm ..> AssignmentItem : validates max_score
+ForumMessageForm ..> ForumMessage : Meta.model
+
+@enduml

@@ -1,0 +1,250 @@
+@startuml AgoraModelDiagram
+
+title Ágora - Diagrama de Classes do Domínio
+
+left to right direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam dpi 140
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam roundcorner 6
+
+' Espaçamento mais equilibrado agora que o diagrama não está tão largo
+skinparam nodesep 60
+skinparam ranksep 80
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #374151
+  ArrowColor #374151
+  FontColor #111827
+  HeaderBackgroundColor #F3F4F6
+}
+
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #D1D5DB
+  FontColor #111827
+}
+
+skinparam note {
+  BackgroundColor #F9FAFB
+  BorderColor #D1D5DB
+  FontColor #374151
+}
+
+hide circle
+hide empty members
+
+package "Django/Auth" as Auth {
+  class User <<AUTH_USER_MODEL>> {
+    +username
+    +first_name
+    +last_name
+    +email
+    +date_joined
+  }
+
+  abstract class Model <<Django>>
+}
+
+package "Models" as Models {
+  class UserProfile <<Model>> {
+    +user: User
+    +role: Role
+    +academic_id: CharField
+    +cpf: CharField
+    +birth_date: DateField
+    +phone: CharField
+    +ensure_academic_id(created_at)
+  }
+
+  enum Role {
+    STUDENT
+    TEACHER
+  }
+
+  class Course <<Model>> {
+    +code: CharField
+    +title: CharField
+    +description: TextField
+    +syllabus: TextField
+    +workload_hours: PositiveIntegerField
+    +teacher: User
+    +is_published: BooleanField
+    +created_at: DateTimeField
+    +updated_at: DateTimeField
+    +clean()
+  }
+
+  class Enrollment <<Model>> {
+    +student: User
+    +course: Course
+    +status: EnrollmentStatus
+    +enrolled_at: DateTimeField
+    +final_grade: DecimalField
+    +clean()
+  }
+
+  enum EnrollmentStatus {
+    PENDING
+    ACTIVE
+    COMPLETED
+    CANCELLED
+  }
+
+  class Module <<Model>> {
+    +course: Course
+    +title: CharField
+    +description: TextField
+    +order: PositiveIntegerField
+  }
+
+  class CourseItem <<Model>> {
+    +course: Course
+    +module: Module
+    +title: CharField
+    +description: TextField
+    +is_published: BooleanField
+    +created_by: User
+    +created_at: DateTimeField
+    +updated_at: DateTimeField
+    +kind
+    +kind_label
+    +detail_object
+    +clean()
+  }
+
+  class ResourceItem <<Model>> {
+    +attachment_url: URLField
+    +attachment_file: FileField
+    +clean()
+  }
+
+  class AssignmentItem <<Model>> {
+    +due_date: DateTimeField
+    +max_score: DecimalField
+    +statement_url: URLField
+    +statement_file: FileField
+  }
+
+  class QuizItem <<Model>> {
+    +due_date: DateTimeField
+    +max_score: DecimalField
+    +allow_resubmissions: BooleanField
+  }
+
+  class ForumItem <<Model>>
+
+  class QuizQuestion <<Model>> {
+    +quiz: QuizItem
+    +statement: TextField
+    +image: FileField
+    +question_type: QuestionType
+    +order: PositiveIntegerField
+    +weight: DecimalField
+  }
+
+  enum QuestionType {
+    SINGLE_CHOICE
+    MULTIPLE_CHOICE
+  }
+
+  class QuizOption <<Model>> {
+    +question: QuizQuestion
+    +text: CharField
+    +is_correct: BooleanField
+    +order: PositiveIntegerField
+  }
+
+  class ForumMessage <<Model>> {
+    +forum: ForumItem
+    +author: User
+    +parent: ForumMessage
+    +content: TextField
+    +created_at: DateTimeField
+    +updated_at: DateTimeField
+    +clean()
+  }
+
+  class Submission <<Model>> {
+    +assignment: AssignmentItem
+    +student: User
+    +content: TextField
+    +attachment_file: FileField
+    +status: SubmissionStatus
+    +submitted_at: DateTimeField
+    +updated_at: DateTimeField
+    +score: DecimalField
+    +feedback: TextField
+    +graded_at: DateTimeField
+    +graded_by: User
+    +clean()
+  }
+
+  enum SubmissionStatus {
+    DRAFT
+    SUBMITTED
+    REVIEWED
+    LATE
+  }
+
+  class Answer <<Model>> {
+    +quiz: QuizItem
+    +question: QuizQuestion
+    +selected_option: QuizOption
+    +student: User
+    +answered_at: DateTimeField
+    +clean()
+  }
+}
+
+Model <|-- UserProfile
+Model <|-- Course
+Model <|-- Enrollment
+Model <|-- Module
+Model <|-- CourseItem
+Model <|-- QuizQuestion
+Model <|-- QuizOption
+Model <|-- ForumMessage
+Model <|-- Submission
+Model <|-- Answer
+
+CourseItem <|-- ResourceItem
+CourseItem <|-- AssignmentItem
+CourseItem <|-- QuizItem
+CourseItem <|-- ForumItem
+
+' === RELACIONAMENTOS COM DIREÇÕES EXPLÍCITAS (FOLDING) ===
+
+' Força o Role a ficar debaixo do UserProfile (e não à direita)
+UserProfile -down-> Role : role
+
+' O fluxo principal do curso segue para a direita
+Course *-- "0..*" Module : modules
+Course *-- "0..*" CourseItem : course_items
+Module "0..1" o-- "0..*" CourseItem : groups
+
+' Mas o Enrollment desce para ficar embaixo do Course (shiftado para a esquerda)
+Course *-down- "0..*" Enrollment : enrollments
+Enrollment -down-> EnrollmentStatus : status
+
+QuizItem *-- "1..*" QuizQuestion : questions
+QuizQuestion *-- "2..*" QuizOption : options
+' O enum QuestionType desce para não alargar o diagrama
+QuizQuestion -down-> QuestionType : question_type
+
+ForumItem *-- "0..*" ForumMessage : messages
+ForumMessage "0..1" <-down- "0..*" ForumMessage : replies
+
+AssignmentItem *-- "0..*" Submission : submissions
+' O enum de status desce
+Submission -down-> SubmissionStatus : status
+
+QuizItem *-down- "0..*" Answer : answers
+QuizQuestion *-- "0..*" Answer : answers
+QuizOption "1" <-down- "0..*" Answer : selected_option
+
+@enduml

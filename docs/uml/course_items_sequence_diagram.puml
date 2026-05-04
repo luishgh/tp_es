@@ -1,0 +1,160 @@
+@startuml AgoraCourseItemsSequence
+
+title course_items.py - Fluxo HTTP
+
+hide footbox
+
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam dpi 140
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 48
+
+skinparam participant {
+  BackgroundColor #FFFFFF
+  BorderColor #3F3F46
+  FontColor #18181B
+}
+
+skinparam actor {
+  BackgroundColor #FFFFFF
+  BorderColor #3F3F46
+  FontColor #18181B
+}
+
+skinparam sequence {
+  ArrowColor #3F3F46
+  LifeLineBorderColor #9CA3AF
+  LifeLineBackgroundColor #FFFFFF
+  ParticipantBorderColor #3F3F46
+  ParticipantBackgroundColor #FFFFFF
+  GroupBorderColor #D4D4D8
+  GroupBackgroundColor #FAFAFA
+}
+
+actor "Cliente" as Client
+participant "agora.urls" as Urls
+participant "course_items.py" as Views
+participant "Form" as Form
+database "Course" as Course
+database "CourseItem" as CourseItem
+database "Enrollment" as Enrollment
+database "Submission" as Submission
+database "ForumMessage" as ForumMessage
+database "QuizQuestion" as QuizQuestion
+database "Answer" as Answer
+participant "Template" as Template
+
+Client -> Urls : GET/POST /cursos/{id}/modulos/criar/
+Urls -> Views : module_create_view(request, course_id)
+activate Views
+Views -> Course : get course
+Views -> Views : check teacher
+
+alt POST valid
+  Views -> Form : ModuleCreateForm(POST)
+  Form --> Views : module
+  Views -> Course : save module
+  Views --> Client : redirect course_detail
+else GET or invalid
+  Views -> Form : ModuleCreateForm()
+  Views -> Template : module_form.html
+  Template --> Client : HTML
+end
+deactivate Views
+
+Client -> Urls : GET/POST /cursos/{id}/itens/criar/
+Urls -> Views : course_item_create_view(request, course_id)
+activate Views
+Views -> Course : get course
+Views -> Views : check teacher
+Views -> Views : select activity type
+
+alt POST valid
+  Views -> Form : Resource/Assignment/Quiz/Forum form
+  Form --> Views : course item
+  Views -> CourseItem : save item
+  Views --> Client : redirect course_detail
+else GET or invalid
+  Views -> Form : selected form
+  Views -> Template : course_item_form.html
+  Template --> Client : HTML
+end
+deactivate Views
+
+Client -> Urls : GET /itens/{id}/
+Urls -> Views : course_item_detail_view(request, id)
+activate Views
+Views -> CourseItem : get item
+Views -> Enrollment : check access
+
+alt denied
+  Views --> Client : redirect courses_hub
+else material
+  Views -> Views : build material actions
+else tarefa
+  Views -> Submission : current/submissions
+else fórum
+  Views -> ForumMessage : messages
+  Views -> Views : build thread tree
+else quiz
+  Views -> QuizQuestion : questions/options
+  Views -> Answer : student answers
+end
+
+Views -> Template : course_item_detail.html
+Template --> Client : HTML
+deactivate Views
+
+Client -> Urls : POST /itens/{id}/
+Urls -> Views : course_item_detail_view(request, id)
+activate Views
+Views -> CourseItem : get item
+Views -> Enrollment : check access
+
+alt submit_assignment
+  Views -> Form : AssignmentSubmissionForm(POST)
+  Form --> Views : submission
+  Views -> Submission : save submitted
+  Views --> Client : redirect item_detail
+else post_forum_message
+  Views -> Form : ForumMessageForm(POST)
+  Form --> Views : forum message
+  Views -> ForumMessage : save message
+  Views --> Client : redirect item_detail
+else submit_quiz
+  Views -> QuizQuestion : questions/options
+  Views -> Answer : update_or_create answers
+  Views --> Client : redirect item_detail
+end
+deactivate Views
+
+Client -> Urls : GET/POST /submissoes/{id}/avaliar/
+Urls -> Views : submission_review_view(request, id)
+activate Views
+Views -> Submission : get submission
+Views -> Views : check teacher
+
+alt POST valid
+  Views -> Form : SubmissionReviewForm(POST)
+  Form --> Views : reviewed submission
+  Views -> Submission : save reviewed
+  Views --> Client : redirect item_detail
+else GET or invalid
+  Views -> Form : SubmissionReviewForm()
+  Views -> Template : submission_review.html
+  Template --> Client : HTML
+end
+deactivate Views
+
+Client -> Urls : POST publish/delete
+Urls -> Views : publish/delete view
+activate Views
+Views -> CourseItem : get item/forum/message
+Views -> Views : check teacher
+Views -> CourseItem : update or delete
+Views --> Client : redirect
+deactivate Views
+
+@enduml
