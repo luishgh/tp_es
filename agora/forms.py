@@ -55,7 +55,7 @@ class SuperuserCreateUserForm(forms.Form):
         if not cpf:
             raise forms.ValidationError('Preencha o CPF.')
 
-        digits = re.sub(r'\\D', '', cpf)
+        digits = re.sub(r'\D', '', cpf)
         if len(digits) != 11:
             raise forms.ValidationError('Informe um CPF válido.')
 

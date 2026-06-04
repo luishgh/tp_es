@@ -294,7 +294,7 @@ class Command(BaseCommand):
         past_due = now - timedelta(days=6, hours=3)
         future_due = now + timedelta(days=5, hours=2)
 
-        past_title = rng.choice(titles)
+        past_title = titles[0]
         past, _ = AssignmentItem.objects.get_or_create(
             course=course,
             title=f"{past_title} ({course.code})",
@@ -312,7 +312,7 @@ class Command(BaseCommand):
         future_title_candidates = [t for t in titles if t != past_title] or titles
         future, _ = AssignmentItem.objects.get_or_create(
             course=course,
-            title=f"{rng.choice(future_title_candidates)} ({course.code})",
+            title=f"{future_title_candidates[0]} ({course.code})",
             defaults={
                 "module": modules[2],
                 "description": rng.choice(prompts),

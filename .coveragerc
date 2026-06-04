@@ -1,0 +1,19 @@
+[run]
+source = agora/
+
+omit =
+    manage.py
+    */migrations/*
+    */__init__.py
+    agora/apps.py
+    agora/admin.py
+    agora/tests/*
+    *settings*.py
+    *wsgi*.py
+    *asgi*.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __str__
+    raise NotImplementedError
