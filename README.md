@@ -33,6 +33,22 @@ python manage.py seed --reset --seed 1234 --password demo123
 - O `--reset` remove **apenas** dados de demonstração (usuários `demo_*` e cursos `DEMO-*`) antes de recriar.
 - O `--seed` permite repetir as mesmas variações textuais entre execuções.
 
+## Cobertura de testes
+
+O projeto já possui um arquivo `.coveragerc` com a configuração básica de cobertura.
+
+Para gerar o relatório localmente, execute:
+
+```bash
+coverage run manage.py test
+coverage report
+coverage html
+```
+
+- `coverage run manage.py test` executa a suíte de testes registrando a cobertura.
+- `coverage report` mostra o resumo no terminal.
+- `coverage html` gera um relatório navegável em `htmlcov/`.
+
 ## Histórias de Usuário
 0. Como estudante, quero fazer login para acessar meus cursos e todos os recursos disponíveis de cada um deles.
 1. Como estudante, quero realizar tarefas e atividades para que meu progresso seja registrado automaticamente.
