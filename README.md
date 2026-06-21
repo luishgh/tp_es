@@ -33,11 +33,95 @@ python manage.py seed --reset --seed 1234 --password demo123
 - O `--reset` remove **apenas** dados de demonstração (usuários `demo_*` e cursos `DEMO-*`) antes de recriar.
 - O `--seed` permite repetir as mesmas variações textuais entre execuções.
 
-## Cobertura de testes
+## Testes
 
-O projeto já possui um arquivo `.coveragerc` com a configuração básica de cobertura.
+### Unitários
 
-Para gerar o relatório localmente, execute:
+Validam funções, forms, models e helpers de forma isolada, com foco em regras de negócio e validações locais.
+
+Tempo esperado:
+- curto, normalmente segundos a poucos minutos.
+
+Como rodar:
+
+```bash
+python manage.py test agora.tests.unit
+```
+
+Cobertura típica:
+- validação de formulários
+- regras de modelos
+- helpers utilitários
+- comandos de gerenciamento com dependências simples
+
+### Integração
+
+Validam views, fluxos HTTP e integração entre camada de apresentação, forms e banco de dados, sem navegador real.
+
+Tempo esperado:
+- moderado, normalmente alguns minutos.
+
+Como rodar:
+
+```bash
+python manage.py test agora.tests.integration
+```
+
+Cobertura típica:
+- respostas de views
+- permissões e redirecionamentos
+- renderização de HTML
+- efeitos colaterais no banco após requisições
+
+### E2E Django
+
+Validam fluxos ponta a ponta usando `django.test.TestCase` e `self.client`, sem navegador real. Cobrem jornadas completas como cadastro, matrícula, submissão e revisão.
+
+Tempo esperado:
+- moderado, normalmente alguns minutos.
+
+Como rodar:
+
+```bash
+python manage.py test agora.tests.e2e
+```
+
+Cobertura típica:
+- sequência completa de ações do usuário via HTTP
+- sessão autenticada
+- transições entre páginas
+- HTML renderizado e persistência dos dados
+
+### E2E Playwright
+
+Validam a interface web no navegador real com a biblioteca `Playwright`. São usados para fluxos críticos de UI, incluindo cliques, preenchimento de campos, navegação e leitura de conteúdo renderizado pelo browser.
+
+Tempo esperado:
+- maior que os demais, normalmente alguns minutos a mais por causa da inicialização do servidor e do navegador.
+
+Pré-requisitos:
+
+```bash
+pip install -r requirements-playwright.txt
+playwright install
+```
+
+Como rodar:
+
+```bash
+python manage.py test agora.tests.playwright
+```
+
+Cobertura típica:
+- login e logout na interface
+- solicitação de matrícula no navegador
+- criação de curso, módulo e material via UI
+- submissão e revisão de atividade no navegador
+- comportamento visual e interação real com o DOM
+
+### Cobertura
+
+Para gerar relatório de cobertura localmente:
 
 ```bash
 coverage run manage.py test
