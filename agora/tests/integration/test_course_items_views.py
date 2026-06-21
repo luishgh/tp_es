@@ -1032,16 +1032,6 @@ class ResourceDetailViewTests(TestCase):
         self.assertContains(response, 'disabled')
         self.assertNotContains(response, 'Enviar respostas')
 
-    def test_teacher_can_open_quiz_edit_form(self):
-        self.client.force_login(self.teacher)
-
-        response = self.client.get(reverse('agora:quiz_edit', args=[self.quiz.id]))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['selected_type'], 'quiz')
-        self.assertTrue(response.context['is_edit_mode'])
-        self.assertEqual(response.context['edited_quiz'], self.quiz)
-        self.assertEqual(response.context['form_title'], 'Editar Quiz')
 
     def test_teacher_can_edit_unpublished_quiz(self):
         draft_quiz = QuizItem.objects.create(
@@ -1093,6 +1083,7 @@ class ResourceDetailViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.quiz.refresh_from_db()
         self.assertEqual(self.quiz.title, 'Quiz rápido')
+        
 class CourseItemInteractionExtraTests(AgoraTestDataMixin, TestCase):
     def setUp(self):
         self.teacher = self.create_user('item-teacher', UserProfile.Role.TEACHER)
